@@ -23,5 +23,11 @@ export default defineConfig({
       url: 'http://127.0.0.1:5173',
       reuseExistingServer: true,
     },
+    {
+      command: 'node realtime/ws-server.mjs',
+      cwd: '../MLM-Backend',
+      url: 'http://127.0.0.1:6001',
+      reuseExistingServer: true,
+    },
   ],
 })

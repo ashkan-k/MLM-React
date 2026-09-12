@@ -1,15 +1,20 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { BookOpen, Download, Filter, Mail, Phone, Repeat, Search, Shield, TrendingUp, UserPlus, Users, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ExportBar } from '../components/ExportBar'
 import { JalaliDatePicker } from '../components/JalaliDatePicker'
+import { BulkBar, BulkButton, CheckBox, DeleteAction, EditAction, RowActions, TablePager, ViewAction, exportSelected, useSelection } from '../components/table'
 import { Badge, DateTimeText, Empty, FieldHint, Modal, PageHeader, StatCard } from '../components/ui'
 import { api } from '../lib/api'
-import { auditLabel, dateTimeExport, entityName, money, permissionLabel, percent, settingLabel } from '../lib/format'
+import { confirmAction } from '../lib/confirm'
+import { auditLabel, dateTimeExport, entityName, label, money, permissionLabel, percent, settingLabel } from '../lib/format'
+import { useApp } from '../contexts/AppContext'
+import { useAuth } from '../stores/auth'
 
 type RoleRow = { id: number; name: string; slug: string; is_organizational?: boolean; permissions?: Array<{ id: number; pivot?: { allowed?: boolean | number | string } }> }
-type UserRow = { id: number; name: string; mobile: string; email?: string | null; is_active: boolean; created_at?: string; roles?: Array<{ name: string; slug: string }> }
+type UserRow = { id: number; name: string; mobile: string; email?: string | null; avatar_url?: string | null; is_active: boolean; created_at?: string; roles?: Array<{ name: string; slug: string }> }
 type CourseLevel = { id?: number; title: string; sort_order: number; passing_score: number }
 type CourseRow = { id: number; title: string; description?: string; is_required_for_promotion: boolean; is_active?: boolean; levels?: CourseLevel[]; roles?: Array<{ id: number; name: string }> }
 type SettingField = { key: string; label: string; hint?: string; type: string }
@@ -28,29 +33,32 @@ function oneDecimal(value: string | number | null | undefined) {
 }
 
 export function AdminHome() {
+  const { t } = useApp()
   const { data } = useQuery({ queryKey: ['stats'], queryFn: async () => (await api.get('/superuser/stats')).data })
   const cards = [
-    ['users', data?.users],
-    ['active_users', data?.active_users],
-    ['sales', data?.sales],
-    ['commission_total', data?.commission_total],
-    ['wallets', data?.wallets],
-    ['wallet_balance', data?.wallet_balance],
+    { key: 'users', value: data?.users, icon: Users, color: 'from-blue-500 to-blue-600' },
+    { key: 'active_users', value: data?.active_users, icon: Shield, color: 'from-emerald-500 to-emerald-600' },
+    { key: 'sales', value: data?.sales, icon: Repeat, color: 'from-purple-500 to-purple-600' },
+    { key: 'commission_total', value: data?.commission_total, icon: TrendingUp, color: 'from-amber-500 to-amber-600' },
+    { key: 'wallets', value: data?.wallets, icon: Wallet, color: 'from-cyan-500 to-cyan-600' },
+    { key: 'wallet_balance', value: data?.wallet_balance, icon: BookOpen, color: 'from-rose-500 to-rose-600' },
   ] as const
 
   return (
-    <div>
+    <div className="space-y-4">
       <PageHeader
-        title="آمار کل سامانه"
-        subtitle="نمای سریع مدیریت. جزئیات کامل در صفحه گزارشات است."
-        action={<Link className="btn btn-primary" to="/superuser/reports">مشاهده گزارشات کامل</Link>}
+        title={t('adminStatsTitle')}
+        subtitle={t('adminStatsSub')}
+        action={<Link className="btn btn-primary" to="/superuser/reports">{t('adminReportsLink')}</Link>}
       />
-      <div className="grid md:grid-cols-3 gap-3" data-testid="admin-stats">
-        {cards.map(([key, value]) => (
+      <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4" data-testid="admin-stats">
+        {cards.map((card) => (
           <StatCard
-            key={key}
-            title={data?.labels?.[key] ?? settingLabel[key] ?? key}
-            value={key.includes('total') || key.includes('balance') ? money(value as number) : value ?? 0}
+            key={card.key}
+            title={data?.labels?.[card.key] ?? settingLabel[card.key] ?? card.key}
+            value={card.key.includes('total') || card.key.includes('balance') ? money(card.value as number) : card.value ?? 0}
+            icon={card.icon}
+            color={card.color}
           />
         ))}
       </div>
@@ -59,17 +67,37 @@ export function AdminHome() {
 }
 
 export function AdminUsers() {
+  const { t } = useApp()
   const qc = useQueryClient()
+  const me = useAuth((s) => s.user)
   const { data: roles } = useQuery({ queryKey: ['roles'], queryFn: async () => (await api.get('/superuser/roles')).data })
   const [search, setSearch] = useState('')
-  const { data } = useQuery({ queryKey: ['admin-users', search], queryFn: async () => (await api.get('/superuser/users', { params: { q: search || undefined } })).data })
+  const [status, setStatus] = useState('all')
+  const [page, setPage] = useState(1)
+  const { data } = useQuery({
+    queryKey: ['admin-users', search, status, page],
+    queryFn: async () => (await api.get('/superuser/users', {
+      params: {
+        q: search || undefined,
+        page,
+        is_active: status === 'all' ? undefined : status === 'active',
+      },
+    })).data,
+  })
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<UserRow | null>(null)
+  const [detail, setDetail] = useState<UserRow | null>(null)
   const [form, setForm] = useState(emptyUser)
+  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
+  const rows: UserRow[] = data?.data ?? []
+  const selection = useSelection(rows.map((u) => u.id))
 
   const openCreate = () => {
     setEditing(null)
     setForm(emptyUser)
+    setAvatarFile(null)
+    setAvatarPreview(null)
     setOpen(true)
   }
   const openEdit = (user: UserRow) => {
@@ -82,63 +110,179 @@ export function AdminUsers() {
       is_active: user.is_active,
       role_slugs: user.roles?.map((r) => r.slug) ?? ['representative'],
     })
+    setAvatarFile(null)
+    setAvatarPreview(user.avatar_url ?? null)
     setOpen(true)
   }
 
   const save = async () => {
-    if (editing) {
-      await api.put(`/superuser/users/${editing.id}`, { ...form, password: form.password || undefined })
-      toast.success('کاربر ویرایش شد')
+    const payload = { ...form, password: form.password || undefined }
+    if (avatarFile) {
+      const fd = new FormData()
+      fd.append('name', form.name)
+      fd.append('mobile', form.mobile)
+      if (form.email) fd.append('email', form.email)
+      if (form.password) fd.append('password', form.password)
+      fd.append('is_active', form.is_active ? '1' : '0')
+      form.role_slugs.forEach((slug) => fd.append('role_slugs[]', slug))
+      fd.append('avatar', avatarFile)
+      if (editing) await api.post(`/superuser/users/${editing.id}`, fd)
+      else await api.post('/superuser/users', fd)
+    } else if (editing) {
+      await api.put(`/superuser/users/${editing.id}`, payload)
     } else {
       await api.post('/superuser/users', form)
-      toast.success('کاربر ایجاد شد')
     }
+    toast.success(editing ? 'کاربر ویرایش شد' : 'کاربر ایجاد شد')
     setOpen(false)
     qc.invalidateQueries({ queryKey: ['admin-users'] })
   }
 
   const remove = async (user: UserRow) => {
-    if (!confirm(`حساب «${user.name}» حذف شود؟ اگر سابقه مالی داشته باشد فقط غیرفعال می‌شود.`)) return
+    if (!await confirmAction({
+      title: 'حذف حساب',
+      text: `حساب «${user.name}» حذف شود؟ اگر سابقه مالی داشته باشد فقط غیرفعال می‌شود.`,
+      confirmText: 'حذف شود',
+    })) return
     const { data: result } = await api.delete(`/superuser/users/${user.id}`)
     toast.success(result?.message ?? 'کاربر حذف شد')
     qc.invalidateQueries({ queryKey: ['admin-users'] })
   }
 
+  const bulk = async (action: 'delete' | 'activate' | 'deactivate') => {
+    const ids = action === 'activate'
+      ? selection.selected
+      : selection.selected.filter((id) => id !== me?.id)
+    if (!ids.length) {
+      toast.error('حساب فعلی را نمی‌توان حذف یا غیرفعال کرد.')
+      return
+    }
+    if (action === 'delete' && !await confirmAction({
+      title: 'حذف دسته‌ای',
+      text: `${ids.length} حساب انتخاب‌شده حذف یا غیرفعال شوند؟`,
+      confirmText: 'انجام شود',
+    })) return
+    await api.post('/superuser/users/bulk', { action, ids })
+    toast.success(action === 'delete' ? 'حذف دسته‌ای انجام شد' : 'وضعیت دسته‌ای به‌روز شد')
+    selection.clear()
+    qc.invalidateQueries({ queryKey: ['admin-users'] })
+  }
+
   return (
-    <div className="grid gap-4">
+    <div className="space-y-4">
       <PageHeader
-        title="کاربران و نقش‌ها"
-        subtitle="ایجاد، ویرایش، فعال/غیرفعال و حذف حساب‌ها با شناسه عددی یکتا."
-        action={<button className="btn btn-primary" onClick={openCreate}>کاربر جدید</button>}
+        title={t('adminUsersTitle')}
+        subtitle={t('adminUsersSub')}
+        action={<button className="btn btn-primary" onClick={openCreate}><UserPlus className="w-4 h-4" /> {t('adminNewUser')}</button>}
       />
-      <div className="card p-4">
-        <label className="field">جستجو
-          <input className="input" placeholder="نام، موبایل یا شناسه" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </label>
+      <div className="grid sm:grid-cols-2 gap-4">
+        <StatCard title={t('adminUsersAll')} value={Number(data?.total ?? rows.length).toLocaleString('fa-IR')} icon={Users} color="from-blue-500 to-blue-600" />
+        <StatCard title={t('adminUsersPage')} value={rows.length.toLocaleString('fa-IR')} icon={Shield} color="from-emerald-500 to-emerald-600" />
       </div>
-      <div className="card overflow-auto" data-testid="admin-users">
-        <table className="table">
-          <thead><tr><th>شناسه</th><th>نام</th><th>موبایل</th><th>نقش‌ها</th><th>وضعیت</th><th>تاریخ ایجاد</th><th>اقدام</th></tr></thead>
-          <tbody>
-            {(data?.data ?? []).map((u: UserRow) => (
-              <tr key={u.id}>
-                <td>{u.id}</td>
-                <td>{u.name}</td>
-                <td>{u.mobile}</td>
-                <td>{u.roles?.map((r) => r.name).join('، ')}</td>
-                <td><Badge tone={u.is_active ? 'ok' : 'danger'}>{u.is_active ? 'فعال' : 'غیرفعال'}</Badge></td>
-                <td><DateTimeText value={u.created_at} /></td>
-                <td className="flex gap-2">
-                  <button className="btn btn-ghost" onClick={() => openEdit(u)}>ویرایش</button>
-                  <button className="btn btn-danger" onClick={() => remove(u)}>حذف</button>
-                </td>
+      <div className="bg-white dark:bg-surface-800 rounded-xl p-4 border border-surface-200 dark:border-surface-700">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative flex-1 min-w-0">
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400 pointer-events-none" />
+            <input
+              type="text"
+              placeholder={t('adminUserSearch')}
+              value={search}
+              onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+              className="w-full ps-9 pe-3 py-2 rounded-lg bg-surface-50 dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm text-surface-800 dark:text-surface-200 outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+            />
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <select
+              value={status}
+              onChange={(e) => { setStatus(e.target.value); setPage(1) }}
+              className="px-3 py-2 rounded-lg bg-surface-50 dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm text-surface-700 dark:text-surface-300 outline-none"
+            >
+              <option value="all">{t('adminAllStatus')}</option>
+              <option value="active">{t('adminActive')}</option>
+              <option value="inactive">{t('adminInactive')}</option>
+            </select>
+            <button type="button" className="p-2 rounded-lg border border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-500" aria-label="فیلتر">
+              <Filter className="w-4 h-4" />
+            </button>
+            <button type="button" className="p-2 rounded-lg border border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-500" aria-label="خروجی" onClick={() => exportSelected('کاربران', rows.map((u) => ({ شناسه: u.id, نام: u.name, موبایل: u.mobile, نقش: (u.roles ?? []).map((r) => r.name).join('، '), وضعیت: u.is_active ? 'فعال' : 'غیرفعال' })))}>
+              <Download className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        <BulkBar count={selection.count}>
+          <BulkButton tone="danger" onClick={() => bulk('delete')}>حذف دسته‌ای</BulkButton>
+          <BulkButton tone="ok" onClick={() => bulk('activate')}>فعال‌سازی</BulkButton>
+          <BulkButton tone="warn" onClick={() => bulk('deactivate')}>غیرفعال‌سازی</BulkButton>
+        </BulkBar>
+      </div>
+      <div className="card overflow-hidden" data-testid="admin-users">
+        <div className="overflow-x-auto">
+          <table className="table">
+            <thead>
+              <tr>
+                <th><CheckBox checked={selection.allSelected} onChange={selection.toggleAll} label="انتخاب همه" /></th>
+                <th>شناسه</th>
+                <th>نام</th>
+                <th>موبایل</th>
+                <th>نقش‌ها</th>
+                <th>وضعیت</th>
+                <th>تاریخ ایجاد</th>
+                <th className="text-center">عملیات</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {rows.map((u) => (
+                <tr key={u.id}>
+                  <td><CheckBox checked={selection.selected.includes(u.id)} onChange={() => selection.toggle(u.id)} label={`انتخاب ردیف ${u.id}`} /></td>
+                  <td>{u.id}</td>
+                  <td>
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-primary-400 to-primary-600 text-white text-xs font-bold flex items-center justify-center">
+                        {u.avatar_url ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" /> : u.name.charAt(0)}
+                      </div>
+                      <div>
+                        <div className="font-medium">{u.name}</div>
+                        {u.email && <div className="text-xs text-surface-400">{u.email}</div>}
+                      </div>
+                    </div>
+                  </td>
+                  <td>{u.mobile}</td>
+                  <td>{u.roles?.map((r) => r.name).join('، ')}</td>
+                  <td><Badge tone={u.is_active ? 'ok' : 'danger'}>{u.is_active ? 'فعال' : 'غیرفعال'}</Badge></td>
+                  <td><DateTimeText value={u.created_at} /></td>
+                  <td>
+                    <RowActions>
+                      <ViewAction onClick={() => setDetail(u)} />
+                      <EditAction onClick={() => openEdit(u)} />
+                      <DeleteAction onClick={() => remove(u)} />
+                    </RowActions>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <TablePager page={data?.current_page ?? 1} last={data?.last_page ?? 1} from={data?.from} to={data?.to} total={data?.total ?? rows.length} onPage={setPage} />
       </div>
       <Modal open={open} title={editing ? 'ویرایش کاربر' : 'ایجاد کاربر'} subtitle="یک حساب می‌تواند چند نقش همزمان داشته باشد." onClose={() => setOpen(false)}>
         <form className="grid gap-3" data-testid="user-form" onSubmit={async (e) => { e.preventDefault(); try { await save() } catch { toast.error('ثبت کاربر ناموفق بود') } }}>
+          <label className="field">آواتار (اختیاری)
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-primary-400 to-primary-600 text-white flex items-center justify-center text-lg font-bold shrink-0">
+                {avatarPreview ? <img src={avatarPreview} alt="" className="w-full h-full object-cover" /> : (form.name.charAt(0) || '؟')}
+              </div>
+              <input
+                className="input"
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] ?? null
+                  setAvatarFile(file)
+                  setAvatarPreview(file ? URL.createObjectURL(file) : (editing?.avatar_url ?? null))
+                }}
+              />
+            </div>
+          </label>
           <label className="field">نام<input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></label>
           <label className="field">موبایل<input className="input" value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} required /></label>
           <label className="field">ایمیل<input className="input" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
@@ -167,11 +311,28 @@ export function AdminUsers() {
           <button className="btn btn-primary" type="submit">{editing ? 'ذخیره تغییرات' : 'ایجاد کاربر'}</button>
         </form>
       </Modal>
+      <Modal open={Boolean(detail)} title={detail?.name ?? ''} onClose={() => setDetail(null)}>
+        {detail && (
+          <div className="space-y-3">
+            <div className="text-center border-b border-surface-200 dark:border-surface-700 pb-4">
+              <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xl font-bold mx-auto mb-3">
+                {detail.avatar_url ? <img src={detail.avatar_url} alt="" className="w-full h-full object-cover" /> : detail.name.charAt(0)}
+              </div>
+              <Badge tone={detail.is_active ? 'ok' : 'danger'}>{detail.is_active ? 'فعال' : 'غیرفعال'}</Badge>
+            </div>
+            <div className="flex items-center gap-3 text-sm"><Mail className="w-4 h-4 text-surface-400" /><span>{detail.email || '—'}</span></div>
+            <div className="flex items-center gap-3 text-sm"><Phone className="w-4 h-4 text-surface-400" /><span>{detail.mobile}</span></div>
+            <div className="flex items-center gap-3 text-sm"><Shield className="w-4 h-4 text-surface-400" /><span>نقش‌ها: {detail.roles?.map((r) => r.name).join('، ') || '—'}</span></div>
+            <div className="flex items-center gap-3 text-sm"><Users className="w-4 h-4 text-surface-400" /><span>شناسه {detail.id}</span></div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
 
 export function AdminPermissions() {
+  const { t } = useApp()
   const qc = useQueryClient()
   const { data: roles } = useQuery({ queryKey: ['roles'], queryFn: async () => (await api.get('/superuser/roles')).data })
   const { data: perms } = useQuery({ queryKey: ['perms'], queryFn: async () => (await api.get('/superuser/permissions')).data })
@@ -210,8 +371,8 @@ export function AdminPermissions() {
   const orgRoles = (roles ?? []).filter((r: RoleRow) => r.slug !== 'superuser')
 
   return (
-    <div>
-      <PageHeader title="تعیین دسترسی نقش‌ها" subtitle="با هر تیک، دسترسی همان نقش فعال یا سلب می‌شود. سوپریوزر همیشه دسترسی کامل دارد." />
+    <div className="space-y-4">
+      <PageHeader title={t('adminPermTitle')} subtitle={t('adminPermSub')} />
       <div className="card overflow-auto p-2" data-testid="permissions-admin">
         <table className="table">
           <thead>
@@ -225,7 +386,7 @@ export function AdminPermissions() {
               <tr key={p.id} data-testid={`perm-${p.slug}`}>
                 <td>
                   <div className="font-medium">{permissionLabel[p.slug] ?? p.name}</div>
-                  <div className="text-xs text-[var(--muted)]">{p.slug}</div>
+                  <div className="text-xs text-surface-400">{p.slug}</div>
                 </td>
                 {orgRoles.map((r: RoleRow) => {
                   const allowed = isGranted(r, p.id)
@@ -250,13 +411,14 @@ export function AdminPermissions() {
 }
 
 export function AdminRules() {
+  const { t } = useApp()
   const qc = useQueryClient()
   const { data } = useQuery({ queryKey: ['rules'], queryFn: async () => (await api.get('/superuser/commission-rules')).data })
   const [drafts, setDrafts] = useState<Record<number, { percent: string; qualified_percent: string }>>({})
 
   return (
-    <div>
-      <PageHeader title="قواعد و درصدهای پورسانت" subtitle="هر ذخیره یک نسخه تاریخ‌دار می‌سازد؛ محاسبات قبلی عوض نمی‌شوند. درصدها با یک رقم اعشار ذخیره می‌شوند." />
+    <div className="space-y-4">
+      <PageHeader title={t('adminRulesTitle')} subtitle={t('adminRulesSub')} />
       <div className="grid gap-3" data-testid="commission-rules">
         {(data ?? []).map((r: { id: number; name: string; default_percent: string; versions?: Array<{ percent: string; qualified_percent?: string; version: number }> }) => {
           const current = r.versions?.[r.versions.length - 1]
@@ -277,7 +439,7 @@ export function AdminRules() {
               <div className="rule-card-head">
                 <div>
                   <div className="font-extrabold">{r.name}</div>
-                  <div className="text-xs text-[var(--muted)]">نسخه جاری {current?.version ?? 1} · پایه {percent(current?.percent ?? r.default_percent)}</div>
+                  <div className="text-xs text-surface-400">نسخه جاری {current?.version ?? 1} · پایه {percent(current?.percent ?? r.default_percent)}</div>
                 </div>
                 <button className="btn btn-primary" type="submit">ذخیره</button>
               </div>
@@ -300,6 +462,7 @@ export function AdminRules() {
 }
 
 export function AdminCourses() {
+  const { t } = useApp()
   const qc = useQueryClient()
   const { data: roles } = useQuery({ queryKey: ['roles'], queryFn: async () => (await api.get('/superuser/roles')).data })
   const { data } = useQuery({ queryKey: ['admin-courses'], queryFn: async () => (await api.get('/superuser/courses')).data })
@@ -338,34 +501,64 @@ export function AdminCourses() {
   }
 
   const remove = async (course: CourseRow) => {
-    if (!confirm(`دوره «${course.title}» حذف شود؟`)) return
+    if (!await confirmAction({ title: 'حذف دوره', text: `دوره «${course.title}» حذف شود؟`, confirmText: 'حذف شود' })) return
     await api.delete(`/superuser/courses/${course.id}`)
     toast.success('دوره حذف شد')
     qc.invalidateQueries({ queryKey: ['admin-courses'] })
   }
 
+  const courses: CourseRow[] = data ?? []
+  const courseSel = useSelection(courses.map((c) => c.id))
+
   return (
-    <div className="grid gap-4">
+    <div className="space-y-4">
       <PageHeader
-        title="دوره‌ها و سطوح پویا"
-        subtitle="هر دوره چند سطح و چند نقش هدف دارد. نمره قبولی همان حد نصاب آزمون سطح است."
+        title={t('adminCoursesTitle')}
+        subtitle={t('adminCoursesSub')}
         action={<button className="btn btn-primary" onClick={openCreate}>دوره جدید</button>}
       />
-      {(data ?? []).map((c: CourseRow) => (
-        <div key={c.id} className="card p-4 flex flex-wrap justify-between gap-3">
-          <div>
-            <div className="font-extrabold">{c.title}</div>
-            <div className="text-sm text-[var(--muted)]">{c.description || 'بدون شرح'}</div>
-            <div className="mt-2 flex gap-2 flex-wrap">{c.roles?.map((r) => <Badge key={r.name}>{r.name}</Badge>)}</div>
-            <div className="text-sm mt-2">سطوح: {c.levels?.map((l) => `${l.title} (قبولی ${l.passing_score})`).join('، ') || '—'}</div>
-          </div>
-          <div className="flex gap-2">
-            <button className="btn btn-ghost" onClick={() => openEdit(c)}>ویرایش</button>
-            <button className="btn btn-danger" onClick={() => remove(c)}>حذف</button>
-          </div>
-        </div>
-      ))}
-      {(!data || data.length === 0) && <Empty text="دوره‌ای ثبت نشده است." />}
+      <BulkBar count={courseSel.count}>
+        <BulkButton tone="danger" onClick={async () => {
+          if (!await confirmAction({ title: 'حذف دسته‌ای دوره‌ها', text: `${courseSel.count} دوره حذف شوند؟`, confirmText: 'حذف شوند' })) return
+          await api.post('/superuser/courses/bulk', { action: 'delete', ids: courseSel.selected })
+          toast.success('حذف دسته‌ای انجام شد')
+          courseSel.clear()
+          qc.invalidateQueries({ queryKey: ['admin-courses'] })
+        }}>حذف دسته‌ای</BulkButton>
+      </BulkBar>
+      <div className="card overflow-auto">
+        <table className="table">
+          <thead>
+            <tr>
+              <th><CheckBox checked={courseSel.allSelected} onChange={courseSel.toggleAll} label="انتخاب همه" /></th>
+              <th>دوره</th>
+              <th>نقش‌ها</th>
+              <th>سطوح</th>
+              <th className="text-center">عملیات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {courses.map((c) => (
+              <tr key={c.id}>
+                <td><CheckBox checked={courseSel.selected.includes(c.id)} onChange={() => courseSel.toggle(c.id)} label={`انتخاب ${c.title}`} /></td>
+                <td>
+                  <div className="font-extrabold">{c.title}</div>
+                  <div className="text-sm text-surface-500">{c.description || 'بدون شرح'}</div>
+                </td>
+                <td><div className="flex gap-2 flex-wrap">{c.roles?.map((r) => <Badge key={r.name}>{r.name}</Badge>)}</div></td>
+                <td className="text-sm">{c.levels?.map((l) => `${l.title} (قبولی ${l.passing_score})`).join('، ') || '—'}</td>
+                <td>
+                  <RowActions>
+                    <EditAction onClick={() => openEdit(c)} />
+                    <DeleteAction onClick={() => remove(c)} />
+                  </RowActions>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {courses.length === 0 && <Empty text="دوره‌ای ثبت نشده است." />}
+      </div>
       <Modal wide open={open} title={editing ? 'ویرایش دوره' : 'ایجاد دوره'} subtitle="سطح‌ها را با عنوان، نمره قبولی و ترتیب مشخص کنید." onClose={() => setOpen(false)}>
         <form className="grid gap-3" data-testid="course-form" onSubmit={async (e) => { e.preventDefault(); await save() }}>
           <label className="field">عنوان دوره
@@ -392,17 +585,19 @@ export function AdminCourses() {
           <div className="grid gap-3">
             <div className="font-bold">سطح‌های دوره</div>
             {form.levels.map((level, i) => (
-              <div key={i} className="card p-3 grid md:grid-cols-3 gap-3">
-                <label className="field">عنوان سطح
-                  <input className="input" value={level.title} onChange={(e) => setForm({ ...form, levels: form.levels.map((l, idx) => idx === i ? { ...l, title: e.target.value } : l) })} />
+              <div key={i} className="card p-3 grid gap-3">
+                <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+                  <label className="field">عنوان سطح
+                    <input className="input" value={level.title} onChange={(e) => setForm({ ...form, levels: form.levels.map((l, idx) => idx === i ? { ...l, title: e.target.value } : l) })} />
+                  </label>
+                  <label className="field">نمره قبولی (از ۱۰۰)
+                    <input className="input" type="number" min={0} max={100} value={level.passing_score} onChange={(e) => setForm({ ...form, levels: form.levels.map((l, idx) => idx === i ? { ...l, passing_score: Number(e.target.value) } : l) })} />
+                  </label>
+                  <button type="button" className="btn btn-ghost whitespace-nowrap" onClick={() => setForm({ ...form, levels: form.levels.filter((_, idx) => idx !== i) })}>حذف سطح</button>
+                </div>
+                <div className="grid md:grid-cols-2 gap-3">
                   <FieldHint>مثلاً آشنایی با محصول یا آزمون عملی</FieldHint>
-                </label>
-                <label className="field">نمره قبولی (از ۱۰۰)
-                  <input className="input" type="number" min={0} max={100} value={level.passing_score} onChange={(e) => setForm({ ...form, levels: form.levels.map((l, idx) => idx === i ? { ...l, passing_score: Number(e.target.value) } : l) })} />
                   <FieldHint>حداقل نمره‌ای که کاربر باید بگیرد تا این سطح قبول شود. مقدار ۷۰ یعنی نمره ۷۰ از ۱۰۰.</FieldHint>
-                </label>
-                <div className="flex items-end">
-                  <button type="button" className="btn btn-ghost w-full" onClick={() => setForm({ ...form, levels: form.levels.filter((_, idx) => idx !== i) })}>حذف سطح</button>
                 </div>
               </div>
             ))}
@@ -416,6 +611,7 @@ export function AdminCourses() {
 }
 
 export function AdminSettings() {
+  const { t } = useApp()
   const qc = useQueryClient()
   const { data } = useQuery({ queryKey: ['settings'], queryFn: async () => (await api.get('/superuser/settings')).data })
   const items = Array.isArray(data) ? data : data?.items ?? []
@@ -424,7 +620,7 @@ export function AdminSettings() {
 
   return (
     <div className="grid gap-3">
-      <PageHeader title="تنظیمات سامانه" subtitle="مقادیر را با فیلدهای مشخص و راهنما تغییر دهید؛ نیازی به ویرایش خام نیست." />
+      <PageHeader title={t('adminSettingsTitle')} subtitle={t('adminSettingsSub')} />
       {items.map((s: { id: number; key: string; value: Record<string, unknown> }) => {
         const meta = schema[s.key]
         const current = edits[s.key] ?? Object.fromEntries(Object.entries(s.value ?? {}).map(([k, v]) => [k, v as string | number]))
@@ -500,6 +696,7 @@ function auditSheets(rows: AuditRow[]) {
 }
 
 export function AdminAudits() {
+  const { t } = useApp()
   const [action, setAction] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
@@ -513,12 +710,16 @@ export function AdminAudits() {
     queryFn: async () => (await api.get('/superuser/audits/export', { params: filters })).data,
   })
 
+  const rows: AuditRow[] = data?.data ?? []
+  const sel = useSelection(rows.map((a) => a.id))
+  const selectedRows = rows.filter((a) => sel.selected.includes(a.id))
+
   return (
-    <div className="grid gap-4">
+    <div className="space-y-4">
       <PageHeader
-        title="گزارش رویدادها"
-        subtitle="لاگ کامل اقدامات حساس سامانه. اگر فیلتر بگذارید، همان نتایج در خروجی هم می‌آید."
-        action={<ExportBar filename="رویدادها" sheets={auditSheets(exportLogs?.data ?? data?.data ?? [])} testId="audit-export" />}
+        title={t('adminAuditsTitle')}
+        subtitle={t('adminAuditsSub')}
+        action={<ExportBar filename="رویدادها" sheets={auditSheets(exportLogs?.data ?? rows)} testId="audit-export" />}
       />
       <form className="card p-4 grid md:grid-cols-3 gap-3" onSubmit={(e) => e.preventDefault()}>
         <label className="field">نوع اقدام
@@ -530,20 +731,24 @@ export function AdminAudits() {
         <label className="field">تا تاریخ
           <JalaliDatePicker value={to} onChange={setTo} />
         </label>
+        <BulkBar count={sel.count}>
+          <BulkButton tone="info" onClick={() => exportSelected('رویدادهای-انتخابی', auditSheets(selectedRows)[0].rows)}>خروجی انتخاب‌شده</BulkButton>
+        </BulkBar>
       </form>
       <div className="card overflow-auto" data-testid="audit-log">
         <table className="table">
-          <thead><tr><th>اقدام</th><th>عامل</th><th>موجودیت</th><th>شناسه</th><th>آی‌پی</th><th>زمان</th><th></th></tr></thead>
+          <thead><tr><th><CheckBox checked={sel.allSelected} onChange={sel.toggleAll} label="انتخاب همه" /></th><th>اقدام</th><th>عامل</th><th>موجودیت</th><th>شناسه</th><th>آی‌پی</th><th>زمان</th><th className="text-center">عملیات</th></tr></thead>
           <tbody>
-            {(data?.data ?? []).map((a: AuditRow) => (
+            {rows.map((a) => (
               <tr key={a.id}>
+                <td><CheckBox checked={sel.selected.includes(a.id)} onChange={() => sel.toggle(a.id)} label={`انتخاب رویداد ${a.id}`} /></td>
                 <td>{a.action_label ?? auditLabel[a.action] ?? a.action}</td>
                 <td>{a.actor?.name ?? 'سامانه'}{a.actor?.mobile ? ` · ${a.actor.mobile}` : ''}</td>
                 <td>{a.entity_label ?? entityName(a.auditable_type)}</td>
                 <td>{a.auditable_id ?? '—'}</td>
                 <td>{a.ip_address ?? '—'}</td>
                 <td><DateTimeText value={a.created_at} /></td>
-                <td><Link className="btn btn-ghost" to={`/superuser/audits/${a.id}`}>جزئیات</Link></td>
+                <td><RowActions><ViewAction to={`/superuser/audits/${a.id}`} /></RowActions></td>
               </tr>
             ))}
           </tbody>
@@ -554,25 +759,33 @@ export function AdminAudits() {
 }
 
 export function AdminFraSoft() {
+  const { t } = useApp()
   const qc = useQueryClient()
   const { data } = useQuery({ queryKey: ['fs'], queryFn: async () => (await api.get('/superuser/frasoft/logs')).data })
   const [open, setOpen] = useState(false)
   const [mobile, setMobile] = useState('09120002222')
   const [name, setName] = useState('نماینده فراسافت')
 
+  const logs: Array<{ id: number; event_type: string; direction: string; status: string; created_at: string }> = data?.data ?? []
+  const sel = useSelection(logs.map((l) => l.id))
+
   return (
-    <div className="grid gap-3">
+    <div className="space-y-4">
       <PageHeader
-        title="همگام‌سازی فراسافت"
-        subtitle="رویدادها با کلید تکرارناپذیر ثبت می‌شوند تا دوباره‌کاری مالی رخ ندهد."
+        title={t('adminFrasoftTitle')}
+        subtitle={t('adminFrasoftSub')}
         action={<button className="btn btn-primary" onClick={() => setOpen(true)}>همگام‌سازی نماینده</button>}
       />
+      <BulkBar count={sel.count}>
+        <BulkButton tone="info" onClick={() => exportSelected('فراسافت', logs.filter((l) => sel.selected.includes(l.id)).map((l) => ({ رویداد: l.event_type, جهت: label(l.direction), وضعیت: label(l.status) })))}>خروجی انتخاب‌شده</BulkButton>
+      </BulkBar>
       <div className="card overflow-auto">
         <table className="table">
-          <thead><tr><th>رویداد</th><th>جهت</th><th>وضعیت</th><th>زمان</th></tr></thead>
+          <thead><tr><th><CheckBox checked={sel.allSelected} onChange={sel.toggleAll} label="انتخاب همه" /></th><th>رویداد</th><th>جهت</th><th>وضعیت</th><th>زمان</th></tr></thead>
           <tbody>
-            {(data?.data ?? []).map((l: { id: number; event_type: string; direction: string; status: string; created_at: string }) => (
+            {logs.map((l) => (
               <tr key={l.id}>
+                <td><CheckBox checked={sel.selected.includes(l.id)} onChange={() => sel.toggle(l.id)} label={`انتخاب ${l.id}`} /></td>
                 <td>{l.event_type === 'user.upsert' ? 'به‌روزرسانی کاربر' : l.event_type}</td>
                 <td>{l.direction === 'inbound' ? 'ورودی' : 'خروجی'}</td>
                 <td><Badge tone={l.status === 'processed' ? 'ok' : 'warn'}>{l.status === 'processed' ? 'انجام شده' : 'ناموفق'}</Badge></td>

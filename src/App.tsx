@@ -3,6 +3,7 @@ import { AppShell, SuperuserShell } from './layouts/AppShell'
 import { dashboardPath } from './lib/roles'
 import { AdminAuditDetail } from './pages/AdminAuditDetail'
 import { AdminAudits, AdminCourses, AdminFraSoft, AdminHome, AdminPermissions, AdminRules, AdminSettings, AdminUsers } from './pages/AdminPages'
+import { AdminNetwork } from './pages/AdminNetwork'
 import { AdminReports } from './pages/AdminReports'
 import { ChatPage } from './pages/ChatPage'
 import { DashboardPage } from './pages/DashboardPage'
@@ -66,12 +67,15 @@ export default function App() {
           <Route index element={<AdminHome />} />
           <Route path="reports" element={<AdminReports />} />
           <Route path="users" element={<AdminUsers />} />
+          <Route path="network" element={<AdminNetwork />} />
           <Route path="permissions" element={<AdminPermissions />} />
           <Route path="rules" element={<AdminRules />} />
           <Route path="courses" element={<AdminCourses />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="audits" element={<AdminAudits />} />
           <Route path="audits/:id" element={<AdminAuditDetail />} />
+          <Route path="chat" element={<ChatPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route path="frasoft" element={<AdminFraSoft />} />
         </Route>
       </Route>

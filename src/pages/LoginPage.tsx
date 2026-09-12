@@ -1,5 +1,7 @@
+import { Moon, Network, Sun } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { useApp } from '../contexts/AppContext'
 import { authApi } from '../lib/api'
 import { dashboardPath } from '../lib/roles'
 import { useAuth } from '../stores/auth'
@@ -10,40 +12,56 @@ export function LoginPage() {
   const [error, setError] = useState('')
   const setSession = useAuth((s) => s.setSession)
   const navigate = useNavigate()
+  const { t, darkMode, toggleDarkMode, toggleDirection } = useApp()
 
   return (
     <div className="login-wrap">
-      <form
-        className="card w-full max-w-md p-7 grid gap-4"
-        onSubmit={async (e) => {
-          e.preventDefault()
-          setError('')
-          try {
-            const { data } = await authApi.login(mobile, password)
-            setSession(data.token, data.user)
-            navigate(data.user.active_role?.slug === 'superuser' ? '/superuser' : dashboardPath(data.user.active_role?.slug))
-          } catch {
-            setError('ورود ناموفق بود. موبایل یا رمز عبور را بررسی کنید.')
-          }
-        }}
-      >
-        <div className="flex items-center gap-3">
-          <div className="brand-mark">ف</div>
-          <div>
-            <div className="text-xs text-[var(--muted)]">سازمان فروش فاینوپال</div>
-            <h1 className="text-xl font-extrabold m-0">ورود به پنل</h1>
+      <div className="card login-card shadow-xl">
+        <div className="login-hero">
+          <div className="w-12 h-12 rounded-2xl bg-white/15 flex items-center justify-center mb-4">
+            <Network className="w-6 h-6 text-white" />
           </div>
+          <div className="text-xs uppercase tracking-wide text-white/70">{t('brandSub')}</div>
+          <h2>{t('brand')}</h2>
+          <p>{t('loginWelcome')}</p>
         </div>
-        <label className="field">شماره موبایل
-          <input className="input" data-testid="login-mobile" value={mobile} onChange={(e) => setMobile(e.target.value)} />
-        </label>
-        <label className="field">رمز عبور
-          <input className="input" data-testid="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-        </label>
-        {error && <div className="text-red-600 text-sm">{error}</div>}
-        <button className="btn btn-primary" data-testid="login-submit" type="submit">ورود به حساب</button>
-        <Link className="text-sm text-teal-800" to="/register">ثبت‌نام نماینده جدید با کد معرف</Link>
-      </form>
+        <form
+          className="login-form grid gap-4"
+          onSubmit={async (e) => {
+            e.preventDefault()
+            setError('')
+            try {
+              const { data } = await authApi.login(mobile, password)
+              setSession(data.token, data.user)
+              navigate(data.user.active_role?.slug === 'superuser' ? '/superuser' : dashboardPath(data.user.active_role?.slug))
+            } catch {
+              setError(t('loginError'))
+            }
+          }}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-xs text-surface-500">{t('loginSub')}</div>
+              <h1 className="text-xl font-bold m-0 text-surface-800 dark:text-surface-100">{t('loginTitle')}</h1>
+            </div>
+            <div className="flex items-center gap-1">
+              <button type="button" data-testid="lang-toggle" className="btn btn-ghost text-xs px-2 py-1" onClick={toggleDirection}>{t('language')}</button>
+              <button type="button" data-testid="theme-toggle" className="btn btn-ghost p-2" onClick={toggleDarkMode} aria-label={t('theme')}>
+                {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+          <label className="field">{t('loginMobile')}
+            <input className="input" data-testid="login-mobile" value={mobile} onChange={(e) => setMobile(e.target.value)} />
+          </label>
+          <label className="field">{t('loginPassword')}
+            <input className="input" data-testid="login-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          </label>
+          {error && <div className="text-danger-500 text-sm">{error}</div>}
+          <button className="btn btn-primary" data-testid="login-submit" type="submit">{t('loginSubmit')}</button>
+          <Link className="text-sm text-primary-600" to="/register">{t('loginRegister')}</Link>
+        </form>
+      </div>
     </div>
   )
 }

@@ -1,24 +1,46 @@
+import { X, type LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Area, AreaChart, Bar, BarChart as ReBarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { useApp } from '../contexts/AppContext'
 import { dateTime } from '../lib/format'
 
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3 mb-5">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-1">
       <div>
-        <h2 className="text-[22px] font-extrabold m-0">{title}</h2>
-        {subtitle && <p className="text-sm text-[var(--muted)] mt-1 mb-0">{subtitle}</p>}
+        <h2 className="text-xl font-bold m-0 text-surface-800 dark:text-surface-100">{title}</h2>
+        {subtitle && <p className="text-sm text-surface-500 mt-1 mb-0">{subtitle}</p>}
       </div>
       {action}
     </div>
   )
 }
 
-export function StatCard({ title, value, hint, testId }: { title: string; value: ReactNode; hint?: string; testId?: string }) {
+export function StatCard({
+  title,
+  value,
+  hint,
+  testId,
+  icon: Icon,
+  color = 'from-primary-500 to-primary-600',
+}: {
+  title: string
+  value: ReactNode
+  hint?: string
+  testId?: string
+  icon?: LucideIcon
+  color?: string
+}) {
   return (
-    <div className="card stat">
-      <div className="label">{title}</div>
-      <div className="value" data-testid={testId}>{value}</div>
-      {hint && <div className="text-xs text-[var(--muted)] mt-2">{hint}</div>}
+    <div className="bg-white dark:bg-surface-800 rounded-xl p-5 border border-surface-200 dark:border-surface-700 hover:shadow-lg transition-shadow">
+      {Icon && (
+        <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center mb-3`}>
+          <Icon className="w-5 h-5 text-white" />
+        </div>
+      )}
+      <div className="text-2xl font-bold text-surface-800 dark:text-surface-100" data-testid={testId}>{value}</div>
+      <div className="text-xs text-surface-500 mt-1">{title}</div>
+      {hint && <div className="text-xs text-surface-400 mt-1">{hint}</div>}
     </div>
   )
 }
@@ -61,16 +83,18 @@ export function Modal({
 }) {
   if (!open) return null
   return (
-    <div className="modal-backdrop" role="dialog" aria-modal="true" onClick={onClose}>
-      <div className={`modal ${wide ? 'modal-wide' : ''}`} onClick={(e) => e.stopPropagation()}>
-        <div className="modal-head">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" role="dialog" aria-modal="true" onClick={onClose}>
+      <div className={`bg-white dark:bg-surface-800 rounded-2xl w-full ${wide ? 'max-w-4xl' : 'max-w-lg'} shadow-xl animate-fadeIn max-h-[92svh] overflow-auto`} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start justify-between p-5 border-b border-surface-200 dark:border-surface-700">
           <div>
-            <h3>{title}</h3>
-            {subtitle && <p>{subtitle}</p>}
+            <h3 className="font-semibold text-surface-800 dark:text-surface-200 m-0">{title}</h3>
+            {subtitle && <p className="text-sm text-surface-500 mt-1 mb-0">{subtitle}</p>}
           </div>
-          <button type="button" className="btn btn-ghost" onClick={onClose} aria-label="بستن">بستن</button>
+          <button type="button" className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400" onClick={onClose} aria-label="بستن">
+            <X className="w-4 h-4" />
+          </button>
         </div>
-        <div className="modal-body">{children}</div>
+        <div className="p-5">{children}</div>
       </div>
     </div>
   )
@@ -78,52 +102,57 @@ export function Modal({
 
 type ChartPoint = { label: string; value: number; count?: number }
 
+function useChartTheme() {
+  const { darkMode } = useApp()
+  return {
+    grid: darkMode ? '#334155' : '#e2e8f0',
+    tick: darkMode ? '#94a3b8' : '#64748b',
+    tooltip: { backgroundColor: darkMode ? '#1e293b' : '#fff', border: 'none', borderRadius: '8px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)' },
+  }
+}
+
 export function BarChart({ data, testId }: { data: ChartPoint[]; testId?: string }) {
-  const max = Math.max(...data.map((d) => Number(d.value) || 0), 1)
+  const theme = useChartTheme()
+  const rows = data.map((d) => ({ name: d.label, value: Number(d.value) || 0 }))
   return (
-    <div className="chart-bars" data-testid={testId ?? 'bar-chart'}>
-      {data.length === 0 && <div className="empty">داده‌ای برای نمودار نیست.</div>}
-      {data.map((d) => (
-        <div key={d.label} className="chart-bar-row">
-          <div className="chart-bar-label">{d.label}</div>
-          <div className="chart-bar-track">
-            <span style={{ width: `${Math.max(4, (Number(d.value) / max) * 100)}%` }} />
-          </div>
-          <div className="chart-bar-value">{Number(d.value).toLocaleString('fa-IR')}</div>
-        </div>
-      ))}
+    <div className="h-64" data-testid={testId ?? 'bar-chart'}>
+      {data.length === 0 ? <Empty text="داده‌ای برای نمودار نیست." /> : (
+        <ResponsiveContainer width="100%" height="100%">
+          <ReBarChart data={rows}>
+            <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+            <XAxis dataKey="name" tick={{ fontSize: 11, fill: theme.tick }} />
+            <YAxis tick={{ fontSize: 11, fill: theme.tick }} />
+            <Tooltip contentStyle={theme.tooltip} />
+            <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+          </ReBarChart>
+        </ResponsiveContainer>
+      )}
     </div>
   )
 }
 
 export function LineChart({ data, testId }: { data: ChartPoint[]; testId?: string }) {
-  const width = 560
-  const height = 180
-  const pad = 24
-  const values = data.map((d) => Number(d.value) || 0)
-  const max = Math.max(...values, 1)
-  const stepX = data.length > 1 ? (width - pad * 2) / (data.length - 1) : 0
-  const points = data.map((d, i) => {
-    const x = pad + i * stepX
-    const y = height - pad - ((Number(d.value) || 0) / max) * (height - pad * 2)
-    return `${x},${y}`
-  }).join(' ')
-
+  const theme = useChartTheme()
+  const rows = data.map((d) => ({ name: d.label.length > 8 ? d.label.slice(-5) : d.label, value: Number(d.value) || 0 }))
   return (
-    <div className="chart-line" data-testid={testId ?? 'line-chart'}>
-      {data.length === 0 ? <div className="empty">داده‌ای برای نمودار نیست.</div> : (
-        <svg viewBox={`0 0 ${width} ${height}`} className="line-svg" role="img">
-          <polyline fill="none" stroke="#0e7a6a" strokeWidth="3" points={points} />
-          {data.map((d, i) => {
-            const x = pad + i * stepX
-            const y = height - pad - ((Number(d.value) || 0) / max) * (height - pad * 2)
-            return <circle key={d.label + i} cx={x} cy={y} r="4" fill="#0e7a6a" />
-          })}
-        </svg>
+    <div className="h-64" data-testid={testId ?? 'line-chart'}>
+      {data.length === 0 ? <Empty text="داده‌ای برای نمودار نیست." /> : (
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={rows}>
+            <defs>
+              <linearGradient id="finopalArea" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
+            <XAxis dataKey="name" tick={{ fontSize: 11, fill: theme.tick }} />
+            <YAxis tick={{ fontSize: 11, fill: theme.tick }} />
+            <Tooltip contentStyle={theme.tooltip} />
+            <Area type="monotone" dataKey="value" stroke="#3b82f6" fill="url(#finopalArea)" strokeWidth={2} />
+          </AreaChart>
+        </ResponsiveContainer>
       )}
-      <div className="chart-line-labels">
-        {data.slice(0, 8).map((d) => <span key={d.label}>{d.label.slice(5)}</span>)}
-      </div>
     </div>
   )
 }

@@ -18,6 +18,7 @@ export type AuthUser = {
   name: string
   mobile: string
   email?: string | null
+  avatar_url?: string | null
   is_superuser: boolean
   roles: Role[]
   active_role: { id: number; name: string; slug: string } | null

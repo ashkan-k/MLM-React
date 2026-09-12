@@ -1,19 +1,26 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
-import { Empty } from '../components/ui'
+import { Search } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { DateTimeText, Empty, PageHeader } from '../components/ui'
+import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
-import { DateTimeText } from '../components/ui'
 import { label } from '../lib/format'
-import { connectRealtime } from '../lib/ws'
+import { connectRealtime, type RealtimeClient } from '../lib/ws'
 import { useAuth } from '../stores/auth'
 
+type ChatMessage = { id: number; body: string; created_at: string; sender_user_id: number; sender?: { name: string } }
+
 export function ChatPage() {
+  const { t } = useApp()
   const user = useAuth((s) => s.user)
   const qc = useQueryClient()
   const [active, setActive] = useState<number | null>(null)
   const [body, setBody] = useState('')
   const [search, setSearch] = useState('')
   const [denied, setDenied] = useState(false)
+  const [live, setLive] = useState<ChatMessage[]>([])
+  const [typing, setTyping] = useState('')
+  const realtime = useRef<RealtimeClient | null>(null)
 
   const { data: directory } = useQuery({ queryKey: ['chat-dir'], queryFn: async () => (await api.get('/chat/directory')).data })
   const { data: conv } = useQuery({ queryKey: ['conv'], queryFn: async () => (await api.get('/conversations')).data })
@@ -25,62 +32,88 @@ export function ChatPage() {
 
   const start = useMutation({
     mutationFn: async (id: number) => (await api.post('/conversations', { participant_ids: [id] })).data,
-    onSuccess: (c: { id: number }) => { setDenied(false); setActive(c.id); qc.invalidateQueries({ queryKey: ['conv'] }) },
+    onSuccess: (c: { id: number }) => { setDenied(false); setActive(c.id); setLive([]); qc.invalidateQueries({ queryKey: ['conv'] }) },
     onError: () => setDenied(true),
-  })
-  const send = useMutation({
-    mutationFn: async () => api.post(`/conversations/${active}/messages`, { body }),
-    onSuccess: () => {
-      setBody('')
-      qc.invalidateQueries({ queryKey: ['msgs', active] })
-      if (active) api.post(`/conversations/${active}/read`)
-    },
   })
 
   useEffect(() => {
     if (!user) return
-    return connectRealtime(user.id, () => {
-      qc.invalidateQueries({ queryKey: ['msgs'] })
-      qc.invalidateQueries({ queryKey: ['conv'] })
+    const client = connectRealtime(user.id, (event, payload) => {
+      const data = payload as { conversation_id?: number; message?: ChatMessage; name?: string }
+      if (event === 'message.sent' && data.message) {
+        if (data.conversation_id === active) {
+          setLive((prev) => prev.some((m) => m.id === data.message!.id) ? prev : [...prev, data.message!])
+        }
+        qc.invalidateQueries({ queryKey: ['conv'] })
+        qc.invalidateQueries({ queryKey: ['chat-unread'] })
+        return
+      }
+      if (event === 'typing.started' && data.conversation_id === active) setTyping(data.name ?? '...')
+      if (event === 'typing.stopped') setTyping('')
     })
-  }, [user, qc])
+    realtime.current = client
+    return () => client.close()
+  }, [user, active, qc])
+
+  useEffect(() => { setLive([]) }, [active])
 
   const contacts = useMemo(() => {
     const q = search.trim()
     return (directory ?? []).filter((u: { name: string; mobile?: string }) => !q || u.name.includes(q) || u.mobile?.includes(q))
   }, [directory, search])
 
-  const thread = [...(messages?.data ?? [])].reverse()
+  const history = [...(messages?.data ?? [])].reverse()
+  const thread = [...history, ...live.filter((m) => !history.some((h) => h.id === m.id))]
+
+  const send = async () => {
+    if (!active || !body.trim()) return
+    const text = body.trim()
+    setBody('')
+    const sent = realtime.current?.send(active, text)
+    if (!sent) {
+      const { data } = await api.post(`/conversations/${active}/messages`, { body: text })
+      setLive((prev) => [...prev, data])
+    }
+  }
 
   return (
-    <div className="grid lg:grid-cols-[300px_1fr] gap-3 min-h-[640px]">
+    <div className="space-y-4">
+      <PageHeader title={t('chatTitle')} subtitle={t('chatSub')} />
+      <div className="grid lg:grid-cols-[300px_1fr] gap-3 min-h-[640px]">
       <aside className="card p-3 grid grid-rows-[auto_1fr] overflow-hidden">
-        <input className="input mb-3" placeholder="جستجوی مخاطب مجاز" value={search} onChange={(e) => setSearch(e.target.value)} />
+        <div className="relative mb-3">
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
+          <input className="input ps-9" placeholder={t('chatSearch')} value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
         <div className="overflow-auto">
-          <div className="text-xs text-[var(--muted)] mb-2">مخاطبان مجاز</div>
+          <div className="text-xs text-surface-400 mb-2">{t('chatAllowed')}</div>
           {contacts.map((u: { id: number; name: string; relationship: string }) => (
-            <button key={u.id} className="w-full text-right py-2.5 px-2 rounded-xl hover:bg-[#f2f4f7]" data-testid={`chat-user-${u.id}`} onClick={() => start.mutate(u.id)}>
-              <div className="font-semibold">{u.name}</div>
-              <div className="text-xs text-[var(--muted)]">{label(u.relationship)}</div>
+            <button key={u.id} className="w-full text-start py-2.5 px-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-800 flex items-center gap-3" data-testid={`chat-user-${u.id}`} onClick={() => start.mutate(u.id)}>
+              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-white text-xs font-bold flex items-center justify-center">{u.name.charAt(0)}</div>
+              <div>
+                <div className="font-semibold">{u.name}</div>
+                <div className="text-xs text-surface-400">{label(u.relationship)}</div>
+              </div>
             </button>
           ))}
-          <div className="text-xs text-[var(--muted)] mt-4 mb-2">گفتگوهای اخیر</div>
+          <div className="text-xs text-surface-400 mt-4 mb-2">{t('chatRecent')}</div>
           {(conv?.conversations ?? []).map((c: { id: number; participants?: Array<{ name: string }> }) => (
-            <button key={c.id} className={`w-full text-right py-2.5 px-2 rounded-xl ${active === c.id ? 'bg-[#e7f6f3]' : 'hover:bg-[#f2f4f7]'}`} onClick={() => setActive(c.id)}>
-              {c.participants?.filter((p) => p.name !== user?.name).map((p) => p.name).join('، ') || `گفتگو ${c.id}`}
+            <button key={c.id} className={`w-full text-start py-2.5 px-2 rounded-xl ${active === c.id ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700' : 'hover:bg-surface-100 dark:hover:bg-surface-800'}`} onClick={() => { setActive(c.id); api.post(`/conversations/${c.id}/read`).then(() => qc.invalidateQueries({ queryKey: ['chat-unread'] })) }}>
+              {c.participants?.filter((p) => p.name !== user?.name).map((p) => p.name).join('، ') || `${t('chatConv')} ${c.id}`}
             </button>
           ))}
         </div>
       </aside>
       <section className="card min-h-[640px] grid grid-rows-[auto_1fr_auto]">
-        <div className="px-4 py-3 border-b border-[var(--line)] font-bold">
-          {active ? 'گفتگوی سازمانی' : 'یک مخاطب را انتخاب کنید'}
-          {typeof conv?.unread === 'number' && <span className="text-sm font-normal text-[var(--muted)] mr-2">خوانده‌نشده: {conv.unread}</span>}
+        <div className="px-4 py-3 border-b border-surface-200 dark:border-surface-700 font-semibold">
+          {active ? t('chatTitle') : t('choose')}
+          {typeof conv?.unread === 'number' && <span className="text-sm font-normal text-surface-400 mx-2">{t('notifUnread')}: {conv.unread}</span>}
+          {typing && <span className="text-xs text-primary-600">{typing}</span>}
         </div>
         <div className="p-4 overflow-auto grid gap-2 content-start">
           {denied && <div data-testid="chat-denied" className="text-red-700">ارسال پیام به این شاخه مجاز نیست.</div>}
-          {!active && <Empty text="چت فقط با مافوق و زیرمجموعه درختی امکان‌پذیر است." />}
-          {thread.map((m: { id: number; body: string; created_at: string; sender_user_id: number; sender?: { name: string } }) => {
+          {!active && <Empty text={t('chatSub')} />}
+          {thread.map((m) => {
             const mine = m.sender_user_id === user?.id
             return (
               <div key={m.id} className={`max-w-[75%] p-3 text-sm ${mine ? 'bubble-me mr-auto' : 'bubble-them'}`}>
@@ -90,11 +123,12 @@ export function ChatPage() {
             )
           })}
         </div>
-        <form className="p-3 border-t border-[var(--line)] flex gap-2" onSubmit={(e) => { e.preventDefault(); if (active && body.trim()) send.mutate() }}>
-          <input className="input" data-testid="chat-input" placeholder="پیام خود را بنویسید..." value={body} onChange={(e) => setBody(e.target.value)} disabled={!active} />
+        <form className="p-3 border-t border-surface-200 dark:border-surface-700 flex gap-2" onSubmit={(e) => { e.preventDefault(); void send() }}>
+          <input className="input" data-testid="chat-input" placeholder="پیام خود را بنویسید..." value={body} onChange={(e) => { setBody(e.target.value); if (active) realtime.current?.typing(active, true) }} disabled={!active} />
           <button className="btn btn-primary" type="submit" disabled={!active || !body.trim()}>ارسال</button>
         </form>
       </section>
+      </div>
     </div>
   )
 }

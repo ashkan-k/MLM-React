@@ -2,32 +2,149 @@ export type ExportFormat = 'csv' | 'xlsx' | 'json' | 'pdf'
 export type TableRows = Array<Record<string, string | number>>
 export type ExportSheet = { title: string; rows: TableRows }
 
+function safeFile(name: string) {
+  const ascii = name.normalize('NFKD').replace(/[^\w.-]+/g, '-').replace(/^-+|-+$/g, '')
+  return ascii.slice(0, 60) || 'finopal-export'
+}
+
 function csvFrom(rows: TableRows) {
   if (rows.length === 0) return '\uFEFF'
   const keys = Object.keys(rows[0])
   return `\uFEFF${[keys.join(','), ...rows.map((row) => keys.map((k) => `"${String(row[k] ?? '').replaceAll('"', '""')}"`).join(','))].join('\n')}`
 }
 
-function xlsFrom(sheets: ExportSheet[]) {
-  const worksheets = sheets.map((sheet) => {
-    const rows = sheet.rows
-    const keys = rows[0] ? Object.keys(rows[0]) : []
-    const header = `<Row>${keys.map((k) => `<Cell><Data ss:Type="String">${escapeXml(k)}</Data></Cell>`).join('')}</Row>`
-    const body = rows.map((row) => `<Row>${keys.map((k) => `<Cell><Data ss:Type="String">${escapeXml(String(row[k] ?? ''))}</Data></Cell>`).join('')}</Row>`).join('')
-    return `<Worksheet ss:Name="${escapeXml(sheet.title.slice(0, 31))}"><Table>${header}${body}</Table></Worksheet>`
-  }).join('')
-  return `<?xml version="1.0"?>
-<?mso-application progid="Excel.Sheet"?>
-<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">
-${worksheets}
-</Workbook>`
-}
-
 function escapeXml(value: string) {
   return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
 }
 
-function downloadBlob(name: string, content: string, type: string) {
+const CRC_TABLE = (() => {
+  const table = new Uint32Array(256)
+  for (let i = 0; i < 256; i++) {
+    let c = i
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1
+    table[i] = c >>> 0
+  }
+  return table
+})()
+
+function crc32(bytes: Uint8Array) {
+  let crc = 0xffffffff
+  for (const b of bytes) crc = CRC_TABLE[(crc ^ b) & 0xff] ^ (crc >>> 8)
+  return (crc ^ 0xffffffff) >>> 0
+}
+
+function utf8(text: string) {
+  return new TextEncoder().encode(text)
+}
+
+function u16(n: number) {
+  const b = new Uint8Array(2)
+  new DataView(b.buffer).setUint16(0, n, true)
+  return b
+}
+
+function u32(n: number) {
+  const b = new Uint8Array(4)
+  new DataView(b.buffer).setUint32(0, n, true)
+  return b
+}
+
+function concat(parts: Uint8Array[]) {
+  const out = new Uint8Array(parts.reduce((sum, p) => sum + p.length, 0))
+  let offset = 0
+  for (const p of parts) {
+    out.set(p, offset)
+    offset += p.length
+  }
+  return out
+}
+
+function zipStore(files: Array<{ name: string; data: Uint8Array }>) {
+  const locals: Uint8Array[] = []
+  const centrals: Uint8Array[] = []
+  let offset = 0
+  for (const file of files) {
+    const name = utf8(file.name)
+    const crc = crc32(file.data)
+    const local = concat([
+      u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(0), u16(0),
+      u32(crc), u32(file.data.length), u32(file.data.length), u16(name.length), u16(0),
+      name, file.data,
+    ])
+    locals.push(local)
+    centrals.push(concat([
+      u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0),
+      u32(crc), u32(file.data.length), u32(file.data.length), u16(name.length), u16(0), u16(0), u16(0), u16(0),
+      u32(0), u32(offset), name,
+    ]))
+    offset += local.length
+  }
+  const central = concat(centrals)
+  const localAll = concat(locals)
+  const end = concat([
+    u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length),
+    u32(central.length), u32(localAll.length), u16(0),
+  ])
+  return concat([localAll, central, end])
+}
+
+function colName(index: number) {
+  let n = index
+  let name = ''
+  while (n >= 0) {
+    name = String.fromCharCode((n % 26) + 65) + name
+    n = Math.floor(n / 26) - 1
+  }
+  return name
+}
+
+function sheetXml(rows: TableRows) {
+  const keys = rows[0] ? Object.keys(rows[0]) : ['A']
+  const all = [keys, ...rows.map((row) => keys.map((k) => String(row[k] ?? '')))]
+  const cells = all.flatMap((line, r) => line.map((value, c) => {
+    const ref = `${colName(c)}${r + 1}`
+    return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${escapeXml(value)}</t></is></c>`
+  }))
+  const rowXml = all.map((_, r) => {
+    const start = r * keys.length
+    return `<row r="${r + 1}">${cells.slice(start, start + keys.length).join('')}</row>`
+  }).join('')
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData>${rowXml}</sheetData></worksheet>`
+}
+
+function xlsxBytes(sheets: ExportSheet[]) {
+  const usable = sheets.length ? sheets : [{ title: 'Sheet1', rows: [{ پیام: '' }] }]
+  const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+${usable.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}
+</Types>`
+  const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`
+  const wbRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+${usable.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('')}
+</Relationships>`
+  const workbook = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets>${usable.map((s, i) => `<sheet name="${escapeXml((s.title || `Sheet${i + 1}`).slice(0, 31))}" sheetId="${i + 1}" r:id="rId${i + 1}"/>`).join('')}</sheets>
+</workbook>`
+  const files = [
+    { name: '[Content_Types].xml', data: utf8(contentTypes) },
+    { name: '_rels/.rels', data: utf8(rels) },
+    { name: 'xl/workbook.xml', data: utf8(workbook) },
+    { name: 'xl/_rels/workbook.xml.rels', data: utf8(wbRels) },
+    ...usable.map((sheet, i) => ({ name: `xl/worksheets/sheet${i + 1}.xml`, data: utf8(sheetXml(sheet.rows)) })),
+  ]
+  return zipStore(files)
+}
+
+function downloadBlob(name: string, content: BlobPart, type: string) {
   const blob = new Blob([content], { type })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -49,7 +166,7 @@ function printPdf(title: string, sheets: ExportSheet[]) {
   </head><body><h1>${title}</h1>${tables}</body></html>`
   const win = window.open('', '_blank')
   if (!win) {
-    downloadBlob(`${title}.html`, html, 'text/html;charset=utf-8')
+    downloadBlob(`${safeFile(title)}.html`, html, 'text/html;charset=utf-8')
     return
   }
   win.document.write(html)
@@ -60,17 +177,18 @@ function printPdf(title: string, sheets: ExportSheet[]) {
 
 export function exportSheets(filename: string, sheets: ExportSheet[], format: ExportFormat) {
   const usable = sheets.filter((s) => s.rows.length > 0)
-  const fallback = usable.length ? usable : [{ title: 'خالی', rows: [{ پیام: 'داده‌ای برای خروجی نیست' }] }]
+  const fallback = usable.length ? usable : [{ title: 'empty', rows: [{ message: 'no data' }] }]
+  const base = safeFile(filename)
   if (format === 'csv') {
-    fallback.forEach((sheet) => downloadBlob(`${filename}-${sheet.title}.csv`, csvFrom(sheet.rows), 'text/csv;charset=utf-8'))
+    fallback.forEach((sheet) => downloadBlob(`${base}-${safeFile(sheet.title)}.csv`, csvFrom(sheet.rows), 'text/csv;charset=utf-8'))
     return
   }
   if (format === 'xlsx') {
-    downloadBlob(`${filename}.xls`, xlsFrom(fallback), 'application/vnd.ms-excel')
+    downloadBlob(`${base}.xlsx`, xlsxBytes(fallback) as BlobPart, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     return
   }
   if (format === 'json') {
-    downloadBlob(`${filename}.json`, JSON.stringify(Object.fromEntries(fallback.map((s) => [s.title, s.rows])), null, 2), 'application/json')
+    downloadBlob(`${base}.json`, JSON.stringify(Object.fromEntries(fallback.map((s) => [s.title, s.rows])), null, 2), 'application/json')
     return
   }
   printPdf(filename, fallback)

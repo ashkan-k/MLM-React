@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import App from './App.tsx'
+import { AppProvider } from './contexts/AppContext'
 import './index.css'
 import { useAuth } from './stores/auth'
 
@@ -13,12 +14,14 @@ function Root() {
   const hydrate = useAuth((s) => s.hydrate)
   useEffect(() => { void hydrate() }, [hydrate])
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <App />
-        <Toaster position="top-center" />
-      </BrowserRouter>
-    </QueryClientProvider>
+    <AppProvider>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <App />
+          <Toaster position="top-center" richColors />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </AppProvider>
   )
 }
 

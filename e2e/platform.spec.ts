@@ -8,15 +8,26 @@ async function login(page: Page, mobile: string) {
   await expect(page).not.toHaveURL(/\/login$/)
 }
 
+async function openGroup(page: Page, group: string) {
+  const button = page.getByRole('button', { name: group, exact: true })
+  if (await button.count()) await button.click()
+}
+
+async function navLink(page: Page, group: string, name: string, exact = true) {
+  const link = page.locator('aside').getByRole('link', { name, exact })
+  if (!await link.isVisible()) await openGroup(page, group)
+  await link.click()
+}
+
 test.describe('سازمان فروش فاینوپال', () => {
   test('داشبورد نماینده، پورسانت فارسی و گزارش تجمیعی', async ({ page }) => {
     await login(page, '09125555555')
     await expect(page).toHaveURL(/dashboard\/representative/)
     await expect(page.getByTestId('wallet-balance')).toBeVisible()
-    await page.getByRole('link', { name: 'پورسانت', exact: true }).click()
+    await navLink(page, 'فروش و پورسانت', 'پورسانت')
     await expect(page.getByTestId('commission-table')).toBeVisible()
-    await expect(page.getByRole('columnheader', { name: 'مبلغ پورسانت' })).toBeVisible()
-    await page.getByRole('link', { name: 'گزارش تجمیعی', exact: true }).click()
+    await expect(page.getByRole('columnheader', { name: /مبلغ پورسانت/ })).toBeVisible()
+    await navLink(page, 'مالی', 'گزارش تجمیعی')
     await expect(page.getByTestId('aggregate-finance')).toContainText('ادغام')
   })
 
@@ -31,22 +42,22 @@ test.describe('سازمان فروش فاینوپال', () => {
 
   test('پورسانت فروش اشتراکی برای نماینده همکار', async ({ page }) => {
     await login(page, '09127777777')
-    await page.getByRole('link', { name: 'پورسانت', exact: true }).click()
+    await navLink(page, 'فروش و پورسانت', 'پورسانت')
     await expect(page.getByTestId('commission-table')).toContainText('7.500')
   })
 
   test('درخت سازمان و آموزش با سطح پویا', async ({ page }) => {
     await login(page, '09123333333')
-    await page.getByRole('link', { name: 'سازمان و تیم', exact: true }).click()
+    await navLink(page, 'سازمان چندسطحی', 'سازمان و تیم')
     await expect(page.getByTestId('org-tree')).toBeVisible()
-    await page.getByRole('link', { name: 'آموزش', exact: true }).click()
+    await navLink(page, 'رشد شبکه', 'آموزش')
     await expect(page.getByTestId('training-list')).toContainText('آموزش سازمان فروش')
     await expect(page.getByTestId('training-list')).toContainText('آشنایی با محصول')
   })
 
   test('ثبت برداشت و نمایش وضعیت فارسی با مقدار خام برای سیستم', async ({ page }) => {
     await login(page, '09125555555')
-    await page.getByRole('link', { name: 'برداشت', exact: true }).click()
+    await navLink(page, 'مالی', 'برداشت')
     await page.getByTestId('withdraw-open').click()
     await expect(page.getByTestId('withdraw-submit')).toBeEnabled()
     await page.getByTestId('withdraw-amount').fill('500')
@@ -57,6 +68,7 @@ test.describe('سازمان فروش فاینوپال', () => {
 
   test('چت فقط مخاطب درختی را نشان می‌دهد', async ({ page }) => {
     await login(page, '09125555555')
+    await openGroup(page, 'ارتباط')
     await page.locator('.nav-link', { hasText: 'گفتگو' }).click()
     await expect(page.getByText('مخاطبان مجاز')).toBeVisible()
     await expect(page.getByText('شاخه جدا')).toHaveCount(0)
@@ -67,11 +79,11 @@ test.describe('سازمان فروش فاینوپال', () => {
     await expect(page).toHaveURL(/superuser/)
     await expect(page.getByTestId('admin-stats')).toBeVisible()
     await expect(page.getByText('کاربران فعال')).toBeVisible()
-    await page.getByRole('link', { name: 'قواعد پورسانت' }).click()
+    await navLink(page, 'فروش چندسطحی', 'قواعد پورسانت', false)
     await expect(page.getByTestId('commission-rules')).toContainText('نماینده')
     await expect(page.getByText('درصد از پاداش').first()).toBeVisible()
     await expect(page.getByRole('button', { name: 'ذخیره' }).first()).toBeVisible()
-    await page.getByRole('link', { name: 'دسترسی‌ها' }).click()
+    await navLink(page, 'کاربران و دسترسی', 'دسترسی‌ها', false)
     await expect(page.getByText('تعیین دسترسی نقش‌ها')).toBeVisible()
     await expect(page.getByTestId('permissions-admin')).toBeVisible()
     await expect(page.getByTestId('perm-senior_manager.withdrawal.approve')).toContainText('تایید برداشت')
@@ -79,16 +91,16 @@ test.describe('سازمان فروش فاینوپال', () => {
 
   test('مدیر ارشد معیار ارتقاء و کد معرف را می‌بیند', async ({ page }) => {
     await login(page, '09121111111')
-    await page.getByRole('link', { name: 'ارتقاء', exact: true }).click()
+    await navLink(page, 'رشد شبکه', 'ارتقاء')
     await expect(page.getByTestId('promotion-criteria')).toBeVisible()
     await expect(page.getByTestId('promotion-criteria')).toContainText('امتیاز')
-    await page.getByRole('link', { name: 'معرف و لینک اشتراکی', exact: true }).click()
+    await navLink(page, 'رشد شبکه', 'معرف و لینک اشتراکی')
     await expect(page.getByTestId('referral-code')).toBeVisible()
   })
 
   test('سوپریوزر می‌تواند دوره با چند سطح بسازد', async ({ page }) => {
     await login(page, '09120000000')
-    await page.getByRole('link', { name: 'دوره‌ها', exact: true }).click()
+    await navLink(page, 'فروش چندسطحی', 'دوره‌ها')
     await page.getByRole('button', { name: 'دوره جدید' }).click()
     await expect(page.getByText('نمره قبولی (از ۱۰۰)')).toBeVisible()
     const title = `دوره تست پلی‌رایت ${Date.now()}`
@@ -99,7 +111,7 @@ test.describe('سازمان فروش فاینوپال', () => {
 
   test('گزارشات سوپریوزر نمودار و زیرمجموعه دارد', async ({ page }) => {
     await login(page, '09120000000')
-    await page.getByRole('link', { name: 'گزارشات', exact: true }).click()
+    await navLink(page, 'اصلی', 'گزارشات')
     await expect(page.getByTestId('admin-reports')).toBeVisible()
     await expect(page.getByTestId('sales-line-chart')).toBeVisible()
     await expect(page.getByTestId('role-bar-chart')).toBeVisible()
@@ -112,7 +124,7 @@ test.describe('سازمان فروش فاینوپال', () => {
 
   test('کاربر از مودال ساخته و ویرایش می‌شود', async ({ page }) => {
     await login(page, '09120000000')
-    await page.getByRole('link', { name: 'کاربران' }).click()
+    await navLink(page, 'کاربران و دسترسی', 'کاربران', false)
     await page.getByRole('button', { name: 'کاربر جدید' }).click()
     await expect(page.getByTestId('user-form')).toBeVisible()
     const stamp = Date.now()
@@ -132,7 +144,7 @@ test.describe('سازمان فروش فاینوپال', () => {
 
   test('سلب و اعطای دسترسی نقش پایدار می‌ماند', async ({ page }) => {
     await login(page, '09120000000')
-    await page.getByRole('link', { name: 'دسترسی‌ها' }).click()
+    await navLink(page, 'کاربران و دسترسی', 'دسترسی‌ها', false)
     const box = page.getByTestId('perm-toggle-senior_manager-senior_manager.withdrawal.approve')
     if (!await box.isChecked()) {
       await box.click()
@@ -151,13 +163,13 @@ test.describe('سازمان فروش فاینوپال', () => {
 
   test('تنظیمات بدون JSON و رویدادها با جزئیات شمسی هستند', async ({ page }) => {
     await login(page, '09120000000')
-    await page.getByRole('link', { name: 'تنظیمات' }).click()
+    await navLink(page, 'سیستم', 'تنظیمات')
     await expect(page.getByTestId('setting-qualification_thresholds')).toBeVisible()
     await expect(page.getByText('حداقل امتیاز نماینده')).toBeVisible()
     await expect(page.locator('textarea.font-mono')).toHaveCount(0)
     await page.getByRole('button', { name: 'ذخیره' }).first().click()
     await expect(page.getByText('تنظیمات ذخیره شد')).toBeVisible()
-    await page.getByRole('link', { name: 'رویدادها' }).click()
+    await navLink(page, 'سیستم', 'رویدادها')
     await expect(page.getByText('گزارش رویدادها')).toBeVisible()
     await expect(page.getByRole('columnheader', { name: 'آی‌پی' })).toBeVisible()
     await expect(page.locator('.datetime-ltr').first()).toHaveAttribute('dir', 'ltr')

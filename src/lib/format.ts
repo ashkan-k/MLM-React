@@ -1,13 +1,40 @@
 import { format as formatJalali } from 'date-fns-jalali'
 
+export function currentLocale() {
+  return localStorage.getItem('finopal.locale') === 'en' ? 'en' : 'fa'
+}
+
+export function localeTag() {
+  return currentLocale() === 'en' ? 'en-US' : 'fa-IR'
+}
+
 export function money(value?: string | number | null) {
   const n = Number(value ?? 0)
-  return new Intl.NumberFormat('fa-IR').format(n)
+  return new Intl.NumberFormat(localeTag()).format(n)
+}
+
+export function moneyHeader(base?: string) {
+  const locale = currentLocale()
+  const word = base ?? (locale === 'en' ? 'Amount' : 'مبلغ')
+  return locale === 'en' ? `${word} (Toman)` : `${word} (تومان)`
+}
+
+export function parseGrouped(value: string) {
+  return value.replace(/[^\d.]/g, '')
+}
+
+export function formatGrouped(value: string) {
+  const raw = parseGrouped(value)
+  if (!raw) return ''
+  const [int, dec] = raw.split('.')
+  const grouped = int.replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return dec !== undefined ? `${grouped}.${dec.slice(0, 3)}` : grouped
 }
 
 export function percent(value?: string | number | null) {
   const n = Number(value ?? 0)
-  return `${n.toLocaleString('fa-IR', { maximumFractionDigits: 1 })}٪`
+  const mark = currentLocale() === 'en' ? '%' : '٪'
+  return `${n.toLocaleString(localeTag(), { maximumFractionDigits: 1 })}${mark}`
 }
 
 export function dateTime(value?: string | null) {
@@ -30,7 +57,7 @@ export function dateTimeExport(value?: string | null) {
 
 export function formatExportValue(value: unknown): string {
   if (value === null || value === undefined || value === '') return ''
-  if (typeof value === 'boolean') return value ? 'بله' : 'خیر'
+  if (typeof value === 'boolean') return currentLocale() === 'en' ? (value ? 'Yes' : 'No') : (value ? 'بله' : 'خیر')
   if (isDateLike(value)) return dateTimeExport(value)
   if (Array.isArray(value)) return value.map((item) => formatExportValue(item)).join('، ')
   if (typeof value === 'object') {
@@ -78,9 +105,46 @@ export const statusLabel: Record<string, string> = {
   outbound: 'خروجی',
 }
 
+const statusLabelEn: Record<string, string> = {
+  successful: 'Successful',
+  posted: 'Posted',
+  requested: 'Requested',
+  senior_manager_pending: 'Pending senior manager',
+  superuser_pending: 'Pending superuser',
+  processing: 'Processing',
+  completed: 'Completed',
+  rejected: 'Rejected',
+  cancelled: 'Cancelled',
+  failed: 'Failed',
+  pending: 'Pending',
+  approved: 'Approved',
+  active: 'Active',
+  used: 'Used',
+  not_started: 'Not started',
+  completed_level: 'Passed',
+  failed_level: 'Failed',
+  commission_credit: 'Commission credit',
+  withdrawal_hold: 'Withdrawal hold',
+  withdrawal_release: 'Hold released',
+  withdrawal_debit: 'Final withdrawal',
+  reversal: 'Reversal',
+  adjustment: 'Adjustment',
+  transfer: 'Transfer',
+  all_future_benefits: 'All future benefits',
+  gateway_share: 'Gateway share transfer',
+  descendant: 'Downline',
+  ancestor: 'Upline',
+  self: 'Self',
+  unrelated: 'Unrelated',
+  processed: 'Processed',
+  inbound: 'Inbound',
+  outbound: 'Outbound',
+}
+
 export function label(value?: string | null) {
   if (!value) return '—'
-  return statusLabel[value] ?? value
+  const map = currentLocale() === 'en' ? statusLabelEn : statusLabel
+  return map[value] ?? value
 }
 
 export const permissionLabel: Record<string, string> = {
