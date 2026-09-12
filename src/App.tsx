@@ -1,7 +1,9 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import { AppShell, SuperuserShell } from './layouts/AppShell'
 import { dashboardPath } from './lib/roles'
+import { AdminAuditDetail } from './pages/AdminAuditDetail'
 import { AdminAudits, AdminCourses, AdminFraSoft, AdminHome, AdminPermissions, AdminRules, AdminSettings, AdminUsers } from './pages/AdminPages'
+import { AdminReports } from './pages/AdminReports'
 import { ChatPage } from './pages/ChatPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { CommissionsPage, FinancePage, GatewaysPage, NotificationsPage, PromotionsPage, ReferralsPage, TeamPage, TrainingPage, TransfersPage, WalletPage, WithdrawalsPage } from './pages/DataPages'
@@ -62,12 +64,14 @@ export default function App() {
       <Route element={<Guard superuserOnly />}>
         <Route path="/superuser" element={<SuperuserShell />}>
           <Route index element={<AdminHome />} />
+          <Route path="reports" element={<AdminReports />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="permissions" element={<AdminPermissions />} />
           <Route path="rules" element={<AdminRules />} />
           <Route path="courses" element={<AdminCourses />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="audits" element={<AdminAudits />} />
+          <Route path="audits/:id" element={<AdminAuditDetail />} />
           <Route path="frasoft" element={<AdminFraSoft />} />
         </Route>
       </Route>

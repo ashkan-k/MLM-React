@@ -1,5 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
+import { PageHeader, ProgressBar, StatCard } from '../components/ui'
 import { api } from '../lib/api'
+import { money } from '../lib/format'
 import { useAuth } from '../stores/auth'
 
 export function DashboardPage() {
@@ -8,32 +11,34 @@ export function DashboardPage() {
     queryKey: ['dashboard', role?.slug],
     queryFn: async () => (await api.get('/dashboard')).data,
   })
+  const q = data?.qualification
 
   return (
-    <div className="grid gap-4">
-      <h2 className="text-2xl font-extrabold">داشبورد {role?.name}</h2>
-      <div className="grid md:grid-cols-4 gap-3">
-        <Stat title="کیف پول نقش" value={data?.wallet?.balance ?? '0'} testId="wallet-balance" />
-        <Stat title="مسدودشده" value={data?.wallet?.held_balance ?? '0'} />
-        <Stat title="پورسانت این ماه" value={data?.monthly_commissions ?? '0'} />
-        <Stat title="تیم تحت مدیریت" value={data?.team_count ?? 0} />
+    <div>
+      <PageHeader title={`داشبورد ${role?.name ?? ''}`} subtitle="خلاصه عملکرد نقش فعال؛ کیف پول این صفحه فقط متعلق به همین سمت است." />
+      <div className="grid md:grid-cols-4 gap-3 mb-4">
+        <StatCard title="مانده کیف پول این نقش" value={money(data?.wallet?.balance)} hint="ریال" testId="wallet-balance" />
+        <StatCard title="مبلغ مسدودشده" value={money(data?.wallet?.held_balance)} hint="در انتظار تایید برداشت" />
+        <StatCard title="پورسانت این ماه" value={money(data?.monthly_commissions)} />
+        <StatCard title="اعضای تیم تحت مدیریت" value={data?.team_count ?? 0} />
       </div>
-      {data?.qualification && (
-        <div className="card p-4" data-testid="qualification-box">
-          <div className="font-bold mb-2">پیشرفت شرط پاداش ماهانه</div>
-          <div>{data.qualification.actual} از {data.qualification.required}</div>
-          <progress className="w-full" max={data.qualification.required || 1} value={data.qualification.actual} />
+      <div className="grid lg:grid-cols-2 gap-3">
+        <div className="card p-5" data-testid="qualification-box">
+          <div className="font-bold mb-2">شرط پاداش ماهانه</div>
+          {q ? (
+            <>
+              <div className="text-sm text-[var(--muted)] mb-2">{q.actual} از {q.required}</div>
+              <ProgressBar value={Number(q.actual)} max={Number(q.required) || 1} />
+            </>
+          ) : <div className="text-sm text-[var(--muted)]">این نقش شرط پاداش ماهانه ندارد.</div>}
         </div>
-      )}
-    </div>
-  )
-}
-
-function Stat({ title, value, testId }: { title: string; value: string | number; testId?: string }) {
-  return (
-    <div className="card p-4">
-      <div className="text-sm text-[var(--muted)]">{title}</div>
-      <div className="text-2xl font-extrabold" data-testid={testId}>{value}</div>
+        <div className="card p-5 flex flex-wrap gap-2 items-start">
+          <Link className="btn btn-primary" to="commissions">مشاهده پورسانت‌ها</Link>
+          <Link className="btn btn-ghost" to="wallet">جزئیات کیف پول</Link>
+          <Link className="btn btn-ghost" to="withdrawals">درخواست برداشت</Link>
+          <Link className="btn btn-ghost" to="training">ادامه آموزش</Link>
+        </div>
+      </div>
     </div>
   )
 }
