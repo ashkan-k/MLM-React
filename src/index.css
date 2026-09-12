@@ -56,10 +56,33 @@ button:disabled,
 .swal-finopal {
   font-family: 'Vazirmatn', 'Inter', system-ui, sans-serif !important;
   border-radius: 16px !important;
+  background: #fff !important;
+  color: #0f172a !important;
 }
 .swal-finopal .swal2-title,
-.swal-finopal .swal2-html-container {
+.swal2-popup .swal2-title {
   font-family: inherit !important;
+  color: #0f172a !important;
+  font-size: 1.25rem !important;
+  font-weight: 800 !important;
+}
+.swal-finopal .swal2-html-container,
+.swal2-popup .swal2-html-container {
+  font-family: inherit !important;
+  color: #334155 !important;
+  font-size: 0.95rem !important;
+}
+.dark .swal-finopal {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+}
+.dark .swal-finopal .swal2-title,
+.dark .swal2-popup .swal2-title {
+  color: #f8fafc !important;
+}
+.dark .swal-finopal .swal2-html-container,
+.dark .swal2-popup .swal2-html-container {
+  color: #cbd5e1 !important;
 }
 html, body, #root { min-height: 100%; margin: 0; }
 html.light, html.light body, html.light #root {

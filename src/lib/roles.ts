@@ -4,7 +4,7 @@ export const roleMeta: Record<string, { title: string; path: string; color: stri
   sales_manager: { title: 'مدیر فروش', path: '/dashboard/sales-manager', color: '#185fa5' },
   development_manager: { title: 'مدیر توسعه', path: '/dashboard/development-manager', color: '#5b3cc4' },
   senior_manager: { title: 'مدیر ارشد', path: '/dashboard/senior-manager', color: '#8a2948' },
-  superuser: { title: 'سوپریوزر', path: '/superuser', color: '#1f2a24' },
+  superuser: { title: 'مدیر سامانه', path: '/superuser', color: '#1f2a24' },
 }
 
 export function dashboardPath(slug?: string | null) {

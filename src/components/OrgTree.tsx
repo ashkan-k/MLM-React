@@ -91,27 +91,64 @@ function escapeXml(value: string) {
 }
 
 function mermaidOf(rows: FlatRow[], nodes: OrgNode[]): string {
-  const lines = ['flowchart TB', '  classDef branch fill:#2563eb,color:#fff,stroke:#1d4ed8']
+  const defs: string[] = []
+  const edges: string[] = []
   const walk = (list: OrgNode[]) => {
     for (const n of list) {
       const row = rows.find((r) => r.id === n.id)
       const label = [
-        n.user?.name ?? n.id,
-        n.role?.name ? `نقش: ${n.role.name}` : '',
-        n.user?.mobile ? `موبایل: ${n.user.mobile}` : '',
-        row ? `سطح ${row.level} | مستقیم ${row.direct} | کل ${row.total}` : '',
-        row?.parent && row.parent !== '—' ? `مافوق: ${row.parent}` : 'ریشه',
-      ].filter(Boolean).join('\\n')
-      lines.push(`  n${n.id}["${escapeXml(label)}"]`)
-      lines.push(`  class n${n.id} branch`)
+        n.user?.name ?? String(n.id),
+        n.role?.name ?? '',
+        n.user?.mobile ?? '',
+        row ? `سطح ${row.level} مستقیم ${row.direct} کل ${row.total}` : '',
+      ].filter(Boolean).join('<br/>')
+      defs.push(`  N${n.id}["${label}"]`)
       for (const child of n.children ?? []) {
-        lines.push(`  n${n.id} --> n${child.id}`)
+        edges.push(`  N${n.id} --> N${child.id}`)
       }
       walk(n.children ?? [])
     }
   }
   walk(nodes)
-  return `${lines.join('\n')}\n`
+  return ['flowchart TB', ...defs, ...edges, ''].join('\n')
+}
+
+function htmlOrgChart(nodes: OrgNode[], rows: FlatRow[]): string {
+  const card = (n: OrgNode) => {
+    const row = rows.find((r) => r.id === n.id)
+    return `<div class="node">
+      <strong>${escapeXml(n.user?.name ?? '—')}</strong>
+      <span>${escapeXml(n.role?.name || '—')}</span>
+      <span dir="ltr">${escapeXml(n.user?.mobile || '—')}</span>
+      <small>سطح ${row?.level ?? 0} · زیرمجموعه مستقیم ${row?.direct ?? 0} · کل ${row?.total ?? 0}</small>
+      ${row?.parent && row.parent !== '—' ? `<small>مافوق: ${escapeXml(row.parent)}</small>` : '<small>ریشه شبکه</small>'}
+    </div>`
+  }
+  const walk = (list: OrgNode[]): string => {
+    if (!list.length) return ''
+    return `<ul>${list.map((n) => `<li>${card(n)}${walk(n.children ?? [])}</li>`).join('')}</ul>`
+  }
+  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>دیاگرام شبکه فاینوپال</title>
+  <style>
+    body{margin:0;background:#e8eef5;font-family:Vazirmatn,Tahoma,sans-serif;color:#0f172a}
+    h1{text-align:center;padding:24px 16px 8px;font-size:22px}
+    .tree{overflow:auto;padding:16px 24px 48px}
+    .tree ul{display:flex;justify-content:center;padding-top:20px;position:relative}
+    .tree li{list-style:none;display:flex;flex-direction:column;align-items:center;position:relative;padding:20px 10px 0}
+    .tree li::before,.tree li::after{content:"";position:absolute;top:0;width:50%;height:20px;border-top:2px solid #93c5fd}
+    .tree li::before{inset-inline-end:50%;border-inline-end:2px solid #93c5fd}
+    .tree li::after{inset-inline-start:50%}
+    .tree li:only-child::before,.tree li:only-child::after{display:none}
+    .tree li:only-child{padding-top:0}
+    .tree li:first-child::before,.tree li:last-child::after{border:0 none}
+    .tree li:last-child::before{border-inline-end:2px solid #93c5fd;border-radius:0 0 8px 0}
+    .tree li:first-child::after{border-inline-start:2px solid #93c5fd;border-radius:0 0 0 8px}
+    .tree ul ul::before{content:"";position:absolute;top:0;inset-inline-start:50%;border-inline-start:2px solid #93c5fd;width:0;height:20px}
+    .node{min-width:180px;max-width:240px;background:#2563eb;color:#fff;border-radius:16px;padding:12px 14px;text-align:center;box-shadow:0 10px 24px rgba(37,99,235,.25)}
+    .node strong{display:block;font-size:15px;margin-bottom:4px}
+    .node span,.node small{display:block;opacity:.92;font-size:12px;line-height:1.6}
+  </style></head>
+  <body><h1>دیاگرام شبکه و زیرمجموعه‌ها</h1><div class="tree">${walk(nodes)}</div></body></html>`
 }
 
 function svgOf(rows: FlatRow[]): string {
@@ -254,8 +291,14 @@ export function OrgTree({
   }
 
   const exportDiagram = () => {
-    downloadText(locale === 'en' ? 'network.mmd' : 'network.mmd', mermaidOf(rows, visible), 'text/plain;charset=utf-8')
-    downloadText(locale === 'en' ? 'network.svg' : 'network.svg', svgOf(rows), 'image/svg+xml;charset=utf-8')
+    const html = htmlOrgChart(visible, rows)
+    downloadText('network-diagram.html', html, 'text/html;charset=utf-8')
+    downloadText('network.svg', svgOf(rows), 'image/svg+xml;charset=utf-8')
+    const preview = window.open('', '_blank')
+    if (preview) {
+      preview.document.write(html)
+      preview.document.close()
+    }
   }
 
   return (

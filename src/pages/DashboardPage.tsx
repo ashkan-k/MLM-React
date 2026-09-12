@@ -6,11 +6,13 @@ import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
 import { localeTag, money } from '../lib/format'
 import { roleLabel } from '../lib/i18n'
+import { notificationBody, notificationHref, notificationTitle, type AppNotification } from '../lib/notify'
 import { useAuth } from '../stores/auth'
 
 export function DashboardPage() {
   const { t, locale } = useApp()
-  const role = useAuth((s) => s.user?.active_role)
+  const user = useAuth((s) => s.user)
+  const role = user?.active_role
   const { data } = useQuery({
     queryKey: ['dashboard', role?.slug],
     queryFn: async () => (await api.get('/dashboard')).data,
@@ -25,6 +27,14 @@ export function DashboardPage() {
   })
   const q = data?.qualification
   const recent = (commissions?.data ?? []).slice(0, 6)
+  const latestPromo = (data?.latest_rejected_promotion ?? data?.latest_promotion) as {
+    status?: string
+    target_role?: { name?: string }
+    feedback?: Array<{ decision: string; note?: string }>
+  } | undefined
+  const rejectNote = latestPromo?.status === 'rejected'
+    ? latestPromo.feedback?.find((f) => f.decision === 'rejected')?.note
+    : undefined
 
   return (
     <div className="space-y-6">
@@ -64,19 +74,37 @@ export function DashboardPage() {
         <div className="card p-5">
           <div className="font-semibold text-surface-800 dark:text-surface-200 mb-4">{t('dashRecentNotif')}</div>
           <div className="space-y-3">
-            {(notifs?.data ?? []).slice(0, 5).map((n: { id: number; title: string; body: string; read_at?: string; created_at: string }) => (
+            {(notifs?.data ?? []).slice(0, 5).map((n: AppNotification) => {
+              const href = notificationHref(n, role?.slug, user?.is_superuser)
+              const title = notificationTitle(n)
+              const body = notificationBody(n)
+              return (
               <div key={n.id} className="flex items-start gap-3 py-1">
                 <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${n.read_at ? 'bg-surface-300' : 'bg-primary-500'}`} />
                 <div className="min-w-0">
-                  <div className="text-sm font-medium text-surface-700 dark:text-surface-300 truncate">{n.title}</div>
-                  <div className="text-xs text-surface-400 truncate">{n.body}</div>
+                  {href ? (
+                    <Link to={href} data-testid="notif-link" className="text-sm font-medium text-primary-600 truncate block">{title}</Link>
+                  ) : (
+                    <div className="text-sm font-medium text-surface-700 dark:text-surface-300 truncate">{title}</div>
+                  )}
+                  <div className="text-xs text-surface-400 truncate">{body}</div>
                 </div>
               </div>
-            ))}
+              )
+            })}
             {(!notifs?.data || notifs.data.length === 0) && <div className="text-sm text-surface-500">{t('dashNoNotif')}</div>}
           </div>
         </div>
       </div>
+
+      {rejectNote && (
+        <div className="card p-5 border border-red-200 dark:border-red-900/40" data-testid="dash-promo-rejected">
+          <div className="font-semibold text-red-700 dark:text-red-300 mb-1">{t('dashPromoRejected')}</div>
+          <div className="text-sm text-surface-600 dark:text-surface-400">
+            {latestPromo?.target_role?.name ? `${latestPromo.target_role.name} · ` : ''}{rejectNote}
+          </div>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="card p-5">

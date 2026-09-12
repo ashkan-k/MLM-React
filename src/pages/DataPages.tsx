@@ -1,16 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Copy, CreditCard, ExternalLink, Network, Repeat, TrendingUp, Users, Wallet, X } from 'lucide-react'
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { MoneyInput } from '../components/MoneyInput'
 import { OrgTree, type OrgNode } from '../components/OrgTree'
 import { SearchSelect } from '../components/SearchSelect'
-import { ApproveAction, BulkBar, BulkButton, CheckBox, IconAction, RowActions, exportSelected, useSelection } from '../components/table'
+import { ApproveAction, BulkBar, BulkButton, CheckBox, IconAction, RowActions, ViewAction, exportSelected, useSelection } from '../components/table'
 import { Badge, DateTimeText, Empty, Modal, PageHeader, ProgressBar, StatCard } from '../components/ui'
 import { GatewayCreateForm } from '../components/GatewayCreateForm'
 import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
-import { confirmAction } from '../lib/confirm'
+import { confirmAction, promptAction } from '../lib/confirm'
+import { notificationBody, notificationHref, notificationTitle, type AppNotification } from '../lib/notify'
 import { criterionLabel, label, localeTag, money, moneyHeader, percent } from '../lib/format'
 import { useAuth } from '../stores/auth'
 
@@ -185,7 +187,8 @@ export function CommissionsPage() {
 
 export function WalletPage() {
   const { t } = useApp()
-  const { data: wallets } = useQuery({ queryKey: ['wallets'], queryFn: async () => (await api.get('/wallets')).data })
+  const user = useAuth((s) => s.user)
+  const { data: wallets } = useQuery({ queryKey: ['wallets', user?.active_role?.slug], queryFn: async () => (await api.get('/wallets')).data })
   const { data: txs } = useQuery({ queryKey: ['wtx'], queryFn: async () => (await api.get('/wallet-transactions')).data })
   const txRows: Array<{ id: number; type: string; amount: string; balance_after: string; created_at: string }> = txs?.data ?? []
 
@@ -253,7 +256,7 @@ export function WithdrawalsPage() {
   const isSuper = Boolean(user?.is_superuser)
   const isSenior = user?.active_role?.slug === 'senior_manager'
   const canDecide = Boolean(isSuper || isSenior)
-  const { data: wallets } = useQuery({ queryKey: ['wallets'], queryFn: async () => (await api.get('/wallets')).data })
+  const { data: wallets } = useQuery({ queryKey: ['wallets', user?.active_role?.slug], queryFn: async () => (await api.get('/wallets')).data })
   const { data } = useQuery({ queryKey: ['wd'], queryFn: async () => (await api.get('/withdrawals')).data })
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState('1000')
@@ -386,12 +389,25 @@ export function ReferralsPage() {
     { user_id: '', share_percent: '50' },
   ])
   const create = useMutation({
-    mutationFn: async () => api.post('/shared-links', {
-      type: 'gateway_sale',
-      members: members.filter((m) => m.user_id).map((m) => ({ user_id: Number(m.user_id), share_percent: Number(m.share_percent) })),
-    }),
+    mutationFn: async () => {
+      const filled = members.filter((m) => m.user_id)
+      const ids = filled.map((m) => m.user_id)
+      if (new Set(ids).size !== ids.length) throw new Error(t('shareDuplicate'))
+      if (filled.some((m) => {
+        const person = (people ?? []).find((r: { id: number; roles?: Array<{ slug: string }> }) => String(r.id) === m.user_id)
+        return person?.roles?.some((r) => r.slug === 'superuser')
+      })) throw new Error(t('shareNoSuper'))
+      const total = filled.reduce((sum, m) => sum + Number(m.share_percent || 0), 0)
+      if (Math.abs(total - 100) > 0.001) throw new Error(t('shareSum'))
+      return api.post('/shared-links', {
+        type: 'gateway_sale',
+        members: filled.map((m) => ({ user_id: Number(m.user_id), share_percent: Number(m.share_percent) })),
+      })
+    },
     onSuccess: () => { toast.success(t('shareSubmit')); setOpenShare(false); qc.invalidateQueries({ queryKey: ['links'] }) },
-    onError: () => toast.error(t('shareSum')),
+    onError: (error: { message?: string; response?: { data?: { message?: string; errors?: Record<string, string[]> } } }) => {
+      toast.error(error.response?.data?.errors?.members?.[0] ?? error.response?.data?.message ?? error.message ?? t('shareSum'))
+    },
   })
   const approve = useMutation({
     mutationFn: async (id: number) => api.post(`/shared-links/${id}/approve`),
@@ -438,7 +454,13 @@ export function ReferralsPage() {
                   value={member.user_id}
                   onChange={(user_id) => setMembers((prev) => prev.map((row, i) => i === index ? { ...row, user_id } : row))}
                   placeholder={t('choose')}
-                  options={(people ?? []).map((r: { id: number; name: string; mobile?: string }) => ({ value: r.id, label: `${r.name}${r.mobile ? ` · ${r.mobile}` : ''}` }))}
+                  options={(people ?? [])
+                    .filter((r: { id: number; roles?: Array<{ slug: string }> }) => {
+                      if (r.roles?.some((role) => role.slug === 'superuser')) return String(r.id) === member.user_id
+                      const taken = members.some((row, i) => i !== index && row.user_id === String(r.id))
+                      return !taken
+                    })
+                    .map((r: { id: number; name: string; mobile?: string }) => ({ value: r.id, label: `${r.name}${r.mobile ? ` · ${r.mobile}` : ''}` }))}
                 />
               </label>
               <label className="field">{t('percent')}
@@ -456,7 +478,10 @@ export function ReferralsPage() {
       </Modal>
       <div className="card p-5" data-testid="shared-links">
         <div className="font-semibold mb-3 text-surface-800 dark:text-surface-200">{t('shareLinks')}</div>
-        {(links ?? []).map((l: { id: number; token: string; status: string; members?: Array<{ user?: { name: string }; share_percent: string; approved: boolean }> }) => (
+        {(links ?? []).map((l: { id: number; token: string; status: string; members?: Array<{ user_id?: number; user?: { id?: number; name: string }; share_percent: string; approved: boolean | number }> }) => {
+          const mine = l.members?.find((m) => Number(m.user_id ?? m.user?.id) === Number(user?.id))
+          const myPending = Boolean(mine) && !mine?.approved
+          return (
           <div key={l.id} className="py-3 border-b border-surface-100 dark:border-surface-700 last:border-0 flex justify-between gap-3">
             <div>
               <CopyLink value={`${window.location.origin}/register?share=${l.token}`} href={`${window.location.origin}/register?share=${l.token}`} />
@@ -467,10 +492,11 @@ export function ReferralsPage() {
             </div>
             <div className="flex items-center gap-2">
               <Badge tone={l.status === 'active' ? 'ok' : 'warn'}>{label(l.status)}</Badge>
-              {l.status === 'pending' && <button className="btn btn-ok" onClick={() => approve.mutate(l.id)}>{t('approveMyShare')}</button>}
+              {myPending && <button className="btn btn-ok" onClick={() => approve.mutate(l.id)}>{t('approveMyShare')}</button>}
             </div>
           </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
@@ -481,33 +507,111 @@ function PromotionList({
   canDecide,
   onDecide,
 }: {
-  items: Array<{ id: number; status: string; user?: { name: string }; target_role?: { name: string } }>
+  items: Array<{ id: number; status: string; user?: { name: string }; target_role?: { name: string }; feedback?: Array<{ decision: string; note?: string }> }>
   canDecide: boolean
-  onDecide: (id: number, decision: string) => void
+  onDecide: (id: number, decision: string, note?: string) => void
 }) {
   const { t } = useApp()
   const sel = useSelection(items.map((p) => p.id))
+  const [openId, setOpenId] = useState<number | null>(null)
+  const { data: file } = useQuery({
+    queryKey: ['promo-file', openId],
+    enabled: openId !== null,
+    queryFn: async () => (await api.get(`/promotions/${openId}`)).data,
+  })
   return (
     <div className="space-y-3">
       <BulkBar count={sel.count}>
         {canDecide && <BulkButton tone="ok" onClick={() => { items.filter((p) => sel.selected.includes(p.id) && p.status === 'pending').forEach((p) => onDecide(p.id, 'approved')); sel.clear() }}>{t('withdrawBulkApprove')}</BulkButton>}
-        {canDecide && <BulkButton tone="danger" onClick={() => { items.filter((p) => sel.selected.includes(p.id) && p.status === 'pending').forEach((p) => onDecide(p.id, 'rejected')); sel.clear() }}>{t('withdrawBulkReject')}</BulkButton>}
+        {canDecide && <BulkButton tone="danger" onClick={async () => {
+          const note = await promptAction({ title: t('promoRejectTitle'), text: t('promoRejectText'), confirmText: t('rejectYes'), placeholder: t('promoRejectReason') })
+          if (!note) return
+          items.filter((p) => sel.selected.includes(p.id) && p.status === 'pending').forEach((p) => onDecide(p.id, 'rejected', note))
+          sel.clear()
+        }}>{t('withdrawBulkReject')}</BulkButton>}
       </BulkBar>
       {items.map((p) => (
         <div key={p.id} className="card p-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
             <CheckBox checked={sel.selected.includes(p.id)} onChange={() => sel.toggle(p.id)} label={`${t('navPromotions')} ${p.id}`} />
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-white text-sm font-bold flex items-center justify-center">{(p.user?.name ?? '?').charAt(0)}</div>
-            <div>{p.user?.name} → {p.target_role?.name ?? t('role')} · {label(p.status)}</div>
+            <div>
+              <div>{p.user?.name} → {p.target_role?.name ?? t('role')} · {label(p.status)}</div>
+              {p.status === 'rejected' && p.feedback?.find((f) => f.decision === 'rejected')?.note && (
+                <div className="text-xs text-red-600 mt-1" data-testid="promo-reject-reason">{t('dashPromoRejected')}: {p.feedback.find((f) => f.decision === 'rejected')?.note}</div>
+              )}
+            </div>
           </div>
-          {canDecide && p.status === 'pending' && (
-            <RowActions>
-              <ApproveAction label={t('approve')} onClick={async () => { if (await confirmAction({ title: t('approve'), text: t('confirmYes'), danger: false, confirmText: t('confirmYes') })) onDecide(p.id, 'approved') }} />
-              <IconAction label={t('reject')} tone="delete" icon={X} onClick={async () => { if (await confirmAction({ title: t('reject'), text: t('rejectYes'), confirmText: t('rejectYes') })) onDecide(p.id, 'rejected') }} />
-            </RowActions>
-          )}
+          <RowActions>
+            <ViewAction label={t('promoFile')} onClick={() => setOpenId(p.id)} />
+            {canDecide && p.status === 'pending' && (
+              <>
+                <ApproveAction label={t('approve')} onClick={async () => { if (await confirmAction({ title: t('promoConfirmTitle'), text: t('promoConfirmText'), danger: false, confirmText: t('confirmYes') })) onDecide(p.id, 'approved') }} />
+                <IconAction label={t('reject')} tone="delete" icon={X} onClick={async () => {
+                  const note = await promptAction({ title: t('promoRejectTitle'), text: t('promoRejectText'), confirmText: t('rejectYes'), placeholder: t('promoRejectReason') })
+                  if (note) onDecide(p.id, 'rejected', note)
+                }} />
+              </>
+            )}
+          </RowActions>
         </div>
       ))}
+      <Modal open={openId !== null} title={t('promoFile')} onClose={() => setOpenId(null)}>
+        {file && (
+          <div className="space-y-4 text-sm">
+            <div className="grid sm:grid-cols-2 gap-2">
+              <div>{t('name')}: {file.user?.name}</div>
+              <div>{t('mobile')}: {file.user?.mobile}</div>
+              <div>{t('roles')}: {file.user?.roles?.map((r: { name: string }) => r.name).join(' · ')}</div>
+              <div>{t('status')}: {label(file.request?.status)}</div>
+              <div>{t('promoSalesCount')}: {file.sales?.count}</div>
+              <div>{t('promoPoints')}: {file.sales?.points}</div>
+            </div>
+            <div>
+              <div className="font-semibold mb-2">{t('promoCriteria', { role: file.request?.target_role?.name ?? '' })}</div>
+              {(file.criteria ?? []).map((c: { id: number; criterion_code: string; actual_value: string; required_value: string; passed: boolean }) => (
+                <div key={c.id} className="flex justify-between py-1.5 border-b border-surface-100 dark:border-surface-700">
+                  <span>{criterionLabel[c.criterion_code] ?? c.criterion_code}</span>
+                  <span>{c.actual_value} / {c.required_value} {c.passed ? <Badge tone="ok">{t('promoPass')}</Badge> : <Badge tone="warn">{t('promoFail')}</Badge>}</span>
+                </div>
+              ))}
+            </div>
+            <div>
+              <div className="font-semibold mb-2">{t('navTraining')}</div>
+              {(file.training ?? []).map((c: { id: number; title: string; done: number; total: number; levels: Array<{ id: number; title: string; status?: string }> }) => (
+                <div key={c.id} className="mb-2">
+                  <div className="flex justify-between"><span>{c.title}</span><span>{c.done}/{c.total}</span></div>
+                  <div className="flex flex-wrap gap-1.5 mt-1">
+                    {c.levels.map((l) => <Badge key={l.id} tone={l.status === 'completed' ? 'ok' : 'muted'}>{l.title}</Badge>)}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div>
+              <div className="font-semibold mb-2">{t('refReferred')}</div>
+              {(file.referrals ?? []).length === 0 && <Empty text={t('refEmpty')} />}
+              {(file.referrals ?? []).map((r: { id: number; referred?: { name: string; mobile: string } }) => (
+                <div key={r.id}>{r.referred?.name} · {r.referred?.mobile}</div>
+              ))}
+            </div>
+            <div>
+              <div className="font-semibold mb-2">{t('navCommissions')}</div>
+              {(file.commissions ?? []).map((c: { id: number; commission_amount: string; status: string; role?: { name: string } }) => (
+                <div key={c.id} className="flex justify-between py-1">{c.role?.name ?? '—'} · {money(c.commission_amount)} · {label(c.status)}</div>
+              ))}
+            </div>
+            <div data-testid="promo-activities">
+              <div className="font-semibold mb-2">{t('promoActivities')}</div>
+              {(file.activities ?? []).map((a: { id: number; action: string; created_at: string; actor?: { name: string } }) => (
+                <div key={a.id} className="flex justify-between py-1 gap-3">
+                  <span>{label(a.action)} · {a.actor?.name}</span>
+                  <DateTimeText value={a.created_at} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
@@ -531,8 +635,13 @@ export function PromotionsPage() {
     onSuccess: () => { toast.success(t('promoManual')); qc.invalidateQueries({ queryKey: ['promo'] }) },
   })
   const decide = useMutation({
-    mutationFn: async ({ id, decision }: { id: number; decision: string }) => api.post(`/promotions/${id}/decide`, { decision, note: t('details') }),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['promo'] }),
+    mutationFn: async ({ id, decision, note }: { id: number; decision: string; note?: string }) => api.post(`/promotions/${id}/decide`, { decision, note: note ?? '' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['promo'] })
+      qc.invalidateQueries({ queryKey: ['notif'] })
+      qc.invalidateQueries({ queryKey: ['notif-unread'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
   })
   const targetName = target === 'sales_manager' ? t('promoToSales') : t('promoToDev')
 
@@ -558,7 +667,7 @@ export function PromotionsPage() {
         )}
         {topRole && <div className="text-sm text-surface-500">{t('promoQueue')}</div>}
       </div>
-      <PromotionList items={data ?? []} canDecide={Boolean(canDecide)} onDecide={(id, decision) => decide.mutate({ id, decision })} />
+      <PromotionList items={data ?? []} canDecide={Boolean(canDecide)} onDecide={(id, decision, note) => decide.mutate({ id, decision, note })} />
     </div>
   )
 }
@@ -568,7 +677,6 @@ export function TrainingPage() {
   const qc = useQueryClient()
   const role = useAuth((s) => s.user?.active_role?.slug)
   const canMonitor = ['senior_manager', 'sales_manager', 'development_manager'].includes(role ?? '') || useAuth.getState().user?.is_superuser
-  const [scores, setScores] = useState<Record<number, string>>({})
   const { data } = useQuery({ queryKey: ['courses'], queryFn: async () => (await api.get('/courses')).data })
   const { data: teamProgress } = useQuery({
     queryKey: ['course-team'],
@@ -576,10 +684,17 @@ export function TrainingPage() {
     queryFn: async () => (await api.get('/courses/team-progress')).data,
   })
   const submit = useMutation({
-    mutationFn: async ({ course, level, score }: { course: number; level: number; score: number }) =>
-      api.post(`/courses/${course}/levels/${level}/submit`, { score }),
+    mutationFn: async ({ course, level }: { course: number; level: number }) =>
+      api.post(`/courses/${course}/levels/${level}/submit`, {}),
     onSuccess: () => { toast.success(t('trainSubmit')); qc.invalidateQueries({ queryKey: ['courses'] }); qc.invalidateQueries({ queryKey: ['course-team'] }) },
   })
+  const completeCourse = async (course: { id: number; levels: Array<{ id: number; progress?: { status: string } | null }> }) => {
+    for (const level of course.levels) {
+      if (level.progress?.status !== 'completed') {
+        await submit.mutateAsync({ course: course.id, level: level.id })
+      }
+    }
+  }
 
   return (
     <div className="space-y-4" data-testid="training-list">
@@ -594,7 +709,7 @@ export function TrainingPage() {
         description?: string
         is_required_for_promotion: boolean
         roles?: Array<{ name: string }>
-        levels: Array<{ id: number; title: string; passing_score: string; progress?: { status: string; score: string } | null }>
+        levels: Array<{ id: number; title: string; progress?: { status: string; completed_at?: string } | null }>
       }) => {
         const done = c.levels.filter((l) => l.progress?.status === 'completed').length
         return (
@@ -608,7 +723,10 @@ export function TrainingPage() {
                   {c.is_required_for_promotion && <Badge tone="warn">{t('trainRequired')}</Badge>}
                 </div>
               </div>
-              <div className="text-sm text-surface-500 whitespace-nowrap">{done.toLocaleString(localeTag())} / {c.levels.length.toLocaleString(localeTag())} {t('trainLevel')}</div>
+              <div className="text-end">
+                <div className="text-sm text-surface-500 whitespace-nowrap">{done.toLocaleString(localeTag())} / {c.levels.length.toLocaleString(localeTag())} {t('trainLevel')}</div>
+                {done < c.levels.length && <button className="btn btn-ghost mt-2" onClick={() => completeCourse(c)}>{t('trainCompleteCourse')}</button>}
+              </div>
             </div>
             <div className="mt-3"><ProgressBar value={done} max={c.levels.length || 1} /></div>
             <div className="mt-4 grid gap-3">
@@ -616,13 +734,11 @@ export function TrainingPage() {
                 <div key={l.id} className="border border-surface-200 dark:border-surface-700 rounded-xl p-3 flex flex-wrap justify-between gap-3 items-center">
                   <div>
                     <div className="font-bold">{t('trainLevel')} {index + 1}: {l.title}</div>
-                    <div className="text-sm text-surface-500">{t('trainPassScore')} {l.passing_score}</div>
-                    {l.progress && <div className="text-sm mt-1">{t('status')}: {l.progress.status === 'completed' ? t('trainPassed') : t('trainFailed')} · {t('trainScore')} {l.progress.score}</div>}
+                    <div className="text-sm mt-1">{l.progress?.status === 'completed' ? <Badge tone="ok">{t('trainViewed')}</Badge> : <Badge tone="muted">{t('trainNotStarted')}</Badge>}</div>
                   </div>
-                  <div className="flex gap-2 items-center">
-                    <input className="input w-24" placeholder={t('trainScore')} value={scores[l.id] ?? ''} onChange={(e) => setScores({ ...scores, [l.id]: e.target.value })} />
-                    <button className="btn btn-primary" onClick={() => submit.mutate({ course: c.id, level: l.id, score: Number(scores[l.id] || l.passing_score) })}>{t('trainTake')}</button>
-                  </div>
+                  {l.progress?.status !== 'completed' && (
+                    <button className="btn btn-primary" onClick={() => submit.mutate({ course: c.id, level: l.id })}>{t('trainTake')}</button>
+                  )}
                 </div>
               ))}
             </div>
@@ -630,21 +746,41 @@ export function TrainingPage() {
         )
       })}
       {canMonitor && (
-        <div className="card overflow-auto" data-testid="training-monitor">
-          <div className="px-4 pt-4 font-semibold">{t('trainMonitor')}</div>
-          <table className="table">
-            <thead><tr><th>{t('name')}</th><th>{t('mobile')}</th><th>{t('navCourses')}</th><th>{t('status')}</th></tr></thead>
-            <tbody>
-              {(teamProgress ?? []).map((u: { id: number; name: string; mobile: string; courses: Array<{ title: string; done: number; total: number; levels: Array<{ title: string; status?: string; score?: string }> }> }) => (
-                <tr key={u.id}>
-                  <td>{u.name}</td>
-                  <td>{u.mobile}</td>
-                  <td>{u.courses.map((c) => `${c.title} ${c.done}/${c.total}`).join(' · ')}</td>
-                  <td>{u.courses.flatMap((c) => c.levels.filter((l) => l.status).map((l) => `${l.title}: ${l.score ?? '—'}`)).join(' · ') || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-3" data-testid="training-monitor">
+          <div className="px-1 font-semibold text-surface-800 dark:text-surface-100">{t('trainMonitor')}</div>
+          <div className="grid gap-3">
+            {(teamProgress ?? []).map((u: { id: number; name: string; mobile: string; courses: Array<{ id?: number; title: string; done: number; total: number; levels: Array<{ id?: number; title: string; status?: string }> }> }) => {
+              const done = u.courses.reduce((sum, c) => sum + c.done, 0)
+              const total = u.courses.reduce((sum, c) => sum + c.total, 0)
+              return (
+                <div key={u.id} className="card p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+                    <div>
+                      <div className="font-bold text-surface-800 dark:text-surface-100">{u.name}</div>
+                      <div className="text-sm text-surface-500" dir="ltr">{u.mobile}</div>
+                    </div>
+                    <Badge tone={done === total && total > 0 ? 'ok' : done ? 'warn' : 'muted'}>{done}/{total} {t('trainLevel')}</Badge>
+                  </div>
+                  <ProgressBar value={done} max={total || 1} />
+                  <div className="mt-3 grid md:grid-cols-2 gap-3">
+                    {u.courses.map((c) => (
+                      <div key={c.id ?? c.title} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
+                        <div className="flex justify-between gap-2 mb-2">
+                          <div className="font-medium text-sm">{c.title}</div>
+                          <span className="text-xs text-surface-500">{c.done}/{c.total}</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {c.levels.map((l) => (
+                            <Badge key={l.id ?? l.title} tone={l.status === 'completed' ? 'ok' : 'muted'}>{l.title}</Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -654,16 +790,25 @@ export function TrainingPage() {
 export function NotificationsPage() {
   const { t } = useApp()
   const qc = useQueryClient()
+  const user = useAuth((s) => s.user)
   const { data } = useQuery({ queryKey: ['notif'], queryFn: async () => (await api.get('/notifications')).data })
+  const refreshNotifs = async () => {
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ['notif'] }),
+      qc.invalidateQueries({ queryKey: ['notif-unread'] }),
+      qc.refetchQueries({ queryKey: ['notif'] }),
+      qc.refetchQueries({ queryKey: ['notif-unread'] }),
+    ])
+  }
   const read = useMutation({
     mutationFn: async (id: number) => api.post(`/notifications/${id}/read`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['notif'] }); qc.invalidateQueries({ queryKey: ['notif-unread'] }) },
+    onSuccess: refreshNotifs,
   })
   const readAll = useMutation({
     mutationFn: async () => api.post('/notifications/read-all'),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['notif'] }); qc.invalidateQueries({ queryKey: ['notif-unread'] }) },
+    onSuccess: refreshNotifs,
   })
-  const rows: Array<{ id: number; title: string; body: string; read_at?: string; created_at: string }> = data?.data ?? []
+  const rows: AppNotification[] = data?.data ?? []
   const unread = rows.filter((n) => !n.read_at).length
   const nSel = useSelection(rows.map((n) => n.id))
 
@@ -676,20 +821,28 @@ export function NotificationsPage() {
       </BulkBar>
       <div className="card overflow-hidden">
         <div className="divide-y divide-surface-100 dark:divide-surface-700">
-          {rows.map((n) => (
+          {rows.map((n) => {
+            const href = notificationHref(n, user?.active_role?.slug, user?.is_superuser)
+            return (
             <div key={n.id} className="p-4 flex justify-between gap-3 hover:bg-surface-50 dark:hover:bg-surface-700/30">
               <div className="flex items-start gap-3">
-                <CheckBox checked={nSel.selected.includes(n.id)} onChange={() => nSel.toggle(n.id)} label={n.title} />
+                <CheckBox checked={nSel.selected.includes(n.id)} onChange={() => nSel.toggle(n.id)} label={notificationTitle(n)} />
                 <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${n.read_at ? 'bg-surface-300' : 'bg-primary-500'}`} />
                 <div>
-                  <div className="font-semibold text-surface-800 dark:text-surface-200">{n.title}</div>
-                  <div className="text-sm text-surface-600 dark:text-surface-400">{n.body}</div>
+                  <div className="font-semibold text-surface-800 dark:text-surface-200">{notificationTitle(n)}</div>
+                  <div className="text-sm text-surface-600 dark:text-surface-400">{notificationBody(n)}</div>
                   <div className="text-xs text-surface-400 mt-1"><DateTimeText value={n.created_at} /></div>
+                  {href && (
+                    <Link data-testid="notif-link" to={href} className="inline-flex items-center gap-1 text-sm text-primary-600 mt-2" onClick={() => { if (!n.read_at) read.mutate(n.id) }}>
+                      {t('notifOpen')}
+                    </Link>
+                  )}
                 </div>
               </div>
               {!n.read_at && <ApproveAction label={t('notifReadSelected')} onClick={() => read.mutate(n.id)} />}
             </div>
-          ))}
+            )
+          })}
         </div>
         {rows.length === 0 && <Empty text={t('notifEmpty')} />}
       </div>

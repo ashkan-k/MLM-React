@@ -20,7 +20,10 @@ export function ChatPage() {
   const [denied, setDenied] = useState(false)
   const [live, setLive] = useState<ChatMessage[]>([])
   const [typing, setTyping] = useState('')
+  const [liveSocket, setLiveSocket] = useState(false)
   const realtime = useRef<RealtimeClient | null>(null)
+  const activeRef = useRef<number | null>(null)
+  activeRef.current = active
 
   const { data: directory } = useQuery({ queryKey: ['chat-dir'], queryFn: async () => (await api.get('/chat/directory')).data })
   const { data: conv } = useQuery({ queryKey: ['conv'], queryFn: async () => (await api.get('/conversations')).data })
@@ -39,21 +42,23 @@ export function ChatPage() {
   useEffect(() => {
     if (!user) return
     const client = connectRealtime(user.id, (event, payload) => {
+      if (event === 'socket.open') { setLiveSocket(true); return }
+      if (event === 'socket.close' || event === 'socket.error') { setLiveSocket(false); return }
       const data = payload as { conversation_id?: number; message?: ChatMessage; name?: string }
       if (event === 'message.sent' && data.message) {
-        if (data.conversation_id === active) {
+        if (data.conversation_id === activeRef.current) {
           setLive((prev) => prev.some((m) => m.id === data.message!.id) ? prev : [...prev, data.message!])
         }
         qc.invalidateQueries({ queryKey: ['conv'] })
         qc.invalidateQueries({ queryKey: ['chat-unread'] })
         return
       }
-      if (event === 'typing.started' && data.conversation_id === active) setTyping(data.name ?? '...')
+      if (event === 'typing.started' && data.conversation_id === activeRef.current) setTyping(data.name ?? '...')
       if (event === 'typing.stopped') setTyping('')
     })
     realtime.current = client
     return () => client.close()
-  }, [user, active, qc])
+  }, [user?.id, qc])
 
   useEffect(() => { setLive([]) }, [active])
 
@@ -65,15 +70,11 @@ export function ChatPage() {
   const history = [...(messages?.data ?? [])].reverse()
   const thread = [...history, ...live.filter((m) => !history.some((h) => h.id === m.id))]
 
-  const send = async () => {
-    if (!active || !body.trim()) return
+  const send = () => {
+    if (!active || !body.trim() || !liveSocket) return
     const text = body.trim()
     setBody('')
-    const sent = realtime.current?.send(active, text)
-    if (!sent) {
-      const { data } = await api.post(`/conversations/${active}/messages`, { body: text })
-      setLive((prev) => [...prev, data])
-    }
+    realtime.current?.send(active, text)
   }
 
   return (
@@ -105,9 +106,19 @@ export function ChatPage() {
         </div>
       </aside>
       <section className="card min-h-[640px] grid grid-rows-[auto_1fr_auto]">
-        <div className="px-4 py-3 border-b border-surface-200 dark:border-surface-700 font-semibold">
+        <div className="px-4 py-3 border-b border-surface-200 dark:border-surface-700 font-semibold flex flex-wrap items-center gap-2">
           {active ? t('chatTitle') : t('choose')}
-          {typeof conv?.unread === 'number' && <span className="text-sm font-normal text-surface-400 mx-2">{t('notifUnread')}: {conv.unread}</span>}
+          {import.meta.env.DEV && liveSocket && (
+            <span data-testid="chat-ws-badge" className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+              {t('chatLive')}
+            </span>
+          )}
+          {!liveSocket && (
+            <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+              {t('chatOffline')}
+            </span>
+          )}
+          {typeof conv?.unread === 'number' && <span className="text-sm font-normal text-surface-400">{t('notifUnread')}: {conv.unread}</span>}
           {typing && <span className="text-xs text-primary-600">{typing}</span>}
         </div>
         <div className="p-4 overflow-auto grid gap-2 content-start">
@@ -124,8 +135,8 @@ export function ChatPage() {
           })}
         </div>
         <form className="p-3 border-t border-surface-200 dark:border-surface-700 flex gap-2" onSubmit={(e) => { e.preventDefault(); void send() }}>
-          <input className="input" data-testid="chat-input" placeholder="پیام خود را بنویسید..." value={body} onChange={(e) => { setBody(e.target.value); if (active) realtime.current?.typing(active, true) }} disabled={!active} />
-          <button className="btn btn-primary" type="submit" disabled={!active || !body.trim()}>ارسال</button>
+          <input className="input" data-testid="chat-input" placeholder={liveSocket ? 'پیام خود را بنویسید...' : t('chatOffline')} value={body} onChange={(e) => { setBody(e.target.value); if (active && liveSocket) realtime.current?.typing(active, true) }} disabled={!active || !liveSocket} />
+          <button className="btn btn-primary" type="submit" disabled={!active || !liveSocket || !body.trim()}>ارسال</button>
         </form>
       </section>
       </div>

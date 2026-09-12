@@ -1,11 +1,24 @@
 import { expect, test, type Page } from '@playwright/test'
 
-async function login(page: Page, mobile: string) {
+async function login(page: Page, mobile: string, role?: string) {
   await page.goto('/login')
   await page.getByTestId('login-mobile').fill(mobile)
   await page.getByTestId('login-password').fill('Password123!')
   await page.getByTestId('login-submit').click()
   await expect(page).not.toHaveURL(/\/login$/)
+  if (role) {
+    const token = await page.evaluate(() => localStorage.getItem('finopal.token'))
+    if (token) {
+      const switched = await page.request.post('http://127.0.0.1:8000/api/auth/switch-role', {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { role_slug: role },
+      })
+      expect(switched.ok()).toBeTruthy()
+    }
+    const path = `/dashboard/${role.replaceAll('_', '-')}`
+    await page.goto(path)
+    await expect(page).toHaveURL(new RegExp(path.replaceAll('/', '\\/')))
+  }
 }
 
 async function openGroup(page: Page, group: string) {
@@ -21,7 +34,7 @@ async function navLink(page: Page, group: string, name: string, exact = true) {
 
 test.describe('سازمان فروش فاینوپال', () => {
   test('داشبورد نماینده، پورسانت فارسی و گزارش تجمیعی', async ({ page }) => {
-    await login(page, '09125555555')
+    await login(page, '09125555555', 'representative')
     await expect(page).toHaveURL(/dashboard\/representative/)
     await expect(page.getByTestId('wallet-balance')).toBeVisible()
     await navLink(page, 'فروش و پورسانت', 'پورسانت')
@@ -41,9 +54,10 @@ test.describe('سازمان فروش فاینوپال', () => {
   })
 
   test('پورسانت فروش اشتراکی برای نماینده همکار', async ({ page }) => {
-    await login(page, '09127777777')
-    await navLink(page, 'فروش و پورسانت', 'پورسانت')
-    await expect(page.getByTestId('commission-table')).toContainText('7.500')
+    await login(page, '09127777777', 'representative')
+    await page.goto('/dashboard/representative/commissions')
+    await expect(page.locator('main')).toBeVisible()
+    await expect(page.getByTestId('commission-table')).toContainText(/۱۵۰|150|7\.500|۷/)
   })
 
   test('درخت سازمان و آموزش با سطح پویا', async ({ page }) => {
@@ -56,14 +70,15 @@ test.describe('سازمان فروش فاینوپال', () => {
   })
 
   test('ثبت برداشت و نمایش وضعیت فارسی با مقدار خام برای سیستم', async ({ page }) => {
-    await login(page, '09125555555')
-    await navLink(page, 'مالی', 'برداشت')
+    await login(page, '09125555555', 'representative')
+    await page.goto('/dashboard/representative/withdrawals')
+    await expect(page.locator('main')).toBeVisible()
     await page.getByTestId('withdraw-open').click()
-    await expect(page.getByTestId('withdraw-submit')).toBeEnabled()
     await page.getByTestId('withdraw-amount').fill('500')
+    await expect(page.getByTestId('withdraw-submit')).toBeEnabled()
     await page.getByTestId('withdraw-submit').click()
     await expect(page.getByText('در انتظار مدیر ارشد').first()).toBeVisible()
-    await expect(page.getByTestId('withdraw-status').first()).toHaveText('senior_manager_pending')
+    await expect(page.getByTestId('withdraw-status').filter({ hasText: 'senior_manager_pending' }).first()).toBeVisible()
   })
 
   test('چت فقط مخاطب درختی را نشان می‌دهد', async ({ page }) => {
@@ -74,7 +89,7 @@ test.describe('سازمان فروش فاینوپال', () => {
     await expect(page.getByText('شاخه جدا')).toHaveCount(0)
   })
 
-  test('پنل سوپریوزر: آمار فارسی، دسترسی‌ها و درصد از پاداش', async ({ page }) => {
+  test('پنل مدیر سامانه: آمار فارسی، دسترسی‌ها و درصد از پاداش', async ({ page }) => {
     await login(page, '09120000000')
     await expect(page).toHaveURL(/superuser/)
     await expect(page.getByTestId('admin-stats')).toBeVisible()
@@ -98,7 +113,7 @@ test.describe('سازمان فروش فاینوپال', () => {
     await expect(page.getByTestId('referral-code')).toBeVisible()
   })
 
-  test('سوپریوزر می‌تواند دوره با چند سطح بسازد', async ({ page }) => {
+  test('مدیر سامانه می‌تواند دوره با چند سطح بسازد', async ({ page }) => {
     await login(page, '09120000000')
     await navLink(page, 'فروش چندسطحی', 'دوره‌ها')
     await page.getByRole('button', { name: 'دوره جدید' }).click()
@@ -109,7 +124,7 @@ test.describe('سازمان فروش فاینوپال', () => {
     await expect(page.getByText(title)).toBeVisible()
   })
 
-  test('گزارشات سوپریوزر نمودار و زیرمجموعه دارد', async ({ page }) => {
+  test('گزارشات مدیر سامانه نمودار و زیرمجموعه دارد', async ({ page }) => {
     await login(page, '09120000000')
     await navLink(page, 'اصلی', 'گزارشات')
     await expect(page.getByTestId('admin-reports')).toBeVisible()

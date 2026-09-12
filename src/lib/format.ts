@@ -74,7 +74,7 @@ export const statusLabel: Record<string, string> = {
   posted: 'ثبت‌شده',
   requested: 'ثبت درخواست',
   senior_manager_pending: 'در انتظار مدیر ارشد',
-  superuser_pending: 'در انتظار سوپریوزر',
+  superuser_pending: 'در انتظار مدیر سامانه',
   processing: 'در حال پردازش',
   completed: 'تکمیل‌شده',
   rejected: 'رد شده',
@@ -110,7 +110,7 @@ const statusLabelEn: Record<string, string> = {
   posted: 'Posted',
   requested: 'Requested',
   senior_manager_pending: 'Pending senior manager',
-  superuser_pending: 'Pending superuser',
+  superuser_pending: 'Pending system manager',
   processing: 'Processing',
   completed: 'Completed',
   rejected: 'Rejected',
@@ -143,8 +143,10 @@ const statusLabelEn: Record<string, string> = {
 
 export function label(value?: string | null) {
   if (!value) return '—'
-  const map = currentLocale() === 'en' ? statusLabelEn : statusLabel
-  return map[value] ?? value
+  const en = currentLocale() === 'en'
+  const status = en ? statusLabelEn : statusLabel
+  const audit = en ? auditLabelEn : auditLabel
+  return status[value] ?? audit[value] ?? value
 }
 
 export const permissionLabel: Record<string, string> = {
@@ -157,12 +159,12 @@ export const permissionLabel: Record<string, string> = {
   'senior_manager.withdrawal.approve': 'مدیر ارشد / تایید برداشت',
   'senior_manager.benefit_transfer.create': 'مدیر ارشد / انتقال مزایا',
   'senior_manager.promotion.decide': 'مدیر ارشد / تصمیم ارتقاء',
-  'superuser.commission_rules.update': 'سوپریوزر / ویرایش قواعد پورسانت',
-  'superuser.gateway.create': 'سوپریوزر / ثبت فروش درگاه',
+  'superuser.commission_rules.update': 'مدیر سامانه / ویرایش قواعد پورسانت',
+  'superuser.gateway.create': 'مدیر سامانه / ثبت فروش درگاه',
   'chat.cross_branch.message': 'چت بین‌شاخه‌ای',
 }
 
-export const criterionLabel: Record<string, string> = {
+const criterionLabelFa: Record<string, string> = {
   personal_points: 'امتیاز فروش شخصی',
   new_representatives: 'ثبت‌نام نمایندگان جدید',
   strong_representatives: 'نمایندگان با امتیاز بالا',
@@ -174,9 +176,47 @@ export const criterionLabel: Record<string, string> = {
   eligible_sales_managers: 'نمایندگان واجد شرایط مدیر فروش',
 }
 
+const criterionLabelEn: Record<string, string> = {
+  personal_points: 'Personal sales points',
+  new_representatives: 'New representatives',
+  strong_representatives: 'High-point representatives',
+  senior_assessment: 'Senior manager interview',
+  tenure_years: 'Sales-manager tenure (years)',
+  registered_reps: 'Registered representatives',
+  strong_reps: 'Strong representatives',
+  team_satisfaction: 'Team satisfaction',
+  eligible_sales_managers: 'Eligible sales managers',
+}
+
+export const criterionLabel: Record<string, string> = new Proxy({}, {
+  get: (_t, key: string) => (currentLocale() === 'en' ? criterionLabelEn : criterionLabelFa)[key] ?? key,
+}) as Record<string, string>
+
 export const settingLabel: Record<string, string> = {
   qualification_thresholds: 'آستانه‌های پاداش ماهانه',
   promotion_criteria: 'معیارهای ارتقاء سازمانی',
+}
+
+const auditLabelEn: Record<string, string> = {
+  'withdrawal.requested': 'Withdrawal requested',
+  'withdrawal.approved': 'Withdrawal approved',
+  'withdrawal.rejected': 'Withdrawal rejected',
+  'promotion.approved': 'Promotion approved',
+  'promotion.rejected': 'Promotion rejected',
+  'user.created': 'User created',
+  'role.assigned': 'Role assigned',
+  'permission.role_assigned': 'Role permission granted',
+  'permission.role_revoked': 'Role permission revoked',
+  'permission.user_override': 'User permission granted',
+  'permission.user_revoked': 'User permission revoked',
+  'setting.updated': 'Setting updated',
+  'commission_rule.versioned': 'Commission rule saved',
+  'user.updated': 'User updated',
+  'user.deleted': 'User deactivated',
+  'course.updated': 'Course updated',
+  'course.deleted': 'Course deleted',
+  'benefit_transfer.all': 'Full benefit transfer',
+  'benefit_transfer.share': 'Gateway share transfer',
 }
 
 export const auditLabel: Record<string, string> = {
