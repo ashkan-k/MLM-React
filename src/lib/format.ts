@@ -34,7 +34,7 @@ export function formatGrouped(value: string) {
 export function percent(value?: string | number | null) {
   const n = Number(value ?? 0)
   const mark = currentLocale() === 'en' ? '%' : '٪'
-  return `${n.toLocaleString(localeTag(), { maximumFractionDigits: 1 })}${mark}`
+  return `${n.toLocaleString(localeTag(), { maximumFractionDigits: 3, minimumFractionDigits: 0 })}${mark}`
 }
 
 export function dateTime(value?: string | null) {
@@ -70,6 +70,12 @@ export function formatExportValue(value: unknown): string {
 }
 
 export const statusLabel: Record<string, string> = {
+  pending_inspection: 'در انتظار بازرسی مدارک',
+  pending_shaparak: 'در انتظار تایید شاپرک',
+  submitted: 'ارسال مدارک',
+  inspected: 'بازرسی مدارک',
+  shaparak_confirmed: 'تایید شاپرک',
+  commission_posted: 'ثبت پورسانت',
   successful: 'موفق',
   posted: 'ثبت‌شده',
   requested: 'ثبت درخواست',
@@ -108,6 +114,12 @@ export const statusLabel: Record<string, string> = {
 }
 
 const statusLabelEn: Record<string, string> = {
+  pending_inspection: 'Pending document inspection',
+  pending_shaparak: 'Pending Shaparak confirmation',
+  submitted: 'Documents submitted',
+  inspected: 'Documents inspected',
+  shaparak_confirmed: 'Shaparak confirmed',
+  commission_posted: 'Commission posted',
   successful: 'Successful',
   posted: 'Posted',
   requested: 'Requested',
@@ -163,8 +175,11 @@ export const permissionLabel: Record<string, string> = {
   'senior_manager.withdrawal.approve': 'مدیر ارشد / تایید برداشت',
   'senior_manager.benefit_transfer.create': 'مدیر ارشد / انتقال مزایا',
   'senior_manager.promotion.decide': 'مدیر ارشد / تصمیم ارتقاء',
+  'senior_manager.gateway.inspect': 'مدیر ارشد / بازرسی مدارک درگاه',
+  'senior_manager.gateway.shaparak': 'مدیر ارشد / تایید شاپرک و فاینوپال',
   'superuser.commission_rules.update': 'مدیر سامانه / ویرایش قواعد پورسانت',
   'superuser.gateway.create': 'مدیر سامانه / ثبت فروش درگاه',
+  'superuser.gateway.shaparak': 'تایید شاپرک و فاینوپال',
   'chat.cross_branch.message': 'چت بین‌شاخه‌ای',
   'page.dashboard': 'صفحه / داشبورد',
   'page.team': 'صفحه / شبکه و تیم',
@@ -239,6 +254,10 @@ const auditLabelEn: Record<string, string> = {
   'course.deleted': 'Course deleted',
   'benefit_transfer.all': 'Full benefit transfer',
   'benefit_transfer.share': 'Gateway share transfer',
+  'gateway.submitted': 'Gateway submitted for inspection',
+  'gateway.inspected': 'Gateway documents inspected',
+  'gateway.shaparak_confirmed': 'Shaparak / Finopal confirmed',
+  'gateway.rejected': 'Gateway rejected',
 }
 
 export const auditLabel: Record<string, string> = {
@@ -263,6 +282,10 @@ export const auditLabel: Record<string, string> = {
   'course.deleted': 'حذف دوره',
   'benefit_transfer.all': 'انتقال کامل مزایا',
   'benefit_transfer.share': 'انتقال سهم درگاه',
+  'gateway.submitted': 'ثبت درگاه برای بازرسی',
+  'gateway.inspected': 'بازرسی مدارک درگاه',
+  'gateway.shaparak_confirmed': 'تایید شاپرک / فاینوپال',
+  'gateway.rejected': 'رد درگاه',
 }
 
 export const entityLabel: Record<string, string> = {
@@ -273,6 +296,7 @@ export const entityLabel: Record<string, string> = {
   CommissionRule: 'قاعده پورسانت',
   WithdrawalRequest: 'برداشت',
   PromotionRequest: 'ارتقاء',
+  GatewaySale: 'فروش درگاه',
 }
 
 export function entityName(type?: string | null) {

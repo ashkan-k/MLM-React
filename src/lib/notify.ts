@@ -8,6 +8,10 @@ const typePath: Record<string, string> = {
   'shared_link.approval': 'referrals',
   'withdrawal.pending': 'withdrawals',
   'training.progress': 'training',
+  'gateway.submitted': 'gateways',
+  'gateway.inspected': 'gateways',
+  'gateway.shaparak_confirmed': 'gateways',
+  'gateway.rejected': 'gateways',
 }
 
 const titlesFa: Record<string, string> = {
@@ -17,6 +21,10 @@ const titlesFa: Record<string, string> = {
   'shared_link.approval': 'تایید لینک اشتراکی',
   'withdrawal.pending': 'برداشت در انتظار تایید',
   'training.progress': 'پیشرفت آموزش شبکه',
+  'gateway.submitted': 'درگاه جدید برای بازرسی',
+  'gateway.inspected': 'درگاه آماده تایید شاپرک',
+  'gateway.shaparak_confirmed': 'درگاه تایید شد',
+  'gateway.rejected': 'درگاه رد شد',
   'system.info': 'راهنمای پنل',
 }
 
@@ -27,6 +35,10 @@ const titlesEn: Record<string, string> = {
   'shared_link.approval': 'Shared-link approval',
   'withdrawal.pending': 'Withdrawal awaiting review',
   'training.progress': 'Network training progress',
+  'gateway.submitted': 'New gateway awaiting inspection',
+  'gateway.inspected': 'Gateway ready for Shaparak',
+  'gateway.shaparak_confirmed': 'Gateway confirmed',
+  'gateway.rejected': 'Gateway rejected',
   'system.info': 'Panel guide',
 }
 

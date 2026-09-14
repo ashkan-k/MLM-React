@@ -78,6 +78,7 @@ export default function App() {
           <Route path="users" element={<AdminUsers />} />
           <Route path="network" element={<AdminNetwork />} />
           <Route path="permissions" element={<AdminPermissions />} />
+          <Route path="gateways" element={<GatewaysPage />} />
           <Route path="rules" element={<AdminRules />} />
           <Route path="courses" element={<AdminCourses />} />
           <Route path="settings" element={<AdminSettings />} />

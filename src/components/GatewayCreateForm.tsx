@@ -19,7 +19,7 @@ type Docs = {
 }
 
 type GeoState = { id: number; title: string; slug?: string }
-type GeoCity = { id: number; state_id: number; title: string; sub_title?: string | null }
+type GeoCity = { id: number; state_id: number; title: string; sub_title?: string | null; slug?: string | null }
 
 const emptyForm = {
   ownership: 'solo',
@@ -104,12 +104,24 @@ export function GatewayCreateForm({ onDone }: { onDone: () => void }) {
   const cities: GeoCity[] = geo?.cities ?? []
   const selectedState = states.find((s) => s.title === form.province)
   const cityOptions = useMemo(
-    () => cities.filter((c) => !selectedState || c.state_id === selectedState.id).map((c) => ({ value: c.title, label: c.sub_title && c.sub_title !== c.title ? `${c.title} (${c.sub_title})` : c.title })),
+    () => cities.filter((c) => !selectedState || c.state_id === selectedState.id).map((c) => ({
+      value: c.title,
+      label: c.sub_title && c.sub_title !== c.title ? `${c.title} (${c.sub_title})` : c.title,
+      keywords: `${c.slug ?? ''} ${c.sub_title ?? ''}`,
+    })),
     [cities, selectedState],
   )
   const birthPlaceOptions = useMemo(
-    () => Array.from(new Map(cities.map((c) => [c.title, { value: c.title, label: c.title }])).values()),
-    [cities],
+    () => cities.map((c) => {
+      const state = states.find((s) => s.id === c.state_id)
+      const label = state ? `${c.title} — ${state.title}` : c.title
+      return {
+        value: label,
+        label,
+        keywords: `${c.slug ?? ''} ${c.sub_title ?? ''} ${state?.title ?? ''} ${state?.slug ?? ''} ${c.title}`,
+      }
+    }),
+    [cities, states],
   )
 
   const submit = async () => {
@@ -268,7 +280,7 @@ export function GatewayCreateForm({ onDone }: { onDone: () => void }) {
             value={form.province}
             onChange={(v) => setForm((prev) => ({ ...prev, province: v, city: '' }))}
             placeholder="انتخاب استان"
-            options={states.map((s) => ({ value: s.title, label: s.title }))}
+            options={states.map((s) => ({ value: s.title, label: s.title, keywords: s.slug ?? '' }))}
           />
         </label>
         <label className="field">شهر

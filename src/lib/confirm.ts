@@ -43,7 +43,8 @@ export async function promptAction({
   cancelText = translate('cancel'),
   placeholder = translate('reason'),
   danger = true,
-}: ConfirmOptions & { placeholder?: string }) {
+  required = true,
+}: ConfirmOptions & { placeholder?: string; required?: boolean }) {
   const result = await Swal.fire({
     title,
     text,
@@ -59,7 +60,10 @@ export async function promptAction({
     confirmButtonColor: danger ? '#ef4444' : '#2563eb',
     cancelButtonColor: '#64748b',
     customClass: { popup: 'swal-finopal' },
-    inputValidator: (value) => value.trim() ? undefined : translate('reasonRequired'),
+    inputValidator: (value) => {
+      if (!required) return undefined
+      return value.trim() ? undefined : translate('reasonRequired')
+    },
   })
   return result.isConfirmed ? String(result.value ?? '').trim() : null
 }

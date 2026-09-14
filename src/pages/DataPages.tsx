@@ -115,15 +115,69 @@ function TeamTable({
   )
 }
 
-function GatewayTable({ rows, isLoading }: { rows: Array<{
+function gatewayTone(status: string): 'ok' | 'warn' | 'info' | 'muted' | 'danger' {
+  if (status === 'successful') return 'ok'
+  if (status === 'pending_inspection') return 'warn'
+  if (status === 'pending_shaparak') return 'info'
+  if (status === 'rejected') return 'danger'
+  return 'muted'
+}
+
+type GatewaySaleRow = {
   id: number
   amount: string
   status: string
   sold_at: string
+  shaparak_reference?: string | null
+  rejection_note?: string | null
   gateway?: { name: string; external_id: string }
-  customer?: { name: string }
+  customer?: {
+    name: string
+    mobile?: string
+    national_id?: string
+    sheba?: string
+    email?: string
+    father_name?: string
+    birth_date?: string
+    birth_certificate_no?: string
+    birth_place?: string
+    gender?: string
+    person_type?: string
+    province?: string
+    city?: string
+    address?: string
+    postal_code?: string
+    bank_name?: string
+    account_number?: string
+    account_holder?: string
+    shop_name?: string
+    shop_category?: string
+    website?: string
+    company_name?: string
+    document_urls?: Record<string, string | null>
+  }
   representatives?: Array<{ user?: { name: string }; share_percent: string }>
-}>; isLoading: boolean }) {
+  reviews?: Array<{ id: number; stage: string; decision: string; note?: string | null; reference?: string | null; created_at: string; actor?: { name: string } | null }>
+  commissions?: Array<{ id: number; commission_percent: string; commission_amount: string; role?: { name: string } }>
+}
+
+function GatewayTable({
+  rows,
+  isLoading,
+  canInspect,
+  canShaparak,
+  onOpen,
+  onInspect,
+  onShaparak,
+}: {
+  rows: GatewaySaleRow[]
+  isLoading: boolean
+  canInspect: boolean
+  canShaparak: boolean
+  onOpen: (row: GatewaySaleRow) => void
+  onInspect: (row: GatewaySaleRow, decision: 'approved' | 'rejected') => void
+  onShaparak: (row: GatewaySaleRow, decision: 'approved' | 'rejected') => void
+}) {
   const { t } = useApp()
   return (
     <div className="card overflow-auto" data-testid="gateway-table">
@@ -136,6 +190,7 @@ function GatewayTable({ rows, isLoading }: { rows: Array<{
             <th>{t('reps')}</th>
             <th>{t('status')}</th>
             <th>{t('soldAt')}</th>
+            <th>{t('details')}</th>
           </tr>
         </thead>
         <tbody>
@@ -148,8 +203,25 @@ function GatewayTable({ rows, isLoading }: { rows: Array<{
               <td>{row.customer?.name ?? '—'}</td>
               <td>{money(row.amount)}</td>
               <td>{row.representatives?.map((r) => `${r.user?.name} (${percent(r.share_percent)})`).join('، ') || '—'}</td>
-              <td><Badge tone="ok">{label(row.status)}</Badge></td>
+              <td><Badge tone={gatewayTone(row.status)}>{label(row.status)}</Badge></td>
               <td><DateTimeText value={row.sold_at} /></td>
+              <td>
+                <RowActions>
+                  <ViewAction onClick={() => onOpen(row)} label={t('gwReview')} />
+                  {canInspect && row.status === 'pending_inspection' && (
+                    <>
+                      <ApproveAction label={t('gwInspect')} onClick={() => onInspect(row, 'approved')} />
+                      <IconAction label={t('gwRejectInspect')} tone="delete" icon={X} onClick={() => onInspect(row, 'rejected')} />
+                    </>
+                  )}
+                  {canShaparak && row.status === 'pending_shaparak' && (
+                    <>
+                      <ApproveAction label={t('gwShaparak')} onClick={() => onShaparak(row, 'approved')} />
+                      <IconAction label={t('gwRejectShaparak')} tone="delete" icon={X} onClick={() => onShaparak(row, 'rejected')} />
+                    </>
+                  )}
+                </RowActions>
+              </td>
             </tr>
           ))}
         </tbody>
@@ -159,12 +231,229 @@ function GatewayTable({ rows, isLoading }: { rows: Array<{
   )
 }
 
+function reviewTone(stage: string, decision: string): 'ok' | 'warn' | 'info' | 'muted' | 'danger' {
+  if (decision === 'rejected' || stage === 'rejected') return 'danger'
+  if (stage === 'commission_posted' || stage === 'shaparak_confirmed' || decision === 'approved') return 'ok'
+  if (stage === 'inspected') return 'warn'
+  return 'info'
+}
+
+function KycItem({ label, value }: { label: string; value?: string | null }) {
+  if (!value) return null
+  return (
+    <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40 p-3">
+      <div className="text-xs text-surface-500 mb-1">{label}</div>
+      <div className="font-medium text-surface-800 dark:text-surface-100 break-all">{value}</div>
+    </div>
+  )
+}
+
+function GatewayReviewModal({
+  sale,
+  onClose,
+  canInspect,
+  canShaparak,
+  onInspect,
+  onShaparak,
+}: {
+  sale: GatewaySaleRow
+  onClose: () => void
+  canInspect: boolean
+  canShaparak: boolean
+  onInspect: (row: GatewaySaleRow, decision: 'approved' | 'rejected') => void
+  onShaparak: (row: GatewaySaleRow, decision: 'approved' | 'rejected') => void
+}) {
+  const { t } = useApp()
+  const c = sale.customer
+  const docLabels: Record<string, string> = {
+    national_id_front: t('docNationalIdFront'),
+    national_id_back: t('docNationalIdBack'),
+    birth_certificate: t('docBirthCertificate'),
+    selfie: t('docSelfie'),
+    gazette: t('docGazette'),
+    license: t('docLicense'),
+  }
+  const docs = Object.entries(c?.document_urls ?? {}).filter(([, url]) => url)
+  const gender = c?.gender === 'male' ? t('kycMale') : c?.gender === 'female' ? t('kycFemale') : c?.gender
+  const personType = c?.person_type === 'legal' ? t('kycLegal') : c?.person_type === 'individual' ? t('kycIndividual') : c?.person_type
+  const reviews = sale.reviews ?? []
+  return (
+    <Modal wide open title={sale.gateway?.name ?? t('gateway')} subtitle={t('gwReview')} onClose={onClose}>
+      <div className="space-y-5" data-testid="gateway-review">
+        <div className="flex flex-wrap gap-2 items-center">
+          <Badge tone={gatewayTone(sale.status)}>{label(sale.status)}</Badge>
+          {sale.shaparak_reference && <Badge tone="info">{t('gwRef')}: {sale.shaparak_reference}</Badge>}
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+          <KycItem label={t('kycCustomer')} value={c?.name} />
+          <KycItem label={t('kycPersonType')} value={personType} />
+          <KycItem label={t('kycNationalId')} value={c?.national_id} />
+          <KycItem label={t('kycMobile')} value={c?.mobile} />
+          <KycItem label={t('kycEmail')} value={c?.email} />
+          <KycItem label={t('kycFather')} value={c?.father_name} />
+          <KycItem label={t('kycBirthDate')} value={c?.birth_date} />
+          <KycItem label={t('kycBirthCert')} value={c?.birth_certificate_no} />
+          <KycItem label={t('kycBirthPlace')} value={c?.birth_place} />
+          <KycItem label={t('kycGender')} value={gender} />
+          <KycItem label={t('kycProvince')} value={c?.province} />
+          <KycItem label={t('kycCity')} value={c?.city} />
+          <KycItem label={t('kycAddress')} value={c?.address} />
+          <KycItem label={t('kycPostal')} value={c?.postal_code} />
+          <KycItem label={t('kycShop')} value={c?.shop_name} />
+          <KycItem label={t('kycCategory')} value={c?.shop_category} />
+          <KycItem label={t('kycWebsite')} value={c?.website} />
+          <KycItem label={t('kycCompany')} value={c?.company_name} />
+          <KycItem label={t('kycSheba')} value={c?.sheba} />
+          <KycItem label={t('kycBank')} value={c?.bank_name} />
+          <KycItem label={t('kycAccount')} value={c?.account_number} />
+          <KycItem label={t('kycHolder')} value={c?.account_holder} />
+        </div>
+        {docs.length > 0 && (
+          <div>
+            <div className="font-semibold mb-2">{t('gwDocs')}</div>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {docs.map(([key, url]) => {
+                const caption = docLabels[key] ?? key
+                return (
+                  <a key={key} href={url ?? '#'} target="_blank" rel="noreferrer" className="block rounded-xl overflow-hidden border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
+                    <div className="px-3 py-2 text-sm font-semibold text-surface-800 dark:text-surface-100 border-b border-surface-200 dark:border-surface-700">{caption}</div>
+                    <img src={url ?? ''} alt={caption} className="w-full h-36 object-cover bg-surface-100 dark:bg-surface-800" />
+                  </a>
+                )
+              })}
+            </div>
+          </div>
+        )}
+        <div>
+          <div className="font-semibold mb-3">{t('gwReview')}</div>
+          <ol className="space-y-0">
+            {reviews.map((review, index) => (
+              <li key={review.id} className="flex gap-3">
+                <div className="flex flex-col items-center">
+                  <span className={`w-8 h-8 shrink-0 rounded-full text-xs font-bold flex items-center justify-center ${
+                    review.decision === 'rejected' || review.stage === 'rejected'
+                      ? 'bg-red-500 text-white'
+                      : review.decision === 'approved' || review.stage === 'commission_posted' || review.stage === 'shaparak_confirmed'
+                        ? 'bg-emerald-500 text-white'
+                        : 'bg-sky-500 text-white'
+                  }`}>{index + 1}</span>
+                  {index < reviews.length - 1 && <span className="w-px flex-1 min-h-[1.25rem] bg-surface-200 dark:bg-surface-700 my-1" />}
+                </div>
+                <div className="flex-1 pb-4">
+                  <div className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone={reviewTone(review.stage, review.decision)}>{label(review.stage)}</Badge>
+                      <Badge tone={review.decision === 'rejected' ? 'danger' : review.decision === 'approved' ? 'ok' : 'info'}>{label(review.decision)}</Badge>
+                    </div>
+                    <div className="flex flex-wrap justify-between gap-2 text-sm text-surface-500">
+                      <span>{t('gwPostedBy')}: {review.actor?.name ?? t('gwSystemActor')}</span>
+                      <DateTimeText value={review.created_at} />
+                    </div>
+                    {review.note && <div className="text-sm text-surface-700 dark:text-surface-200">{review.note}</div>}
+                    {review.reference && <div className="text-xs text-surface-400">{t('gwRef')}: {review.reference}</div>}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+        {(sale.commissions?.length ?? 0) > 0 ? (
+          <div>
+            <div className="font-semibold mb-2">{t('gwCommissionsPosted')}</div>
+            <div className="grid sm:grid-cols-2 gap-2 text-sm">
+              {(sale.commissions ?? []).map((row) => (
+                <div key={row.id} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 flex justify-between gap-2">
+                  <span>{row.role?.name}</span>
+                  <span>{percent(row.commission_percent)} — {money(row.commission_amount)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-amber-700 dark:text-amber-400 m-0">{t('gwNoCommissionYet')}</p>
+        )}
+        {sale.rejection_note && <p className="text-sm text-red-600 m-0">{sale.rejection_note}</p>}
+        <div className="flex flex-wrap gap-2">
+          {canInspect && sale.status === 'pending_inspection' && (
+            <>
+              <button type="button" className="btn btn-primary" onClick={() => onInspect(sale, 'approved')}>{t('gwInspect')}</button>
+              <button type="button" className="btn btn-danger" onClick={() => onInspect(sale, 'rejected')}>{t('gwRejectInspect')}</button>
+            </>
+          )}
+          {canShaparak && sale.status === 'pending_shaparak' && (
+            <>
+              <button type="button" className="btn btn-primary" onClick={() => onShaparak(sale, 'approved')}>{t('gwShaparak')}</button>
+              <button type="button" className="btn btn-danger" onClick={() => onShaparak(sale, 'rejected')}>{t('gwRejectShaparak')}</button>
+            </>
+          )}
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 export function GatewaysPage() {
   const { t } = useApp()
+  const qc = useQueryClient()
+  const me = useAuth((s) => s.user)
   const { data, isLoading } = useQuery({ queryKey: ['sales'], queryFn: async () => (await api.get('/gateway-sales')).data })
   const [openCreate, setOpenCreate] = useState(false)
-  const rows = data?.data ?? []
-  const total = rows.reduce((sum: number, row: { amount: string }) => sum + Number(row.amount ?? 0), 0)
+  const [openSale, setOpenSale] = useState<GatewaySaleRow | null>(null)
+  const rows: GatewaySaleRow[] = data?.data ?? []
+  const total = rows.reduce((sum, row) => sum + Number(row.amount ?? 0), 0)
+  const inspectCount = rows.filter((r) => r.status === 'pending_inspection').length
+  const shaparakCount = rows.filter((r) => r.status === 'pending_shaparak').length
+  const canInspect = Boolean(me?.is_superuser || me?.active_role?.slug === 'senior_manager')
+  const canShaparak = canInspect
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['sales'] })
+    qc.invalidateQueries({ queryKey: ['commissions'] })
+    qc.invalidateQueries({ queryKey: ['wallets'] })
+    qc.invalidateQueries({ queryKey: ['notifications'] })
+  }
+
+  const inspect = async (row: GatewaySaleRow, decision: 'approved' | 'rejected') => {
+    let note = ''
+    if (decision === 'rejected') {
+      const typed = await promptAction({ title: t('gwRejectInspect'), text: t('promoRejectText'), confirmText: t('rejectYes'), placeholder: t('promoRejectReason') })
+      if (!typed) return
+      note = typed
+    } else if (!await confirmAction({ title: t('gwInspect'), text: t('gwInspectConfirm'), danger: false, confirmText: t('confirmYes') })) {
+      return
+    }
+    try {
+      const { data: updated } = await api.post(`/gateway-sales/${row.id}/inspect`, { decision, note })
+      toast.success(decision === 'approved' ? t('gwInspectOk') : t('reject'))
+      setOpenSale(updated)
+      refresh()
+    } catch {
+      toast.error(t('blockFail'))
+    }
+  }
+
+  const shaparak = async (row: GatewaySaleRow, decision: 'approved' | 'rejected') => {
+    let note = ''
+    let reference: string | undefined
+    if (decision === 'rejected') {
+      const typed = await promptAction({ title: t('gwRejectShaparak'), text: t('promoRejectText'), confirmText: t('rejectYes'), placeholder: t('promoRejectReason') })
+      if (!typed) return
+      note = typed
+    } else {
+      if (!await confirmAction({ title: t('gwShaparak'), text: t('gwShaparakConfirm'), danger: false, confirmText: t('confirmYes') })) return
+      const ref = await promptAction({ title: t('gwRef'), text: t('gwShaparakRef'), confirmText: t('confirmYes'), placeholder: t('gwShaparakRef'), danger: false, required: false })
+      if (ref === null) return
+      reference = ref || undefined
+    }
+    try {
+      const { data: updated } = await api.post(`/gateway-sales/${row.id}/shaparak`, { decision, note, reference })
+      toast.success(decision === 'approved' ? t('gwShaparakOk') : t('reject'))
+      setOpenSale(updated)
+      refresh()
+    } catch {
+      toast.error(t('blockFail'))
+    }
+  }
 
   return (
     <div className="space-y-4">
@@ -172,11 +461,31 @@ export function GatewaysPage() {
       <Modal wide open={openCreate} title={t('gwNew')} subtitle={t('gwSub')} onClose={() => setOpenCreate(false)}>
         <GatewayCreateForm onDone={() => setOpenCreate(false)} />
       </Modal>
-      <div className="grid sm:grid-cols-2 gap-4">
+      {openSale && (
+        <GatewayReviewModal
+          sale={openSale}
+          onClose={() => setOpenSale(null)}
+          canInspect={canInspect}
+          canShaparak={canShaparak}
+          onInspect={inspect}
+          onShaparak={shaparak}
+        />
+      )}
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title={t('gwCount')} value={rows.length.toLocaleString(localeTag())} icon={CreditCard} color="from-blue-500 to-blue-600" />
         <StatCard title={moneyHeader(t('sumMoney'))} value={money(total)} icon={TrendingUp} color="from-emerald-500 to-emerald-600" />
+        <StatCard title={t('gwQueueInspect')} value={inspectCount.toLocaleString(localeTag())} icon={CreditCard} color="from-amber-500 to-amber-600" />
+        <StatCard title={t('gwQueueShaparak')} value={shaparakCount.toLocaleString(localeTag())} icon={CreditCard} color="from-sky-500 to-sky-600" />
       </div>
-      <GatewayTable rows={rows} isLoading={isLoading} />
+      <GatewayTable
+        rows={rows}
+        isLoading={isLoading}
+        canInspect={canInspect}
+        canShaparak={canShaparak}
+        onOpen={setOpenSale}
+        onInspect={inspect}
+        onShaparak={shaparak}
+      />
     </div>
   )
 }

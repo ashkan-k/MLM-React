@@ -92,6 +92,7 @@ const adminGroups: NavGroup[] = [
       { to: '/superuser/users', labelKey: 'navUsersPage', icon: Users },
       { to: '/superuser/network', labelKey: 'navNetwork', icon: GitBranch },
       { to: '/superuser/permissions', labelKey: 'navPermissions', icon: Shield },
+      { to: '/superuser/gateways', labelKey: 'navGateways', icon: CreditCard },
     ],
   },
   {
@@ -132,6 +133,7 @@ const titleKeys: Record<string, string> = {
   '/superuser/users': 'navUsersPage',
   '/superuser/network': 'navNetwork',
   '/superuser/permissions': 'navPermissions',
+  '/superuser/gateways': 'navGateways',
   '/superuser/rules': 'navRules',
   '/superuser/courses': 'navCourses',
   '/superuser/chat': 'navChat',

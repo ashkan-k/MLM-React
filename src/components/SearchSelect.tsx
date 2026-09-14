@@ -1,7 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '../contexts/AppContext'
 
-export type SearchOption = { value: string | number; label: string }
+export type SearchOption = { value: string | number; label: string; keywords?: string }
+
+function fold(value: string) {
+  return value
+    .normalize('NFKC')
+    .replace(/ي/g, 'ی')
+    .replace(/ى/g, 'ی')
+    .replace(/ك/g, 'ک')
+    .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+    .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+}
 
 export function SearchSelect({
   value,
@@ -26,7 +39,12 @@ export function SearchSelect({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return options
-    return options.filter((o) => o.label.toLowerCase().includes(q) || String(o.value).includes(q))
+    const needle = fold(q)
+    return options.filter((o) =>
+      fold(o.label).includes(needle)
+      || fold(String(o.value)).includes(needle)
+      || fold(o.keywords ?? '').includes(needle)
+    )
   }, [options, query])
 
   useEffect(() => {
