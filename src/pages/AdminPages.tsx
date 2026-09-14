@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ExportBar } from '../components/ExportBar'
 import { JalaliDatePicker } from '../components/JalaliDatePicker'
-import { BulkBar, BulkButton, CheckBox, DeleteAction, EditAction, RowActions, TablePager, ViewAction, exportSelected, useSelection } from '../components/table'
+import { BulkBar, BulkButton, CheckBox, DeleteAction, EditAction, BlockAction, UnblockAction, RowActions, TablePager, ViewAction, exportSelected, useSelection } from '../components/table'
 import { Badge, DateTimeText, Empty, FieldHint, Modal, PageHeader, StatCard } from '../components/ui'
 import { api } from '../lib/api'
 import { confirmAction } from '../lib/confirm'
@@ -15,13 +15,33 @@ import { useAuth } from '../stores/auth'
 
 type RoleRow = { id: number; name: string; slug: string; is_organizational?: boolean; permissions?: Array<{ id: number; pivot?: { allowed?: boolean | number | string } }> }
 type UserRow = { id: number; name: string; mobile: string; email?: string | null; avatar_url?: string | null; is_active: boolean; created_at?: string; roles?: Array<{ name: string; slug: string }> }
-type CourseLevel = { id?: number; title: string; sort_order: number; passing_score: number }
+type CourseLevel = {
+  id?: number
+  title: string
+  sort_order: number
+  passing_score: number
+  content_type?: string
+  content_body?: string
+  content_url?: string
+  attachment_name?: string
+  attachment_url?: string
+  file?: File | null
+}
 type CourseRow = { id: number; title: string; description?: string; is_required_for_promotion: boolean; is_active?: boolean; levels?: CourseLevel[]; roles?: Array<{ id: number; name: string }> }
 type SettingField = { key: string; label: string; hint?: string; type: string }
 type SettingSchema = Record<string, { label: string; hint?: string; fields: SettingField[] }>
+type PermRow = { id: number; slug: string; name: string }
 
 const emptyUser = { name: '', mobile: '', email: '', password: 'Password123!', is_active: true, role_slugs: ['representative'] }
-const emptyCourse = { title: '', description: '', is_required_for_promotion: true, role_ids: [] as number[], levels: [{ title: 'سطح ۱', sort_order: 1, passing_score: 70 }] }
+const emptyLevel = (): CourseLevel => ({ title: 'سطح ۱', sort_order: 1, passing_score: 70, content_type: 'text', content_body: '', content_url: '', file: null })
+const emptyCourse = { title: '', description: '', is_required_for_promotion: true, role_ids: [] as number[], levels: [emptyLevel()] }
+const CONTENT_TYPES = [
+  { value: 'text', label: 'متن' },
+  { value: 'html', label: 'متن غنی' },
+  { value: 'video', label: 'ویدیو' },
+  { value: 'pdf', label: 'PDF' },
+  { value: 'file', label: 'فایل' },
+]
 
 function isGranted(role: RoleRow, permissionId: number) {
   return Boolean(role.permissions?.some((x) => x.id === permissionId && (x.pivot?.allowed === true || x.pivot?.allowed === 1 || x.pivot?.allowed === '1')))
@@ -149,6 +169,33 @@ export function AdminUsers() {
     qc.invalidateQueries({ queryKey: ['admin-users'] })
   }
 
+  const toggleBlock = async (user: UserRow) => {
+    if (user.id === me?.id) {
+      toast.error('حساب فعلی را نمی‌توان مسدود کرد.')
+      return
+    }
+    if (user.is_active) {
+      if (!await confirmAction({ title: t('blockUser'), text: t('blockConfirm'), confirmText: t('blockUser') })) return
+      try {
+        await api.post(`/users/${user.id}/block`)
+        toast.success(t('blockOk'))
+      } catch {
+        toast.error(t('blockFail'))
+        return
+      }
+    } else {
+      if (!await confirmAction({ title: t('unblockUser'), text: t('unblockConfirm'), confirmText: t('unblockUser'), danger: false })) return
+      try {
+        await api.post(`/users/${user.id}/unblock`)
+        toast.success(t('unblockOk'))
+      } catch {
+        toast.error(t('blockFail'))
+        return
+      }
+    }
+    qc.invalidateQueries({ queryKey: ['admin-users'] })
+  }
+
   const bulk = async (action: 'delete' | 'activate' | 'deactivate') => {
     const ids = action === 'activate'
       ? selection.selected
@@ -248,12 +295,15 @@ export function AdminUsers() {
                   </td>
                   <td>{u.mobile}</td>
                   <td>{u.roles?.map((r) => r.name).join('، ')}</td>
-                  <td><Badge tone={u.is_active ? 'ok' : 'danger'}>{u.is_active ? 'فعال' : 'غیرفعال'}</Badge></td>
+                  <td><Badge tone={u.is_active ? 'ok' : 'danger'}>{u.is_active ? t('adminActive') : t('blocked')}</Badge></td>
                   <td><DateTimeText value={u.created_at} /></td>
                   <td>
                     <RowActions>
                       <ViewAction onClick={() => setDetail(u)} />
                       <EditAction onClick={() => openEdit(u)} />
+                      {u.is_active
+                        ? <BlockAction label={t('blockUser')} onClick={() => toggleBlock(u)} />
+                        : <UnblockAction label={t('unblockUser')} onClick={() => toggleBlock(u)} />}
                       <DeleteAction onClick={() => remove(u)} />
                     </RowActions>
                   </td>
@@ -318,7 +368,7 @@ export function AdminUsers() {
               <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xl font-bold mx-auto mb-3">
                 {detail.avatar_url ? <img src={detail.avatar_url} alt="" className="w-full h-full object-cover" /> : detail.name.charAt(0)}
               </div>
-              <Badge tone={detail.is_active ? 'ok' : 'danger'}>{detail.is_active ? 'فعال' : 'غیرفعال'}</Badge>
+              <Badge tone={detail.is_active ? 'ok' : 'danger'}>{detail.is_active ? t('adminActive') : t('blocked')}</Badge>
             </div>
             <div className="flex items-center gap-3 text-sm"><Mail className="w-4 h-4 text-surface-400" /><span>{detail.email || '—'}</span></div>
             <div className="flex items-center gap-3 text-sm"><Phone className="w-4 h-4 text-surface-400" /><span>{detail.mobile}</span></div>
@@ -334,6 +384,8 @@ export function AdminUsers() {
 export function AdminPermissions() {
   const { t } = useApp()
   const qc = useQueryClient()
+  const [tab, setTab] = useState<'all' | 'pages' | 'ops' | 'role'>('all')
+  const [roleId, setRoleId] = useState<number | null>(null)
   const { data: roles } = useQuery({ queryKey: ['roles'], queryFn: async () => (await api.get('/superuser/roles')).data })
   const { data: perms } = useQuery({ queryKey: ['perms'], queryFn: async () => (await api.get('/superuser/permissions')).data })
   const assign = useMutation({
@@ -369,42 +421,111 @@ export function AdminPermissions() {
   })
 
   const orgRoles = (roles ?? []).filter((r: RoleRow) => r.slug !== 'superuser')
+  const allPerms: PermRow[] = perms ?? []
+  const pagePerms = allPerms.filter((p) => p.slug.startsWith('page.'))
+  const actionPerms = allPerms.filter((p) => !p.slug.startsWith('page.'))
+  const selectedRole = orgRoles.find((r: RoleRow) => r.id === (roleId ?? orgRoles[0]?.id)) ?? orgRoles[0]
+
+  const renderMatrix = (items: PermRow[]) => (
+    <div className="overflow-auto">
+      <table className="table perm-table">
+        <thead>
+          <tr>
+            <th className="min-w-56 sticky start-0 bg-surface-50 dark:bg-surface-900 z-10">دسترسی</th>
+            {orgRoles.map((r: RoleRow) => <th key={r.id} className="text-center whitespace-nowrap">{r.name}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((p) => (
+            <tr key={p.id} data-testid={`perm-${p.slug}`}>
+              <td className="sticky start-0 bg-white dark:bg-surface-800 z-10">
+                <div className="font-medium text-surface-800 dark:text-surface-100">{permissionLabel[p.slug] ?? p.name}</div>
+                <div className="text-xs text-surface-400">{p.slug}</div>
+              </td>
+              {orgRoles.map((r: RoleRow) => {
+                const allowed = isGranted(r, p.id)
+                return (
+                  <td key={`${r.id}-${p.id}`} className="text-center">
+                    <input
+                      type="checkbox"
+                      data-testid={`perm-toggle-${r.slug}-${p.slug}`}
+                      checked={allowed}
+                      onChange={(e) => assign.mutate({ role_id: r.id, permission_id: p.id, allowed: e.target.checked })}
+                    />
+                  </td>
+                )
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
 
   return (
     <div className="space-y-4">
       <PageHeader title={t('adminPermTitle')} subtitle={t('adminPermSub')} />
-      <div className="card overflow-auto p-2" data-testid="permissions-admin">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>دسترسی</th>
-              {orgRoles.map((r: RoleRow) => <th key={r.id}>{r.name}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {(perms ?? []).map((p: { id: number; slug: string; name: string }) => (
-              <tr key={p.id} data-testid={`perm-${p.slug}`}>
-                <td>
-                  <div className="font-medium">{permissionLabel[p.slug] ?? p.name}</div>
-                  <div className="text-xs text-surface-400">{p.slug}</div>
-                </td>
-                {orgRoles.map((r: RoleRow) => {
-                  const allowed = isGranted(r, p.id)
-                  return (
-                    <td key={`${r.id}-${p.id}`}>
+      <div className="flex flex-wrap gap-2">
+        {([
+          ['all', 'همه دسترسی‌ها'],
+          ['pages', t('adminPermPages')],
+          ['ops', t('adminPermOps')],
+          ['role', t('adminPermByRole')],
+        ] as const).map(([id, label]) => (
+          <button key={id} type="button" className={`btn ${tab === id ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setTab(id)}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="card p-2" data-testid="permissions-admin">
+        {tab === 'all' && (
+          <div className="grid gap-6">
+            <div>
+              <div className="px-3 pt-2 font-bold text-surface-800 dark:text-surface-100">{t('adminPermPages')}</div>
+              {renderMatrix(pagePerms)}
+            </div>
+            <div>
+              <div className="px-3 pt-2 font-bold text-surface-800 dark:text-surface-100">{t('adminPermOps')}</div>
+              {renderMatrix(actionPerms)}
+            </div>
+          </div>
+        )}
+        {tab === 'pages' && renderMatrix(pagePerms)}
+        {tab === 'ops' && renderMatrix(actionPerms)}
+        {tab === 'role' && selectedRole && (
+          <div className="p-3 grid gap-4">
+            <p className="text-sm text-surface-500 m-0">{t('adminPermPickRole')}</p>
+            <div className="flex flex-wrap gap-2">
+              {orgRoles.map((r: RoleRow) => (
+                <button key={r.id} type="button" className={`btn ${selectedRole.id === r.id ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setRoleId(r.id)}>
+                  {r.name}
+                </button>
+              ))}
+            </div>
+            {[{ title: t('adminPermPages'), items: pagePerms }, { title: t('adminPermOps'), items: actionPerms }].map((group) => (
+              <div key={group.title} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
+                <div className="font-bold mb-3 text-surface-800 dark:text-surface-100">{group.title} · {selectedRole.name}</div>
+                <div className="grid sm:grid-cols-2 gap-2">
+                  {group.items.map((p) => (
+                    <label key={p.id} className="flex items-start gap-2 rounded-lg p-2 hover:bg-surface-50 dark:hover:bg-surface-900">
                       <input
                         type="checkbox"
-                        data-testid={`perm-toggle-${r.slug}-${p.slug}`}
-                        checked={allowed}
-                        onChange={(e) => assign.mutate({ role_id: r.id, permission_id: p.id, allowed: e.target.checked })}
+                        className="mt-1"
+                        data-testid={`perm-toggle-${selectedRole.slug}-${p.slug}`}
+                        checked={isGranted(selectedRole, p.id)}
+                        onChange={(e) => assign.mutate({ role_id: selectedRole.id, permission_id: p.id, allowed: e.target.checked })}
                       />
-                    </td>
-                  )
-                })}
-              </tr>
+                      <span>
+                        <span className="block font-medium">{permissionLabel[p.slug] ?? p.name}</span>
+                        <span className="block text-xs text-surface-400">{p.slug}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -464,15 +585,19 @@ export function AdminRules() {
 export function AdminCourses() {
   const { t } = useApp()
   const qc = useQueryClient()
-  const { data: roles } = useQuery({ queryKey: ['roles'], queryFn: async () => (await api.get('/superuser/roles')).data })
-  const { data } = useQuery({ queryKey: ['admin-courses'], queryFn: async () => (await api.get('/superuser/courses')).data })
+  const { data: roles } = useQuery({ queryKey: ['manage-roles'], queryFn: async () => (await api.get('/manage/roles')).data })
+  const { data } = useQuery({ queryKey: ['admin-courses'], queryFn: async () => (await api.get('/manage/courses')).data })
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<CourseRow | null>(null)
   const [form, setForm] = useState(emptyCourse)
 
+  const setLevel = (index: number, patch: Partial<CourseLevel>) => {
+    setForm((prev) => ({ ...prev, levels: prev.levels.map((level, i) => i === index ? { ...level, ...patch } : level) }))
+  }
+
   const openCreate = () => {
     setEditing(null)
-    setForm(emptyCourse)
+    setForm({ ...emptyCourse, levels: [emptyLevel()] })
     setOpen(true)
   }
   const openEdit = (course: CourseRow) => {
@@ -482,27 +607,57 @@ export function AdminCourses() {
       description: course.description ?? '',
       is_required_for_promotion: course.is_required_for_promotion,
       role_ids: course.roles?.map((r) => r.id) ?? [],
-      levels: (course.levels ?? []).map((l, i) => ({ id: l.id, title: l.title, sort_order: l.sort_order ?? i + 1, passing_score: Number(l.passing_score) })),
+      levels: (course.levels ?? []).map((l, i) => ({
+        id: l.id,
+        title: l.title,
+        sort_order: l.sort_order ?? i + 1,
+        passing_score: Number(l.passing_score),
+        content_type: l.content_type ?? 'text',
+        content_body: l.content_body ?? '',
+        content_url: l.content_url ?? '',
+        attachment_name: l.attachment_name,
+        attachment_url: l.attachment_url,
+        file: null,
+      })),
     })
     setOpen(true)
   }
 
   const save = async () => {
-    const payload = { ...form, levels: form.levels.map((l, i) => ({ ...l, sort_order: i + 1 })) }
-    if (editing) {
-      await api.put(`/superuser/courses/${editing.id}`, payload)
-      toast.success('دوره ویرایش شد')
-    } else {
-      await api.post('/superuser/courses', payload)
-      toast.success('دوره ساخته شد')
+    const payload = {
+      title: form.title,
+      description: form.description,
+      is_required_for_promotion: form.is_required_for_promotion,
+      role_ids: form.role_ids,
+      levels: form.levels.map((l, i) => ({
+        id: l.id,
+        title: l.title,
+        sort_order: i + 1,
+        passing_score: l.passing_score,
+        content_type: l.content_type ?? 'text',
+        content_body: l.content_body ?? '',
+        content_url: l.content_url ?? '',
+      })),
     }
+    const saved = editing
+      ? (await api.put(`/manage/courses/${editing.id}`, payload)).data
+      : (await api.post('/manage/courses', payload)).data
+    for (const [index, level] of form.levels.entries()) {
+      if (!level.file) continue
+      const id = saved?.levels?.[index]?.id
+      if (!id) continue
+      const fd = new FormData()
+      fd.append('file', level.file)
+      await api.post(`/manage/course-levels/${id}/file`, fd)
+    }
+    toast.success(editing ? 'دوره ویرایش شد' : 'دوره ساخته شد')
     setOpen(false)
     qc.invalidateQueries({ queryKey: ['admin-courses'] })
   }
 
   const remove = async (course: CourseRow) => {
     if (!await confirmAction({ title: 'حذف دوره', text: `دوره «${course.title}» حذف شود؟`, confirmText: 'حذف شود' })) return
-    await api.delete(`/superuser/courses/${course.id}`)
+    await api.delete(`/manage/courses/${course.id}`)
     toast.success('دوره حذف شد')
     qc.invalidateQueries({ queryKey: ['admin-courses'] })
   }
@@ -520,7 +675,7 @@ export function AdminCourses() {
       <BulkBar count={courseSel.count}>
         <BulkButton tone="danger" onClick={async () => {
           if (!await confirmAction({ title: 'حذف دسته‌ای دوره‌ها', text: `${courseSel.count} دوره حذف شوند؟`, confirmText: 'حذف شوند' })) return
-          await api.post('/superuser/courses/bulk', { action: 'delete', ids: courseSel.selected })
+          await api.post('/manage/courses/bulk', { action: 'delete', ids: courseSel.selected })
           toast.success('حذف دسته‌ای انجام شد')
           courseSel.clear()
           qc.invalidateQueries({ queryKey: ['admin-courses'] })
@@ -546,7 +701,7 @@ export function AdminCourses() {
                   <div className="text-sm text-surface-500">{c.description || 'بدون شرح'}</div>
                 </td>
                 <td><div className="flex gap-2 flex-wrap">{c.roles?.map((r) => <Badge key={r.name}>{r.name}</Badge>)}</div></td>
-                <td className="text-sm">{c.levels?.map((l) => `${l.title} (قبولی ${l.passing_score})`).join('، ') || '—'}</td>
+                <td className="text-sm">{c.levels?.map((l) => `${l.title} (${CONTENT_TYPES.find((x) => x.value === (l.content_type ?? 'text'))?.label ?? 'متن'} · قبولی ${l.passing_score})`).join('، ') || '—'}</td>
                 <td>
                   <RowActions>
                     <EditAction onClick={() => openEdit(c)} />
@@ -559,7 +714,7 @@ export function AdminCourses() {
         </table>
         {courses.length === 0 && <Empty text="دوره‌ای ثبت نشده است." />}
       </div>
-      <Modal wide open={open} title={editing ? 'ویرایش دوره' : 'ایجاد دوره'} subtitle="سطح‌ها را با عنوان، نمره قبولی و ترتیب مشخص کنید." onClose={() => setOpen(false)}>
+      <Modal wide open={open} title={editing ? 'ویرایش دوره' : 'ایجاد دوره'} subtitle="برای هر سطح نوع محتوا، متن، لینک ویدیو یا فایل مشخص کنید." onClose={() => setOpen(false)}>
         <form className="grid gap-3" data-testid="course-form" onSubmit={async (e) => { e.preventDefault(); await save() }}>
           <label className="field">عنوان دوره
             <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
@@ -572,9 +727,9 @@ export function AdminCourses() {
             برای ارتقاء الزامی باشد
           </label>
           <div className="field">نقش‌های هدف
-            <FieldHint>دوره فقط برای نقش‌های انتخاب‌شده در پنل آموزش دیده می‌شود.</FieldHint>
+            <FieldHint>دوره فقط برای نقش‌های انتخاب‌شده در پنل آموزش دیده می‌شود و برای ارتقاء همان نقش‌ها الزامی است.</FieldHint>
             <div className="flex flex-wrap gap-3">
-              {(roles ?? []).filter((r: { is_organizational: boolean }) => r.is_organizational).map((r: { id: number; name: string }) => (
+              {(roles ?? []).map((r: { id: number; name: string }) => (
                 <label key={r.id} className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={form.role_ids.includes(r.id)} onChange={(e) => setForm({ ...form, role_ids: e.target.checked ? [...form.role_ids, r.id] : form.role_ids.filter((id) => id !== r.id) })} />
                   {r.name}
@@ -586,22 +741,44 @@ export function AdminCourses() {
             <div className="font-bold">سطح‌های دوره</div>
             {form.levels.map((level, i) => (
               <div key={i} className="card p-3 grid gap-3">
-                <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+                <div className="grid md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
                   <label className="field">عنوان سطح
-                    <input className="input" value={level.title} onChange={(e) => setForm({ ...form, levels: form.levels.map((l, idx) => idx === i ? { ...l, title: e.target.value } : l) })} />
+                    <input className="input" value={level.title} onChange={(e) => setLevel(i, { title: e.target.value })} />
+                  </label>
+                  <label className="field">نوع محتوا
+                    <select className="input" value={level.content_type ?? 'text'} onChange={(e) => setLevel(i, { content_type: e.target.value })}>
+                      {CONTENT_TYPES.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                    </select>
                   </label>
                   <label className="field">نمره قبولی (از ۱۰۰)
-                    <input className="input" type="number" min={0} max={100} value={level.passing_score} onChange={(e) => setForm({ ...form, levels: form.levels.map((l, idx) => idx === i ? { ...l, passing_score: Number(e.target.value) } : l) })} />
+                    <input className="input" type="number" min={0} max={100} value={level.passing_score} onChange={(e) => setLevel(i, { passing_score: Number(e.target.value) })} />
                   </label>
                   <button type="button" className="btn btn-ghost whitespace-nowrap" onClick={() => setForm({ ...form, levels: form.levels.filter((_, idx) => idx !== i) })}>حذف سطح</button>
                 </div>
-                <div className="grid md:grid-cols-2 gap-3">
-                  <FieldHint>مثلاً آشنایی با محصول یا آزمون عملی</FieldHint>
-                  <FieldHint>حداقل نمره‌ای که کاربر باید بگیرد تا این سطح قبول شود. مقدار ۷۰ یعنی نمره ۷۰ از ۱۰۰.</FieldHint>
+                <label className="field">متن آموزشی
+                  <textarea className="input min-h-24" value={level.content_body ?? ''} onChange={(e) => setLevel(i, { content_body: e.target.value })} />
+                </label>
+                <label className="field">لینک ویدیو یا فایل آنلاین
+                  <input className="input" dir="ltr" placeholder="https://..." value={level.content_url ?? ''} onChange={(e) => setLevel(i, { content_url: e.target.value })} />
+                </label>
+                <div className="grid gap-2">
+                  <label className="field">آپلود فایل جدید (PDF، ویدیو، تصویر، ...)
+                    <input className="input" type="file" onChange={(e) => setLevel(i, { file: e.target.files?.[0] ?? null })} />
+                  </label>
+                  {level.attachment_url && (
+                    <a
+                      className="text-sm text-primary-600 font-semibold w-fit"
+                      href={level.attachment_url}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      فایل فعلی: {level.attachment_name || 'دانلود / باز کردن'}
+                    </a>
+                  )}
                 </div>
               </div>
             ))}
-            <button type="button" className="btn btn-ghost w-fit" onClick={() => setForm({ ...form, levels: [...form.levels, { title: `سطح ${form.levels.length + 1}`, sort_order: form.levels.length + 1, passing_score: 70 }] })}>افزودن سطح جدید</button>
+            <button type="button" className="btn btn-ghost w-fit" onClick={() => setForm({ ...form, levels: [...form.levels, { ...emptyLevel(), title: `سطح ${form.levels.length + 1}`, sort_order: form.levels.length + 1 }] })}>افزودن سطح جدید</button>
           </div>
           <button className="btn btn-primary" type="submit">{editing ? 'ذخیره تغییرات' : 'ثبت دوره'}</button>
         </form>

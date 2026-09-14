@@ -94,6 +94,8 @@ export const statusLabel: Record<string, string> = {
   reversal: 'برگشت',
   adjustment: 'اصلاح',
   transfer: 'انتقال',
+  benefit_transfer_out: 'خروج موجودی به‌خاطر انتقال مزایا',
+  benefit_transfer_in: 'ورود موجودی از انتقال مزایا',
   all_future_benefits: 'انتقال تمام مزایای آینده',
   gateway_share: 'انتقال سهم درگاه',
   descendant: 'زیرمجموعه',
@@ -130,6 +132,8 @@ const statusLabelEn: Record<string, string> = {
   reversal: 'Reversal',
   adjustment: 'Adjustment',
   transfer: 'Transfer',
+  benefit_transfer_out: 'Wallet outflow from benefit transfer',
+  benefit_transfer_in: 'Wallet inflow from benefit transfer',
   all_future_benefits: 'All future benefits',
   gateway_share: 'Gateway share transfer',
   descendant: 'Downline',
@@ -162,6 +166,20 @@ export const permissionLabel: Record<string, string> = {
   'superuser.commission_rules.update': 'مدیر سامانه / ویرایش قواعد پورسانت',
   'superuser.gateway.create': 'مدیر سامانه / ثبت فروش درگاه',
   'chat.cross_branch.message': 'چت بین‌شاخه‌ای',
+  'page.dashboard': 'صفحه / داشبورد',
+  'page.team': 'صفحه / شبکه و تیم',
+  'page.gateways': 'صفحه / درگاه‌ها',
+  'page.commissions': 'صفحه / پورسانت',
+  'page.wallet': 'صفحه / کیف پول',
+  'page.finance': 'صفحه / گزارش تجمیعی',
+  'page.withdrawals': 'صفحه / برداشت',
+  'page.transfers': 'صفحه / انتقال مالکیت مزایا',
+  'page.referrals': 'صفحه / لینک معرف و اشتراکی',
+  'page.promotions': 'صفحه / ارتقاء سمت',
+  'page.training': 'صفحه / آموزش',
+  'page.courses_manage': 'صفحه / مدیریت دوره‌ها',
+  'page.chat': 'صفحه / گفتگو',
+  'page.notifications': 'صفحه / اعلان‌ها',
 }
 
 const criterionLabelFa: Record<string, string> = {
@@ -174,6 +192,7 @@ const criterionLabelFa: Record<string, string> = {
   strong_reps: 'نمایندگان قوی',
   team_satisfaction: 'رضایت نمایندگان تیم',
   eligible_sales_managers: 'نمایندگان واجد شرایط مدیر فروش',
+  required_training: 'تکمیل دوره‌های الزامی نقش',
 }
 
 const criterionLabelEn: Record<string, string> = {
@@ -186,6 +205,7 @@ const criterionLabelEn: Record<string, string> = {
   strong_reps: 'Strong representatives',
   team_satisfaction: 'Team satisfaction',
   eligible_sales_managers: 'Eligible sales managers',
+  required_training: 'Required role training',
 }
 
 export const criterionLabel: Record<string, string> = new Proxy({}, {
@@ -213,6 +233,8 @@ const auditLabelEn: Record<string, string> = {
   'commission_rule.versioned': 'Commission rule saved',
   'user.updated': 'User updated',
   'user.deleted': 'User deactivated',
+  'user.blocked': 'User blocked',
+  'user.unblocked': 'User unblocked',
   'course.updated': 'Course updated',
   'course.deleted': 'Course deleted',
   'benefit_transfer.all': 'Full benefit transfer',
@@ -235,6 +257,8 @@ export const auditLabel: Record<string, string> = {
   'commission_rule.versioned': 'ذخیره قاعده پورسانت',
   'user.updated': 'ویرایش کاربر',
   'user.deleted': 'حذف یا غیرفعال‌سازی کاربر',
+  'user.blocked': 'مسدودسازی کاربر',
+  'user.unblocked': 'رفع مسدودی کاربر',
   'course.updated': 'ویرایش دوره',
   'course.deleted': 'حذف دوره',
   'benefit_transfer.all': 'انتقال کامل مزایا',

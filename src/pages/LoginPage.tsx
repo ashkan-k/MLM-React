@@ -34,8 +34,9 @@ export function LoginPage() {
               const { data } = await authApi.login(mobile, password)
               setSession(data.token, data.user)
               navigate(data.user.active_role?.slug === 'superuser' ? '/superuser' : dashboardPath(data.user.active_role?.slug))
-            } catch {
-              setError(t('loginError'))
+            } catch (err: unknown) {
+              const msg = (err as { response?: { data?: { errors?: { mobile?: string[] } } } })?.response?.data?.errors?.mobile?.[0]
+              setError(msg?.includes('مسدود') ? t('loginBlocked') : t('loginError'))
             }
           }}
         >

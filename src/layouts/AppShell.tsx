@@ -29,10 +29,11 @@ import {
   X,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
+import { canAccessPage } from '../lib/access'
 import { roleLabel } from '../lib/i18n'
 import { dashboardPath } from '../lib/roles'
 import { useAuth } from '../stores/auth'
@@ -65,6 +66,7 @@ const roleGroups: NavGroup[] = [
       { to: 'referrals', labelKey: 'navReferrals', icon: Users },
       { to: 'promotions', labelKey: 'navPromotions', icon: Award },
       { to: 'training', labelKey: 'navTraining', icon: BookOpen },
+      { to: 'courses', labelKey: 'navCoursesManage', icon: BookOpen },
     ],
   },
   {
@@ -121,6 +123,7 @@ const titleKeys: Record<string, string> = {
   referrals: 'navReferrals',
   promotions: 'navPromotions',
   training: 'navTraining',
+  courses: 'navCoursesManage',
   chat: 'navChat',
   notifications: 'navNotifications',
   transfers: 'navTransfers',
@@ -150,14 +153,24 @@ function itemActive(item: LinkItem, pathname: string) {
 
 function SidebarNav({ groups, extra }: { groups: NavGroup[]; extra?: ReactNode }) {
   const { sidebarCollapsed, toggleSidebarCollapsed, sidebarOpen, setSidebarOpen, direction, t } = useApp()
+  const user = useAuth((s) => s.user)
   const location = useLocation()
   const [openGroups, setOpenGroups] = useState<string[]>([])
   const ChevronIcon = direction === 'rtl' ? (sidebarCollapsed ? ChevronLeft : ChevronRight) : (sidebarCollapsed ? ChevronRight : ChevronLeft)
+  const visibleGroups = useMemo(
+    () => groups
+      .map((group) => ({
+        ...group,
+        items: group.items.filter((item) => canAccessPage(user, item.to.startsWith('/') ? item.to : item.to)),
+      }))
+      .filter((group) => group.items.length > 0),
+    [groups, user],
+  )
 
   useEffect(() => {
-    const active = groups.filter((g) => g.items.some((item) => itemActive(item, location.pathname))).map((g) => g.key)
+    const active = visibleGroups.filter((g) => g.items.some((item) => itemActive(item, location.pathname))).map((g) => g.key)
     setOpenGroups(active)
-  }, [location.pathname, groups])
+  }, [location.pathname, visibleGroups])
 
   return (
     <>
@@ -191,7 +204,7 @@ function SidebarNav({ groups, extra }: { groups: NavGroup[]; extra?: ReactNode }
           </button>
         </div>
         <nav className="flex-1 overflow-y-auto py-3 px-2">
-          {groups.map((group) => (
+          {visibleGroups.map((group) => (
             <div key={group.key} className="mb-1">
               {!sidebarCollapsed && (
                 <button type="button" onClick={() => setOpenGroups((prev) => prev.includes(group.key) ? prev.filter((g) => g !== group.key) : [...prev, group.key])} className="w-full flex items-center justify-between px-3 py-1.5 text-[11px] font-semibold text-surface-400 uppercase">

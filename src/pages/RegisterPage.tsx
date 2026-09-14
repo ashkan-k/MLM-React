@@ -12,7 +12,7 @@ export function RegisterPage() {
     name: '',
     mobile: '',
     password: 'Password123!',
-    referral_code: params.get('ref') ?? '',
+    referral_code: params.get('ref') ?? params.get('share') ?? '',
   })
   const [error, setError] = useState('')
   const setSession = useAuth((s) => s.setSession)

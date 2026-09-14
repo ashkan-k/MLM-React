@@ -6,7 +6,7 @@ import { Empty, Modal } from './ui'
 
 export type OrgNode = {
   id: number
-  user?: { id?: number; name: string; mobile?: string } | null
+  user?: { id?: number; name: string; mobile?: string; is_active?: boolean } | null
   role?: { name: string; slug?: string } | null
   children?: OrgNode[]
   descendant_count?: number
@@ -230,7 +230,12 @@ function NodeRow({
           {name.charAt(0)}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium text-surface-800 dark:text-surface-200">{name}</div>
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-medium text-surface-800 dark:text-surface-200">{name}</div>
+            {node.user?.is_active === false && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">{t('blocked')}</span>
+            )}
+          </div>
           <div className="text-xs text-surface-400">{t('orgLevel')} {depth} • {downline(node).toLocaleString(nf)} {t('orgDownline')}{node.user?.mobile ? ` • ${node.user.mobile}` : ''}</div>
         </div>
         <div className="flex items-center gap-2">
@@ -352,6 +357,7 @@ export function OrgTree({
         {detail && (
           <div className="space-y-2 text-sm">
             <div>{t('orgMobile')}: {detail.user?.mobile ?? '—'}</div>
+            <div>{t('status')}: {detail.user?.is_active === false ? t('blocked') : t('adminActive')}</div>
             <div>{t('orgRole')}: {detail.role?.name ?? '—'}</div>
             <div>{t('orgDirect')}: {(detail.children?.length ?? 0).toLocaleString(nf)}</div>
             <div>{t('orgTotal')}: {downline(detail).toLocaleString(nf)}</div>

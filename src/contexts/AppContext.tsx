@@ -44,6 +44,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
     document.documentElement.classList.toggle('light', !darkMode)
+    document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light'
     localStorage.setItem('finopal.theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
 

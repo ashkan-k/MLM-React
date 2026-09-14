@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { MoneyInput } from '../components/MoneyInput'
 import { OrgTree, type OrgNode } from '../components/OrgTree'
 import { SearchSelect } from '../components/SearchSelect'
-import { ApproveAction, BulkBar, BulkButton, CheckBox, IconAction, RowActions, ViewAction, exportSelected, useSelection } from '../components/table'
+import { ApproveAction, BlockAction, BulkBar, BulkButton, CheckBox, IconAction, RowActions, UnblockAction, ViewAction, exportSelected, useSelection } from '../components/table'
 import { Badge, DateTimeText, Empty, Modal, PageHeader, ProgressBar, StatCard } from '../components/ui'
 import { GatewayCreateForm } from '../components/GatewayCreateForm'
 import { useApp } from '../contexts/AppContext'
@@ -18,24 +18,73 @@ import { useAuth } from '../stores/auth'
 
 export function TeamPage() {
   const { t } = useApp()
+  const qc = useQueryClient()
+  const me = useAuth((s) => s.user)
+  const canBlock = me?.is_superuser || me?.active_role?.slug === 'senior_manager'
   const { data: tree } = useQuery({ queryKey: ['tree'], queryFn: async () => (await api.get('/organization/tree')).data })
   const { data: team } = useQuery({ queryKey: ['team'], queryFn: async () => (await api.get('/organization/team')).data })
   const nodes = Array.isArray(tree) ? tree as OrgNode[] : []
 
+  const toggleBlock = async (user: { id: number; name: string; is_active?: boolean }) => {
+    if (user.id === me?.id) {
+      toast.error(t('blockFail'))
+      return
+    }
+    if (user.is_active !== false) {
+      if (!await confirmAction({ title: t('blockUser'), text: t('blockConfirm'), confirmText: t('blockUser') })) return
+      try {
+        await api.post(`/users/${user.id}/block`)
+        toast.success(t('blockOk'))
+      } catch {
+        toast.error(t('blockFail'))
+        return
+      }
+    } else {
+      if (!await confirmAction({ title: t('unblockUser'), text: t('unblockConfirm'), confirmText: t('unblockUser'), danger: false })) return
+      try {
+        await api.post(`/users/${user.id}/unblock`)
+        toast.success(t('unblockOk'))
+      } catch {
+        toast.error(t('blockFail'))
+        return
+      }
+    }
+    qc.invalidateQueries({ queryKey: ['team'] })
+    qc.invalidateQueries({ queryKey: ['tree'] })
+  }
+
   return (
     <div className="space-y-6">
       <OrgTree nodes={nodes} testId="org-tree" />
-      <TeamTable team={team ?? []} t={t} />
+      <TeamTable team={team ?? []} t={t} canBlock={Boolean(canBlock)} onToggleBlock={toggleBlock} />
     </div>
   )
 }
 
-function TeamTable({ team, t }: { team: Array<{ id: number; name: string; mobile: string; roles?: string[] }>; t: (key: string) => string }) {
+function TeamTable({
+  team,
+  t,
+  canBlock,
+  onToggleBlock,
+}: {
+  team: Array<{ id: number; name: string; mobile: string; is_active?: boolean; roles?: string[] }>
+  t: (key: string) => string
+  canBlock: boolean
+  onToggleBlock: (user: { id: number; name: string; is_active?: boolean }) => void
+}) {
   return (
     <div className="card overflow-auto">
       <div className="px-4 pt-4 font-semibold text-surface-800 dark:text-surface-200">{t('teamTitle')}</div>
       <table className="table">
-        <thead><tr><th>{t('name')}</th><th>{t('mobile')}</th><th>{t('roles')}</th></tr></thead>
+        <thead>
+          <tr>
+            <th>{t('name')}</th>
+            <th>{t('mobile')}</th>
+            <th>{t('roles')}</th>
+            <th>{t('status')}</th>
+            {canBlock && <th className="text-center">{t('actions')}</th>}
+          </tr>
+        </thead>
         <tbody>
           {team.map((u) => (
             <tr key={u.id}>
@@ -47,6 +96,16 @@ function TeamTable({ team, t }: { team: Array<{ id: number; name: string; mobile
               </td>
               <td>{u.mobile}</td>
               <td>{(u.roles ?? []).join('، ') || '—'}</td>
+              <td><Badge tone={u.is_active === false ? 'danger' : 'ok'}>{u.is_active === false ? t('blocked') : t('adminActive')}</Badge></td>
+              {canBlock && (
+                <td>
+                  <RowActions>
+                    {u.is_active === false
+                      ? <UnblockAction label={t('unblockUser')} onClick={() => onToggleBlock(u)} />
+                      : <BlockAction label={t('blockUser')} onClick={() => onToggleBlock(u)} />}
+                  </RowActions>
+                </td>
+              )}
             </tr>
           ))}
         </tbody>
@@ -752,7 +811,16 @@ export function TrainingPage() {
         description?: string
         is_required_for_promotion: boolean
         roles?: Array<{ name: string }>
-        levels: Array<{ id: number; title: string; progress?: { status: string; completed_at?: string } | null }>
+        levels: Array<{
+          id: number
+          title: string
+          content_type?: string
+          content_body?: string
+          content_url?: string
+          attachment_name?: string
+          attachment_url?: string
+          progress?: { status: string; completed_at?: string } | null
+        }>
       }) => {
         const done = c.levels.filter((l) => l.progress?.status === 'completed').length
         return (
@@ -774,13 +842,30 @@ export function TrainingPage() {
             <div className="mt-3"><ProgressBar value={done} max={c.levels.length || 1} /></div>
             <div className="mt-4 grid gap-3">
               {c.levels.map((l, index) => (
-                <div key={l.id} className="border border-surface-200 dark:border-surface-700 rounded-xl p-3 flex flex-wrap justify-between gap-3 items-center">
-                  <div>
-                    <div className="font-bold">{t('trainLevel')} {index + 1}: {l.title}</div>
-                    <div className="text-sm mt-1">{l.progress?.status === 'completed' ? <Badge tone="ok">{t('trainViewed')}</Badge> : <Badge tone="muted">{t('trainNotStarted')}</Badge>}</div>
+                <div key={l.id} className="border border-surface-200 dark:border-surface-700 rounded-xl p-3 grid gap-3">
+                  <div className="flex flex-wrap justify-between gap-3 items-center">
+                    <div>
+                      <div className="font-bold">{t('trainLevel')} {index + 1}: {l.title}</div>
+                      <div className="text-sm mt-1">{l.progress?.status === 'completed' ? <Badge tone="ok">{t('trainViewed')}</Badge> : <Badge tone="muted">{t('trainNotStarted')}</Badge>}</div>
+                    </div>
+                    {l.progress?.status !== 'completed' && (
+                      <button className="btn btn-primary" onClick={() => submit.mutate({ course: c.id, level: l.id })}>{t('trainTake')}</button>
+                    )}
                   </div>
-                  {l.progress?.status !== 'completed' && (
-                    <button className="btn btn-primary" onClick={() => submit.mutate({ course: c.id, level: l.id })}>{t('trainTake')}</button>
+                  {l.content_body && <p className="text-sm text-surface-600 dark:text-surface-300 whitespace-pre-wrap m-0 leading-7">{l.content_body}</p>}
+                  {l.content_url && (l.content_type === 'video' || l.content_url.includes('youtube') || l.content_url.includes('aparat')) ? (
+                    <div className="aspect-video rounded-xl overflow-hidden bg-black">
+                      <iframe title={l.title} src={l.content_url} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+                    </div>
+                  ) : l.content_url ? (
+                    <a className="text-sm text-primary-600" href={l.content_url} target="_blank" rel="noreferrer">{l.content_url}</a>
+                  ) : null}
+                  {l.attachment_url && (
+                    l.attachment_url.match(/\.(mp4|webm)$/i)
+                      ? <video className="w-full max-h-80 rounded-xl" src={l.attachment_url} controls />
+                      : l.attachment_url.match(/\.(png|jpe?g|gif|webp)$/i)
+                        ? <img className="max-h-80 rounded-xl" src={l.attachment_url} alt={l.attachment_name ?? ''} />
+                        : <a className="text-sm text-primary-600" href={l.attachment_url} target="_blank" rel="noreferrer">{l.attachment_name || l.attachment_url}</a>
                   )}
                 </div>
               ))}
@@ -934,8 +1019,12 @@ export function TransfersPage() {
             toast.success(t('transferOk'))
             setOpen(false)
             qc.invalidateQueries({ queryKey: ['bt'] })
-          } catch {
-            toast.error(t('transferFail'))
+            qc.invalidateQueries({ queryKey: ['dir'] })
+            qc.invalidateQueries({ queryKey: ['team'] })
+            qc.invalidateQueries({ queryKey: ['tree'] })
+          } catch (err: unknown) {
+            const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message
+            toast.error(msg || t('transferFail'))
           }
         }}>
           <label className="field">{t('accountFrom')}

@@ -32,7 +32,7 @@ export function StatCard({
   color?: string
 }) {
   return (
-    <div className="bg-white dark:bg-surface-800 rounded-xl p-5 border border-surface-200 dark:border-surface-700 hover:shadow-lg transition-shadow">
+    <div className="card p-5 hover:shadow-lg transition-shadow">
       {Icon && (
         <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center mb-3`}>
           <Icon className="w-5 h-5 text-white" />

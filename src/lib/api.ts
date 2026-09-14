@@ -22,6 +22,7 @@ export type AuthUser = {
   is_superuser: boolean
   roles: Role[]
   active_role: { id: number; name: string; slug: string } | null
+  permissions?: string[]
 }
 
 export const authApi = {

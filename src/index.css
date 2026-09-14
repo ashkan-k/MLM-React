@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans: 'Vazirmatn', 'Inter', system-ui, sans-serif;
   --color-primary-50: #eff6ff;
@@ -12,7 +14,7 @@
   --color-primary-700: #1d4ed8;
   --color-primary-800: #1e40af;
   --color-primary-900: #1e3a8a;
-  --color-surface-50: #e8eef5;
+  --color-surface-50: #f8fafc;
   --color-surface-100: #f1f5f9;
   --color-surface-200: #e2e8f0;
   --color-surface-300: #cbd5e1;
@@ -86,7 +88,11 @@ button:disabled,
 }
 html, body, #root { min-height: 100%; margin: 0; }
 html.light, html.light body, html.light #root {
-  background: #e8eef5;
+  background: #f8fafc;
+  color-scheme: light;
+}
+html.dark, html.dark body, html.dark #root {
+  color-scheme: dark;
 }
 body {
   font-family: 'Vazirmatn', 'Inter', system-ui, sans-serif;

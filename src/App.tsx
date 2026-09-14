@@ -1,5 +1,7 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
+import type { ReactNode } from 'react'
 import { AppShell, SuperuserShell } from './layouts/AppShell'
+import { canAccessPage } from './lib/access'
 import { dashboardPath } from './lib/roles'
 import { AdminAuditDetail } from './pages/AdminAuditDetail'
 import { AdminAudits, AdminCourses, AdminFraSoft, AdminHome, AdminPermissions, AdminRules, AdminSettings, AdminUsers } from './pages/AdminPages'
@@ -20,6 +22,12 @@ function Guard({ superuserOnly = false }: { superuserOnly?: boolean }) {
   return <Outlet />
 }
 
+function PageGate({ page, children }: { page: string; children: ReactNode }) {
+  const { user } = useAuth()
+  if (!canAccessPage(user, page)) return <Navigate to={dashboardPath(user?.active_role?.slug)} replace />
+  return children
+}
+
 function Guest() {
   const { user, loading } = useAuth()
   if (loading) return <div className="p-8">در حال بارگذاری...</div>
@@ -32,19 +40,20 @@ function Guest() {
 
 const roleChildren = (
   <>
-    <Route index element={<DashboardPage />} />
-    <Route path="team" element={<TeamPage />} />
-    <Route path="gateways" element={<GatewaysPage />} />
-    <Route path="commissions" element={<CommissionsPage />} />
-    <Route path="wallet" element={<WalletPage />} />
-    <Route path="finance" element={<FinancePage />} />
-    <Route path="withdrawals" element={<WithdrawalsPage />} />
-    <Route path="referrals" element={<ReferralsPage />} />
-    <Route path="promotions" element={<PromotionsPage />} />
-    <Route path="training" element={<TrainingPage />} />
-    <Route path="chat" element={<ChatPage />} />
-    <Route path="notifications" element={<NotificationsPage />} />
-    <Route path="transfers" element={<TransfersPage />} />
+    <Route index element={<PageGate page=""><DashboardPage /></PageGate>} />
+    <Route path="team" element={<PageGate page="team"><TeamPage /></PageGate>} />
+    <Route path="gateways" element={<PageGate page="gateways"><GatewaysPage /></PageGate>} />
+    <Route path="commissions" element={<PageGate page="commissions"><CommissionsPage /></PageGate>} />
+    <Route path="wallet" element={<PageGate page="wallet"><WalletPage /></PageGate>} />
+    <Route path="finance" element={<PageGate page="finance"><FinancePage /></PageGate>} />
+    <Route path="withdrawals" element={<PageGate page="withdrawals"><WithdrawalsPage /></PageGate>} />
+    <Route path="referrals" element={<PageGate page="referrals"><ReferralsPage /></PageGate>} />
+    <Route path="promotions" element={<PageGate page="promotions"><PromotionsPage /></PageGate>} />
+    <Route path="training" element={<PageGate page="training"><TrainingPage /></PageGate>} />
+    <Route path="courses" element={<PageGate page="courses"><AdminCourses /></PageGate>} />
+    <Route path="chat" element={<PageGate page="chat"><ChatPage /></PageGate>} />
+    <Route path="notifications" element={<PageGate page="notifications"><NotificationsPage /></PageGate>} />
+    <Route path="transfers" element={<PageGate page="transfers"><TransfersPage /></PageGate>} />
   </>
 )
 
