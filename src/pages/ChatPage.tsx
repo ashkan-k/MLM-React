@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { DateTimeText, PageHeader } from '../components/ui'
 import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
-import { label } from '../lib/format'
+import { label, localeTag } from '../lib/format'
 import { connectRealtime, type RealtimeClient } from '../lib/ws'
 import { useAuth } from '../stores/auth'
 
@@ -21,6 +21,15 @@ type ChatMessage = {
 }
 
 const CHAT_ACCEPT = '.jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.rar,.mp3,.mp4,.webm,.aac,.ogg'
+
+function UnreadBadge({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <span className="ms-auto shrink-0 min-w-5 h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold leading-5 text-center">
+      {count > 99 ? '99+' : count.toLocaleString(localeTag())}
+    </span>
+  )
+}
 
 export function ChatPage() {
   const { t } = useApp()
@@ -65,6 +74,10 @@ export function ChatPage() {
       if (event === 'message.sent' && data.message) {
         if (data.conversation_id === activeRef.current) {
           setLive((prev) => prev.some((m) => m.id === data.message!.id) ? prev : [...prev, data.message!])
+          void api.post(`/conversations/${data.conversation_id}/read`).then(() => {
+            qc.invalidateQueries({ queryKey: ['chat-unread'] })
+            qc.invalidateQueries({ queryKey: ['conv'] })
+          })
         }
         qc.invalidateQueries({ queryKey: ['conv'] })
         qc.invalidateQueries({ queryKey: ['chat-unread'] })
@@ -87,6 +100,7 @@ export function ChatPage() {
   const recentConversations = useMemo(() => {
     const list = [...(conv?.conversations ?? [])] as Array<{
       id: number
+      unread_count?: number
       updated_at?: string
       messages?: Array<{ created_at?: string }>
       participants?: Array<{ id?: number; name: string }>
@@ -97,6 +111,24 @@ export function ChatPage() {
       return tb.localeCompare(ta)
     })
   }, [conv])
+
+  const unreadByUserId = useMemo(() => {
+    const map = new Map<number, number>()
+    for (const c of recentConversations) {
+      const otherId = c.participants?.find((p) => p.id && p.id !== user?.id)?.id
+      const count = Number(c.unread_count ?? 0)
+      if (otherId && count > 0 && c.id !== active) map.set(otherId, count)
+    }
+    return map
+  }, [recentConversations, user?.id, active])
+
+  useEffect(() => {
+    if (!active) return
+    void api.post(`/conversations/${active}/read`).then(() => {
+      qc.invalidateQueries({ queryKey: ['chat-unread'] })
+      qc.invalidateQueries({ queryKey: ['conv'] })
+    })
+  }, [active, qc])
 
   const history = [...(messages?.data ?? [])].reverse()
   const thread = [...history, ...live.filter((m) => !history.some((h) => h.id === m.id))]
@@ -145,20 +177,23 @@ export function ChatPage() {
             return (
             <button key={u.id} className={`w-full text-start py-2.5 px-2 rounded-xl flex items-center gap-3 ${selected ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-800 dark:text-primary-100 ring-1 ring-primary-400/70' : 'hover:bg-surface-100 dark:hover:bg-surface-800'}`} data-testid={`chat-user-${u.id}`} onClick={() => { setSelectedUserId(u.id); start.mutate(u.id) }}>
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-white text-xs font-bold flex items-center justify-center">{u.name.charAt(0)}</div>
-              <div>
+              <div className="min-w-0 flex-1">
                 <div className={selected ? 'font-extrabold' : 'font-semibold'}>{u.name}</div>
                 <div className="text-xs text-surface-400">{label(u.relationship)}</div>
               </div>
+              <UnreadBadge count={unreadByUserId.get(u.id) ?? 0} />
             </button>
             )
           })}
           <div className="text-xs text-surface-400 mt-4 mb-2">{t('chatRecent')}</div>
           {recentConversations.map((c) => {
             const selected = active === c.id
-            const others = c.participants?.filter((p) => p.name !== user?.name) ?? []
+            const others = c.participants?.filter((p) => p.id !== user?.id) ?? []
+            const unread = selected ? 0 : Number(c.unread_count ?? 0)
             return (
-            <button key={c.id} className={`w-full text-start py-2.5 px-2 rounded-xl ${selected ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-800 dark:text-primary-100 ring-1 ring-primary-400/70 font-extrabold' : 'hover:bg-surface-100 dark:hover:bg-surface-800 font-medium'}`} onClick={() => { setActive(c.id); setSelectedUserId(others.find((p) => p.id)?.id ?? null); api.post(`/conversations/${c.id}/read`).then(() => qc.invalidateQueries({ queryKey: ['chat-unread'] })) }}>
-              {others.map((p) => p.name).join('، ') || `${t('chatConv')} ${c.id}`}
+            <button key={c.id} className={`w-full text-start py-2.5 px-2 rounded-xl flex items-center gap-3 ${selected ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-800 dark:text-primary-100 ring-1 ring-primary-400/70 font-extrabold' : 'hover:bg-surface-100 dark:hover:bg-surface-800 font-medium'}`} onClick={() => { setActive(c.id); setSelectedUserId(others.find((p) => p.id)?.id ?? null) }}>
+              <span className="truncate flex-1">{others.map((p) => p.name).join('، ') || `${t('chatConv')} ${c.id}`}</span>
+              <UnreadBadge count={unread} />
             </button>
             )
           })}

@@ -35,8 +35,15 @@ export function LoginPage() {
               setSession(data.token, data.user)
               navigate(data.user.active_role?.slug === 'superuser' ? '/superuser' : dashboardPath(data.user.active_role?.slug))
             } catch (err: unknown) {
-              const msg = (err as { response?: { data?: { errors?: { mobile?: string[] } } } })?.response?.data?.errors?.mobile?.[0]
-              setError(msg?.includes('مسدود') ? t('loginBlocked') : t('loginError'))
+              const ax = err as { response?: { data?: { errors?: { mobile?: string[] } } }; code?: string }
+              const msg = ax.response?.data?.errors?.mobile?.[0]
+              if (!ax.response) {
+                setError(t('loginOffline'))
+              } else if (msg?.includes('مسدود')) {
+                setError(t('loginBlocked'))
+              } else {
+                setError(t('loginError'))
+              }
             }
           }}
         >

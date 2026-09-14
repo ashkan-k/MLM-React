@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, ChevronRight, Edit, Eye, Ban, BanOff, Trash2, type LucideIcon } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Edit, Eye, Ban, Trash2, UserCheck, type LucideIcon } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../contexts/AppContext'
@@ -53,7 +53,7 @@ export function BlockAction(props: { onClick: () => void; label?: string }) {
 }
 
 export function UnblockAction(props: { onClick: () => void; label?: string }) {
-  return <IconAction label={props.label ?? 'رفع مسدودی'} tone="ok" icon={BanOff} onClick={props.onClick} />
+  return <IconAction label={props.label ?? 'رفع مسدودی'} tone="ok" icon={UserCheck} onClick={props.onClick} />
 }
 
 export function ApproveAction(props: { onClick: () => void; label?: string }) {
