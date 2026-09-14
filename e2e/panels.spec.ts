@@ -194,6 +194,7 @@ test.describe('پوشش کامل پنل‌ها و باگ‌های گزارش‌�
     await expect(page.getByText(reason).first()).toBeVisible()
 
     await page.goto('/dashboard/senior-manager/notifications')
+    await expect(page.getByTestId('notif-filter')).toBeVisible()
     await expect(page.getByTestId('notif-link').first()).toBeVisible()
     await page.getByTestId('notif-link').first().click()
     await expect(page).toHaveURL(/\/promotions/)

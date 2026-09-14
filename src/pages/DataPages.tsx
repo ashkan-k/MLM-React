@@ -260,16 +260,20 @@ export function WithdrawalsPage() {
   const { data } = useQuery({ queryKey: ['wd'], queryFn: async () => (await api.get('/withdrawals')).data })
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState('1000')
+  const walletRows: Array<{ id: number; balance: string; held_balance?: string; role?: { name: string } }> = wallets ?? []
+  const availableOf = (w: { balance: string; held_balance?: string }) => Number(w.balance) - Number(w.held_balance ?? 0)
+  const funded = walletRows.find((w) => availableOf(w) >= Number(amount || 0))
+  const available = walletRows.reduce((sum, w) => sum + Math.max(0, availableOf(w)), 0)
   const mutate = useMutation({
     mutationFn: async () => {
       const need = Number(amount)
-      const funded = (wallets ?? []).find((w: { id: number; balance: string; held_balance?: string }) => Number(w.balance) - Number(w.held_balance ?? 0) >= need)
-      const wallet = funded ?? wallets?.[0]
-      if (!wallet?.id) throw new Error(t('withdrawCreateFail'))
-      return api.post('/withdrawals', { wallet_id: wallet.id, amount, idempotency_key: `ui-${Date.now()}` })
+      if (!funded?.id || need <= 0 || availableOf(funded) < need) {
+        throw Object.assign(new Error(t('withdrawNoBalance')), { response: { data: { message: t('withdrawNoBalance') } } })
+      }
+      return api.post('/withdrawals', { wallet_id: funded.id, amount, idempotency_key: `ui-${Date.now()}` })
     },
-    onSuccess: () => { toast.success(t('withdrawOk')); setOpen(false); qc.invalidateQueries({ queryKey: ['wd'] }) },
-    onError: () => toast.error(t('withdrawCreateFail')),
+    onSuccess: () => { toast.success(t('withdrawOk')); setOpen(false); qc.invalidateQueries({ queryKey: ['wd'] }); qc.invalidateQueries({ queryKey: ['wallets'] }) },
+    onError: (error: { response?: { data?: { message?: string } } }) => toast.error(error.response?.data?.message ?? t('withdrawCreateFail')),
   })
   const decide = useMutation({
     mutationFn: async ({ id, decision }: { id: number; decision: string }) => api.post(`/withdrawals/${id}/decide`, { decision }),
@@ -309,10 +313,14 @@ export function WithdrawalsPage() {
       </div>
       <Modal open={open} title={t('withdrawModal')} subtitle={t('withdrawModalSub')} onClose={() => setOpen(false)}>
         <div className="grid gap-3">
+          <div className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 text-sm">
+            <div className="text-surface-500">{t('dashWallet')}</div>
+            <div className="font-semibold mt-1">{money(available)} {t('toman')}</div>
+          </div>
           <label className="field">{moneyHeader()}
             <MoneyInput testId="withdraw-amount" value={amount} onChange={setAmount} />
           </label>
-          <button className="btn btn-primary" data-testid="withdraw-submit" disabled={!(wallets ?? []).length || mutate.isPending} onClick={() => mutate.mutate()}>{t('withdrawSubmit')}</button>
+          <button className="btn btn-primary" data-testid="withdraw-submit" disabled={!funded || mutate.isPending} onClick={() => mutate.mutate()}>{t('withdrawSubmit')}</button>
         </div>
       </Modal>
       <BulkBar count={sel.count}>
@@ -507,7 +515,7 @@ function PromotionList({
   canDecide,
   onDecide,
 }: {
-  items: Array<{ id: number; status: string; user?: { name: string }; target_role?: { name: string }; feedback?: Array<{ decision: string; note?: string }> }>
+  items: Array<{ id: number; status: string; user?: { name: string }; from_role?: { name: string }; target_role?: { name: string }; feedback?: Array<{ decision: string; note?: string }> }>
   canDecide: boolean
   onDecide: (id: number, decision: string, note?: string) => void
 }) {
@@ -536,7 +544,11 @@ function PromotionList({
             <CheckBox checked={sel.selected.includes(p.id)} onChange={() => sel.toggle(p.id)} label={`${t('navPromotions')} ${p.id}`} />
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-white text-sm font-bold flex items-center justify-center">{(p.user?.name ?? '?').charAt(0)}</div>
             <div>
-              <div>{p.user?.name} → {p.target_role?.name ?? t('role')} · {label(p.status)}</div>
+              <div className="font-semibold text-surface-800 dark:text-surface-100">{p.user?.name}</div>
+              <div className="text-sm text-surface-500 mt-0.5">
+                {t('promoFromTo', { from: p.from_role?.name ?? t('role'), to: p.target_role?.name ?? t('role') })}
+                <span> · {label(p.status)}</span>
+              </div>
               {p.status === 'rejected' && p.feedback?.find((f) => f.decision === 'rejected')?.note && (
                 <div className="text-xs text-red-600 mt-1" data-testid="promo-reject-reason">{t('dashPromoRejected')}: {p.feedback.find((f) => f.decision === 'rejected')?.note}</div>
               )}
@@ -556,7 +568,7 @@ function PromotionList({
           </RowActions>
         </div>
       ))}
-      <Modal open={openId !== null} title={t('promoFile')} onClose={() => setOpenId(null)}>
+      <Modal open={openId !== null} title={t('promoFile')} onClose={() => setOpenId(null)} wide>
         {file && (
           <div className="space-y-4 text-sm">
             <div className="grid sm:grid-cols-2 gap-2">
@@ -569,43 +581,71 @@ function PromotionList({
             </div>
             <div>
               <div className="font-semibold mb-2">{t('promoCriteria', { role: file.request?.target_role?.name ?? '' })}</div>
-              {(file.criteria ?? []).map((c: { id: number; criterion_code: string; actual_value: string; required_value: string; passed: boolean }) => (
-                <div key={c.id} className="flex justify-between py-1.5 border-b border-surface-100 dark:border-surface-700">
-                  <span>{criterionLabel[c.criterion_code] ?? c.criterion_code}</span>
-                  <span>{c.actual_value} / {c.required_value} {c.passed ? <Badge tone="ok">{t('promoPass')}</Badge> : <Badge tone="warn">{t('promoFail')}</Badge>}</span>
-                </div>
-              ))}
+              <div className="space-y-2">
+                {(file.criteria ?? []).map((c: { id: number; criterion_code: string; actual_value: string; required_value: string; passed: boolean }) => (
+                  <div key={c.id} className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/70 dark:bg-surface-900/40 p-3 flex items-start justify-between gap-3">
+                    <span className="min-w-0 break-words leading-6">{criterionLabel[c.criterion_code] ?? c.criterion_code}</span>
+                    <span className="shrink-0 flex items-center gap-2">
+                      <span className="text-xs font-semibold">{c.actual_value} / {c.required_value}</span>
+                      {c.passed ? <Badge tone="ok">{t('promoPass')}</Badge> : <Badge tone="warn">{t('promoFail')}</Badge>}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div>
-              <div className="font-semibold mb-2">{t('navTraining')}</div>
+            <div data-testid="promo-training" className="space-y-3">
+              <div className="font-semibold">{t('navTraining')}</div>
+              {(file.training ?? []).length === 0 && <Empty text={t('noItems')} />}
               {(file.training ?? []).map((c: { id: number; title: string; done: number; total: number; levels: Array<{ id: number; title: string; status?: string }> }) => (
-                <div key={c.id} className="mb-2">
-                  <div className="flex justify-between"><span>{c.title}</span><span>{c.done}/{c.total}</span></div>
-                  <div className="flex flex-wrap gap-1.5 mt-1">
-                    {c.levels.map((l) => <Badge key={l.id} tone={l.status === 'completed' ? 'ok' : 'muted'}>{l.title}</Badge>)}
+                <div key={c.id} className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/70 dark:bg-surface-900/40 p-3 space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="font-medium text-surface-800 dark:text-surface-100 min-w-0 break-words leading-6">{c.title}</div>
+                    <span className="shrink-0 text-xs font-semibold px-2 py-1 rounded-lg bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700">{c.done}/{c.total}</span>
+                  </div>
+                  <ProgressBar value={Number(c.done)} max={Number(c.total) || 1} />
+                  <div className="flex flex-wrap gap-1.5">
+                    {c.levels.map((l) => (
+                      <Badge key={l.id} tone={l.status === 'completed' ? 'ok' : 'muted'}>{l.title}</Badge>
+                    ))}
                   </div>
                 </div>
               ))}
             </div>
-            <div>
-              <div className="font-semibold mb-2">{t('refReferred')}</div>
+            <div className="space-y-3">
+              <div className="font-semibold">{t('refReferred')}</div>
               {(file.referrals ?? []).length === 0 && <Empty text={t('refEmpty')} />}
               {(file.referrals ?? []).map((r: { id: number; referred?: { name: string; mobile: string } }) => (
-                <div key={r.id}>{r.referred?.name} · {r.referred?.mobile}</div>
+                <div key={r.id} className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/70 dark:bg-surface-900/40 p-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium text-surface-800 dark:text-surface-100 break-words">{r.referred?.name ?? '—'}</div>
+                    <div className="text-xs text-surface-500 mt-0.5" dir="ltr">{r.referred?.mobile}</div>
+                  </div>
+                </div>
               ))}
             </div>
-            <div>
-              <div className="font-semibold mb-2">{t('navCommissions')}</div>
+            <div className="space-y-3">
+              <div className="font-semibold">{t('navCommissions')}</div>
+              {(file.commissions ?? []).length === 0 && <Empty text={t('commEmpty')} />}
               {(file.commissions ?? []).map((c: { id: number; commission_amount: string; status: string; role?: { name: string } }) => (
-                <div key={c.id} className="flex justify-between py-1">{c.role?.name ?? '—'} · {money(c.commission_amount)} · {label(c.status)}</div>
+                <div key={c.id} className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/70 dark:bg-surface-900/40 p-3 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium text-surface-800 dark:text-surface-100">{c.role?.name ?? '—'}</div>
+                    <div className="text-xs text-surface-500 mt-0.5">{label(c.status)}</div>
+                  </div>
+                  <span className="shrink-0 text-sm font-semibold">{money(c.commission_amount)}</span>
+                </div>
               ))}
             </div>
-            <div data-testid="promo-activities">
-              <div className="font-semibold mb-2">{t('promoActivities')}</div>
+            <div data-testid="promo-activities" className="space-y-3">
+              <div className="font-semibold">{t('promoActivities')}</div>
+              {(file.activities ?? []).length === 0 && <Empty text={t('noItems')} />}
               {(file.activities ?? []).map((a: { id: number; action: string; created_at: string; actor?: { name: string } }) => (
-                <div key={a.id} className="flex justify-between py-1 gap-3">
-                  <span>{label(a.action)} · {a.actor?.name}</span>
-                  <DateTimeText value={a.created_at} />
+                <div key={a.id} className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/70 dark:bg-surface-900/40 p-3 flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium text-surface-800 dark:text-surface-100 break-words leading-6">{label(a.action)}</div>
+                    <div className="text-xs text-surface-500 mt-0.5">{a.actor?.name}</div>
+                  </div>
+                  <span className="shrink-0 text-xs text-surface-400"><DateTimeText value={a.created_at} /></span>
                 </div>
               ))}
             </div>
@@ -632,16 +672,19 @@ export function PromotionsPage() {
   const { data } = useQuery({ queryKey: ['promo'], queryFn: async () => (await api.get('/promotions')).data })
   const request = useMutation({
     mutationFn: async () => api.post('/promotions', { from_role: from, target_role: target }),
-    onSuccess: () => { toast.success(t('promoManual')); qc.invalidateQueries({ queryKey: ['promo'] }) },
+    onSuccess: () => { toast.success(t('promoRequestOk')); qc.invalidateQueries({ queryKey: ['promo'] }) },
+    onError: (error: { response?: { data?: { message?: string } } }) => toast.error(error.response?.data?.message ?? t('promoDecideFail')),
   })
   const decide = useMutation({
     mutationFn: async ({ id, decision, note }: { id: number; decision: string; note?: string }) => api.post(`/promotions/${id}/decide`, { decision, note: note ?? '' }),
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
+      toast.success(vars.decision === 'rejected' ? t('promoRejectOk') : t('promoApproveOk'))
       qc.invalidateQueries({ queryKey: ['promo'] })
       qc.invalidateQueries({ queryKey: ['notif'] })
       qc.invalidateQueries({ queryKey: ['notif-unread'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
+    onError: (error: { response?: { data?: { message?: string } } }) => toast.error(error.response?.data?.message ?? t('promoDecideFail')),
   })
   const targetName = target === 'sales_manager' ? t('promoToSales') : t('promoToDev')
 
@@ -809,42 +852,62 @@ export function NotificationsPage() {
     onSuccess: refreshNotifs,
   })
   const rows: AppNotification[] = data?.data ?? []
+  const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all')
   const unread = rows.filter((n) => !n.read_at).length
-  const nSel = useSelection(rows.map((n) => n.id))
+  const visible = rows.filter((n) => filter === 'all' || (filter === 'unread' ? !n.read_at : Boolean(n.read_at)))
+  const nSel = useSelection(visible.map((n) => n.id))
 
   return (
     <div className="space-y-4" data-testid="notifications">
       <PageHeader title={t('notifications')} action={<button className="btn btn-ghost" onClick={() => readAll.mutate()}>{t('notifReadAll')}</button>} />
       <StatCard title={t('notifUnread')} value={unread.toLocaleString(localeTag())} icon={Users} color="from-amber-500 to-amber-600" />
+      <div className="flex flex-wrap gap-2" data-testid="notif-filter">
+        {([
+          ['all', t('notifFilterAll')],
+          ['unread', t('notifUnread')],
+          ['read', t('notifFilterRead')],
+        ] as const).map(([id, labelText]) => (
+          <button
+            key={id}
+            type="button"
+            data-testid={`notif-filter-${id}`}
+            className={`btn ${filter === id ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setFilter(id)}
+          >
+            {labelText}
+          </button>
+        ))}
+      </div>
       <BulkBar count={nSel.count}>
         <BulkButton tone="ok" onClick={async () => { for (const id of nSel.selected) await read.mutateAsync(id); nSel.clear() }}>{t('notifReadSelected')}</BulkButton>
       </BulkBar>
       <div className="card overflow-hidden">
         <div className="divide-y divide-surface-100 dark:divide-surface-700">
-          {rows.map((n) => {
+          {visible.map((n) => {
             const href = notificationHref(n, user?.active_role?.slug, user?.is_superuser)
+            const unreadItem = !n.read_at
             return (
-            <div key={n.id} className="p-4 flex justify-between gap-3 hover:bg-surface-50 dark:hover:bg-surface-700/30">
+            <div key={n.id} className={`p-4 flex justify-between gap-3 ${unreadItem ? 'bg-primary-50/80 dark:bg-primary-900/25' : 'hover:bg-surface-50 dark:hover:bg-surface-700/30 opacity-80'}`}>
               <div className="flex items-start gap-3">
                 <CheckBox checked={nSel.selected.includes(n.id)} onChange={() => nSel.toggle(n.id)} label={notificationTitle(n)} />
-                <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${n.read_at ? 'bg-surface-300' : 'bg-primary-500'}`} />
+                <div className={`w-2.5 h-2.5 rounded-full mt-2 flex-shrink-0 ${unreadItem ? 'bg-primary-500' : 'bg-surface-300'}`} />
                 <div>
-                  <div className="font-semibold text-surface-800 dark:text-surface-200">{notificationTitle(n)}</div>
-                  <div className="text-sm text-surface-600 dark:text-surface-400">{notificationBody(n)}</div>
+                  <div className={`${unreadItem ? 'font-bold text-surface-900 dark:text-white' : 'font-medium text-surface-600 dark:text-surface-400'}`}>{notificationTitle(n)}</div>
+                  <div className={`text-sm mt-0.5 ${unreadItem ? 'text-surface-700 dark:text-surface-200' : 'text-surface-500'}`}>{notificationBody(n)}</div>
                   <div className="text-xs text-surface-400 mt-1"><DateTimeText value={n.created_at} /></div>
                   {href && (
-                    <Link data-testid="notif-link" to={href} className="inline-flex items-center gap-1 text-sm text-primary-600 mt-2" onClick={() => { if (!n.read_at) read.mutate(n.id) }}>
+                    <Link data-testid="notif-link" to={href} className="inline-flex items-center gap-1 text-sm text-primary-600 mt-2 font-semibold" onClick={() => { if (unreadItem) read.mutate(n.id) }}>
                       {t('notifOpen')}
                     </Link>
                   )}
                 </div>
               </div>
-              {!n.read_at && <ApproveAction label={t('notifReadSelected')} onClick={() => read.mutate(n.id)} />}
+              {unreadItem && <ApproveAction label={t('notifReadSelected')} onClick={() => read.mutate(n.id)} />}
             </div>
             )
           })}
         </div>
-        {rows.length === 0 && <Empty text={t('notifEmpty')} />}
+        {visible.length === 0 && <Empty text={t('notifEmpty')} />}
       </div>
     </div>
   )

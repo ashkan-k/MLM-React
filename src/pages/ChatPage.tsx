@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Search } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { DateTimeText, Empty, PageHeader } from '../components/ui'
 import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
@@ -21,16 +22,19 @@ export function ChatPage() {
   const [live, setLive] = useState<ChatMessage[]>([])
   const [typing, setTyping] = useState('')
   const [liveSocket, setLiveSocket] = useState(false)
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
   const realtime = useRef<RealtimeClient | null>(null)
   const activeRef = useRef<number | null>(null)
   activeRef.current = active
+  const debug = import.meta.env.DEV || import.meta.env.VITE_DEBUG === 'true'
 
   const { data: directory } = useQuery({ queryKey: ['chat-dir'], queryFn: async () => (await api.get('/chat/directory')).data })
   const { data: conv } = useQuery({ queryKey: ['conv'], queryFn: async () => (await api.get('/conversations')).data })
-  const { data: messages } = useQuery({
+  const { data: messages, isFetched: messagesReady } = useQuery({
     queryKey: ['msgs', active],
     enabled: !!active,
     queryFn: async () => (await api.get(`/conversations/${active}/messages`)).data,
+    refetchInterval: liveSocket || !active ? false : 4000,
   })
 
   const start = useMutation({
@@ -70,11 +74,24 @@ export function ChatPage() {
   const history = [...(messages?.data ?? [])].reverse()
   const thread = [...history, ...live.filter((m) => !history.some((h) => h.id === m.id))]
 
-  const send = () => {
-    if (!active || !body.trim() || !liveSocket) return
+  const send = async () => {
+    if (!active || !body.trim()) return
     const text = body.trim()
     setBody('')
-    realtime.current?.send(active, text)
+    if (liveSocket && realtime.current?.send(active, text)) return
+    try {
+      const { data } = await api.post(`/conversations/${active}/messages`, { body: text })
+      const message = data as ChatMessage
+      if (message?.id) {
+        setLive((prev) => prev.some((m) => m.id === message.id) ? prev : [...prev, message])
+      }
+      qc.invalidateQueries({ queryKey: ['msgs', active] })
+      qc.invalidateQueries({ queryKey: ['conv'] })
+      qc.invalidateQueries({ queryKey: ['chat-unread'] })
+    } catch {
+      toast.error(t('chatSendFail'))
+      setBody(text)
+    }
   }
 
   return (
@@ -88,42 +105,50 @@ export function ChatPage() {
         </div>
         <div className="overflow-auto">
           <div className="text-xs text-surface-400 mb-2">{t('chatAllowed')}</div>
-          {contacts.map((u: { id: number; name: string; relationship: string }) => (
-            <button key={u.id} className="w-full text-start py-2.5 px-2 rounded-xl hover:bg-surface-100 dark:hover:bg-surface-800 flex items-center gap-3" data-testid={`chat-user-${u.id}`} onClick={() => start.mutate(u.id)}>
+          {contacts.map((u: { id: number; name: string; relationship: string }) => {
+            const selected = selectedUserId === u.id
+            return (
+            <button key={u.id} className={`w-full text-start py-2.5 px-2 rounded-xl flex items-center gap-3 ${selected ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-800 dark:text-primary-100 ring-1 ring-primary-400/70' : 'hover:bg-surface-100 dark:hover:bg-surface-800'}`} data-testid={`chat-user-${u.id}`} onClick={() => { setSelectedUserId(u.id); start.mutate(u.id) }}>
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-white text-xs font-bold flex items-center justify-center">{u.name.charAt(0)}</div>
               <div>
-                <div className="font-semibold">{u.name}</div>
+                <div className={selected ? 'font-extrabold' : 'font-semibold'}>{u.name}</div>
                 <div className="text-xs text-surface-400">{label(u.relationship)}</div>
               </div>
             </button>
-          ))}
+            )
+          })}
           <div className="text-xs text-surface-400 mt-4 mb-2">{t('chatRecent')}</div>
-          {(conv?.conversations ?? []).map((c: { id: number; participants?: Array<{ name: string }> }) => (
-            <button key={c.id} className={`w-full text-start py-2.5 px-2 rounded-xl ${active === c.id ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700' : 'hover:bg-surface-100 dark:hover:bg-surface-800'}`} onClick={() => { setActive(c.id); api.post(`/conversations/${c.id}/read`).then(() => qc.invalidateQueries({ queryKey: ['chat-unread'] })) }}>
-              {c.participants?.filter((p) => p.name !== user?.name).map((p) => p.name).join('، ') || `${t('chatConv')} ${c.id}`}
+          {(conv?.conversations ?? []).map((c: { id: number; participants?: Array<{ id?: number; name: string }> }) => {
+            const selected = active === c.id
+            const others = c.participants?.filter((p) => p.name !== user?.name) ?? []
+            return (
+            <button key={c.id} className={`w-full text-start py-2.5 px-2 rounded-xl ${selected ? 'bg-primary-100 dark:bg-primary-900/40 text-primary-800 dark:text-primary-100 ring-1 ring-primary-400/70 font-extrabold' : 'hover:bg-surface-100 dark:hover:bg-surface-800 font-medium'}`} onClick={() => { setActive(c.id); setSelectedUserId(others.find((p) => p.id)?.id ?? null); api.post(`/conversations/${c.id}/read`).then(() => qc.invalidateQueries({ queryKey: ['chat-unread'] })) }}>
+              {others.map((p) => p.name).join('، ') || `${t('chatConv')} ${c.id}`}
             </button>
-          ))}
+            )
+          })}
         </div>
       </aside>
       <section className="card min-h-[640px] grid grid-rows-[auto_1fr_auto]">
         <div className="px-4 py-3 border-b border-surface-200 dark:border-surface-700 font-semibold flex flex-wrap items-center gap-2">
           {active ? t('chatTitle') : t('choose')}
-          {import.meta.env.DEV && liveSocket && (
+          {debug && liveSocket && (
             <span data-testid="chat-ws-badge" className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
               {t('chatLive')}
             </span>
           )}
-          {!liveSocket && (
-            <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
-              {t('chatOffline')}
+          {debug && !liveSocket && (
+            <span data-testid="chat-http-badge" className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+              {t('chatHttp')}
             </span>
           )}
           {typeof conv?.unread === 'number' && <span className="text-sm font-normal text-surface-400">{t('notifUnread')}: {conv.unread}</span>}
           {typing && <span className="text-xs text-primary-600">{typing}</span>}
         </div>
-        <div className="p-4 overflow-auto grid gap-2 content-start">
+        <div className={`p-4 overflow-auto ${active && messagesReady && thread.length === 0 ? 'flex items-center justify-center' : 'grid gap-2 content-start'}`}>
           {denied && <div data-testid="chat-denied" className="text-red-700">ارسال پیام به این شاخه مجاز نیست.</div>}
           {!active && <Empty text={t('chatSub')} />}
+          {active && messagesReady && thread.length === 0 && !denied && <Empty text={t('chatEmpty')} />}
           {thread.map((m) => {
             const mine = m.sender_user_id === user?.id
             return (
@@ -135,8 +160,8 @@ export function ChatPage() {
           })}
         </div>
         <form className="p-3 border-t border-surface-200 dark:border-surface-700 flex gap-2" onSubmit={(e) => { e.preventDefault(); void send() }}>
-          <input className="input" data-testid="chat-input" placeholder={liveSocket ? 'پیام خود را بنویسید...' : t('chatOffline')} value={body} onChange={(e) => { setBody(e.target.value); if (active && liveSocket) realtime.current?.typing(active, true) }} disabled={!active || !liveSocket} />
-          <button className="btn btn-primary" type="submit" disabled={!active || !liveSocket || !body.trim()}>ارسال</button>
+          <input className="input" data-testid="chat-input" placeholder={t('chatCompose')} value={body} onChange={(e) => { setBody(e.target.value); if (active && liveSocket) realtime.current?.typing(active, true) }} disabled={!active} />
+          <button className="btn btn-primary" type="submit" disabled={!active || !body.trim()}>ارسال</button>
         </form>
       </section>
       </div>
