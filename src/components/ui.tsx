@@ -66,6 +66,19 @@ export function FieldHint({ children }: { children: ReactNode }) {
   return <p className="field-hint">{children}</p>
 }
 
+export function RequiredMark() {
+  return <span className="req" aria-hidden>*</span>
+}
+
+export function FieldLabel({ children, required }: { children: ReactNode; required?: boolean }) {
+  return (
+    <span>
+      {children}
+      {required ? <RequiredMark /> : null}
+    </span>
+  )
+}
+
 export function Modal({
   open,
   title,

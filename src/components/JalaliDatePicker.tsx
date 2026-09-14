@@ -27,12 +27,16 @@ export function JalaliDatePicker({
   placeholder = 'انتخاب تاریخ',
   allowClear = true,
   testId,
+  fromYear,
+  toYear,
 }: {
   value?: string
   onChange: (value: string) => void
   placeholder?: string
   allowClear?: boolean
   testId?: string
+  fromYear?: number
+  toYear?: number
 }) {
   const selected = fromIso(value)
   const [open, setOpen] = useState(false)
@@ -53,7 +57,13 @@ export function JalaliDatePicker({
 
   const year = getYear(cursor)
   const month = getMonth(cursor)
-  const years = useMemo(() => Array.from({ length: 21 }, (_, i) => year - 10 + i), [year])
+  const years = useMemo(() => {
+    const start = fromYear ?? year - 10
+    const end = toYear ?? year + 10
+    const lo = Math.min(start, year)
+    const hi = Math.max(end, year)
+    return Array.from({ length: hi - lo + 1 }, (_, i) => lo + i)
+  }, [fromYear, toYear, year])
   const first = startOfMonth(cursor)
   const blanks = weekdayIndex(first)
   const days = getDaysInMonth(cursor)

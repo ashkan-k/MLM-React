@@ -1,11 +1,13 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { api } from '../lib/api'
 import { moneyHeader } from '../lib/format'
 import { useAuth } from '../stores/auth'
+import { JalaliDatePicker } from './JalaliDatePicker'
 import { MoneyInput } from './MoneyInput'
 import { SearchSelect } from './SearchSelect'
+import { FieldLabel } from './ui'
 
 type Docs = {
   national_id_front?: File | null
@@ -15,6 +17,9 @@ type Docs = {
   gazette?: File | null
   license?: File | null
 }
+
+type GeoState = { id: number; title: string; slug?: string }
+type GeoCity = { id: number; state_id: number; title: string; sub_title?: string | null }
 
 const emptyForm = {
   ownership: 'solo',
@@ -49,12 +54,38 @@ const emptyForm = {
   legal_national_id: '',
 }
 
-function FileField({ label, onChange }: { label: string; onChange: (file: File | null) => void }) {
+function FileField({ label, file, onChange }: { label: string; file?: File | null; onChange: (file: File | null) => void }) {
+  const [preview, setPreview] = useState<string | null>(null)
+  const image = file ? file.type.startsWith('image/') : false
+
+  useEffect(() => {
+    if (!file || !image) {
+      setPreview(null)
+      return
+    }
+    const url = URL.createObjectURL(file)
+    setPreview(url)
+    return () => URL.revokeObjectURL(url)
+  }, [file, image])
+
   return (
-    <label className="field">
-      {label}
+    <div className="field">
+      <span>{label}</span>
       <input className="input" type="file" accept="image/*,.pdf" onChange={(e) => onChange(e.target.files?.[0] ?? null)} />
-    </label>
+      {file && (
+        <div className="flex items-center gap-3 mt-1">
+          {preview ? (
+            <img src={preview} alt="" className="w-20 h-20 object-cover rounded-lg border border-surface-200 dark:border-surface-600" />
+          ) : (
+            <div className="w-20 h-20 rounded-lg border border-surface-200 dark:border-surface-600 flex items-center justify-center text-[11px] text-surface-400">PDF</div>
+          )}
+          <div className="min-w-0 text-xs text-surface-500">
+            <div className="truncate font-medium text-surface-700 dark:text-surface-200">{file.name}</div>
+            <button type="button" className="text-red-500 mt-1" onClick={() => onChange(null)}>حذف فایل</button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -63,10 +94,23 @@ export function GatewayCreateForm({ onDone }: { onDone: () => void }) {
   const me = useAuth((s) => s.user)
   const { data: links } = useQuery({ queryKey: ['links'], queryFn: async () => (await api.get('/shared-links')).data })
   const { data: reps } = useQuery({ queryKey: ['reps'], queryFn: async () => (await api.get('/representatives')).data })
+  const { data: geo } = useQuery({ queryKey: ['geo-locations'], queryFn: async () => (await api.get('/geo/locations')).data })
   const [form, setForm] = useState(emptyForm)
   const [docs, setDocs] = useState<Docs>({})
   const [busy, setBusy] = useState(false)
   const set = (key: keyof typeof emptyForm, value: string) => setForm((prev) => ({ ...prev, [key]: value }))
+
+  const states: GeoState[] = geo?.states ?? []
+  const cities: GeoCity[] = geo?.cities ?? []
+  const selectedState = states.find((s) => s.title === form.province)
+  const cityOptions = useMemo(
+    () => cities.filter((c) => !selectedState || c.state_id === selectedState.id).map((c) => ({ value: c.title, label: c.sub_title && c.sub_title !== c.title ? `${c.title} (${c.sub_title})` : c.title })),
+    [cities, selectedState],
+  )
+  const birthPlaceOptions = useMemo(
+    () => Array.from(new Map(cities.map((c) => [c.title, { value: c.title, label: c.title }])).values()),
+    [cities],
+  )
 
   const submit = async () => {
     setBusy(true)
@@ -133,14 +177,14 @@ export function GatewayCreateForm({ onDone }: { onDone: () => void }) {
             <option value="referral">با معرف</option>
           </select>
         </label>
-        <label className="field">نام درگاه / کسب‌وکار
+        <label className="field"><FieldLabel required>نام درگاه / کسب‌وکار</FieldLabel>
           <input className="input" value={form.name} onChange={(e) => set('name', e.target.value)} required />
         </label>
-        <label className="field">{moneyHeader()}
+        <label className="field"><FieldLabel required>{moneyHeader()}</FieldLabel>
           <MoneyInput value={form.amount} onChange={(v) => set('amount', v)} required />
         </label>
         {form.ownership === 'shared' ? (
-          <label className="field">لینک اشتراکی فعال
+          <label className="field"><FieldLabel required>لینک اشتراکی فعال</FieldLabel>
             <SearchSelect
               testId="gateway-shared-link"
               value={form.shared_link_id}
@@ -172,13 +216,13 @@ export function GatewayCreateForm({ onDone }: { onDone: () => void }) {
               <option value="legal">حقوقی</option>
             </select>
           </label>
-          <label className="field">نام و نام خانوادگی / نماینده شرکت
+          <label className="field"><FieldLabel required>نام و نام خانوادگی / نماینده شرکت</FieldLabel>
             <input className="input" value={form.customer_name} onChange={(e) => set('customer_name', e.target.value)} required />
           </label>
-          <label className="field">کد ملی
+          <label className="field"><FieldLabel required>کد ملی</FieldLabel>
             <input className="input" value={form.national_id} onChange={(e) => set('national_id', e.target.value)} required maxLength={10} />
           </label>
-          <label className="field">موبایل
+          <label className="field"><FieldLabel required>موبایل</FieldLabel>
             <input className="input" value={form.mobile} onChange={(e) => set('mobile', e.target.value)} required />
           </label>
           <label className="field">ایمیل
@@ -188,13 +232,13 @@ export function GatewayCreateForm({ onDone }: { onDone: () => void }) {
             <input className="input" value={form.father_name} onChange={(e) => set('father_name', e.target.value)} />
           </label>
           <label className="field">تاریخ تولد
-            <input className="input" type="date" value={form.birth_date} onChange={(e) => set('birth_date', e.target.value)} />
+            <JalaliDatePicker value={form.birth_date} onChange={(v) => set('birth_date', v)} placeholder="انتخاب تاریخ شمسی" fromYear={1300} toYear={1410} />
           </label>
           <label className="field">شماره شناسنامه
             <input className="input" value={form.birth_certificate_no} onChange={(e) => set('birth_certificate_no', e.target.value)} />
           </label>
           <label className="field">محل تولد
-            <input className="input" value={form.birth_place} onChange={(e) => set('birth_place', e.target.value)} />
+            <SearchSelect value={form.birth_place} onChange={(v) => set('birth_place', v)} placeholder="انتخاب شهر" options={birthPlaceOptions} />
           </label>
           <label className="field">جنسیت
             <select className="input" value={form.gender} onChange={(e) => set('gender', e.target.value)}>
@@ -218,8 +262,24 @@ export function GatewayCreateForm({ onDone }: { onDone: () => void }) {
 
       <section className="grid md:grid-cols-2 gap-3">
         <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">آدرس و کسب‌وکار</div>
-        <label className="field">استان<input className="input" value={form.province} onChange={(e) => set('province', e.target.value)} /></label>
-        <label className="field">شهر<input className="input" value={form.city} onChange={(e) => set('city', e.target.value)} /></label>
+        <label className="field">استان
+          <SearchSelect
+            testId="gateway-province"
+            value={form.province}
+            onChange={(v) => setForm((prev) => ({ ...prev, province: v, city: '' }))}
+            placeholder="انتخاب استان"
+            options={states.map((s) => ({ value: s.title, label: s.title }))}
+          />
+        </label>
+        <label className="field">شهر
+          <SearchSelect
+            testId="gateway-city"
+            value={form.city}
+            onChange={(v) => set('city', v)}
+            placeholder={form.province ? 'انتخاب شهر' : 'اول استان را انتخاب کنید'}
+            options={cityOptions}
+          />
+        </label>
         <label className="field md:col-span-2">نشانی کامل<input className="input" value={form.address} onChange={(e) => set('address', e.target.value)} /></label>
         <label className="field">کد پستی<input className="input" value={form.postal_code} onChange={(e) => set('postal_code', e.target.value)} /></label>
         <label className="field">نام فروشگاه<input className="input" value={form.shop_name} onChange={(e) => set('shop_name', e.target.value)} /></label>
@@ -229,7 +289,7 @@ export function GatewayCreateForm({ onDone }: { onDone: () => void }) {
 
       <section className="grid md:grid-cols-2 gap-3">
         <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">حساب بانکی تسویه</div>
-        <label className="field">شبا<input className="input" value={form.sheba} onChange={(e) => set('sheba', e.target.value)} required /></label>
+        <label className="field"><FieldLabel required>شبا</FieldLabel><input className="input" value={form.sheba} onChange={(e) => set('sheba', e.target.value)} required /></label>
         <label className="field">نام بانک<input className="input" value={form.bank_name} onChange={(e) => set('bank_name', e.target.value)} /></label>
         <label className="field">شماره حساب<input className="input" value={form.account_number} onChange={(e) => set('account_number', e.target.value)} /></label>
         <label className="field">صاحب حساب<input className="input" value={form.account_holder} onChange={(e) => set('account_holder', e.target.value)} /></label>
@@ -237,14 +297,14 @@ export function GatewayCreateForm({ onDone }: { onDone: () => void }) {
 
       <section className="grid md:grid-cols-2 gap-3">
         <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">مدارک هویتی</div>
-        <FileField label="تصویر روی کارت ملی" onChange={(file) => setDocs((d) => ({ ...d, national_id_front: file }))} />
-        <FileField label="تصویر پشت کارت ملی" onChange={(file) => setDocs((d) => ({ ...d, national_id_back: file }))} />
-        <FileField label="تصویر شناسنامه" onChange={(file) => setDocs((d) => ({ ...d, birth_certificate: file }))} />
-        <FileField label="سلفی احراز هویت با کارت ملی" onChange={(file) => setDocs((d) => ({ ...d, selfie: file }))} />
+        <FileField label="تصویر روی کارت ملی" file={docs.national_id_front} onChange={(file) => setDocs((d) => ({ ...d, national_id_front: file }))} />
+        <FileField label="تصویر پشت کارت ملی" file={docs.national_id_back} onChange={(file) => setDocs((d) => ({ ...d, national_id_back: file }))} />
+        <FileField label="تصویر شناسنامه" file={docs.birth_certificate} onChange={(file) => setDocs((d) => ({ ...d, birth_certificate: file }))} />
+        <FileField label="سلفی احراز هویت با کارت ملی" file={docs.selfie} onChange={(file) => setDocs((d) => ({ ...d, selfie: file }))} />
         {form.person_type === 'legal' && (
           <>
-            <FileField label="روزنامه رسمی / آگهی تأسیس" onChange={(file) => setDocs((d) => ({ ...d, gazette: file }))} />
-            <FileField label="مجوز یا پروانه کسب" onChange={(file) => setDocs((d) => ({ ...d, license: file }))} />
+            <FileField label="روزنامه رسمی / آگهی تأسیس" file={docs.gazette} onChange={(file) => setDocs((d) => ({ ...d, gazette: file }))} />
+            <FileField label="مجوز یا پروانه کسب" file={docs.license} onChange={(file) => setDocs((d) => ({ ...d, license: file }))} />
           </>
         )}
       </section>

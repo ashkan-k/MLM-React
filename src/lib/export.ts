@@ -154,6 +154,12 @@ function downloadBlob(name: string, content: BlobPart, type: string) {
   URL.revokeObjectURL(url)
 }
 
+export function downloadZip(filename: string, files: Array<{ name: string; content: string }>) {
+  const packed = zipStore(files.map((file) => ({ name: file.name, data: utf8(file.content) })))
+  const base = filename.endsWith('.zip') ? filename : `${safeFile(filename)}.zip`
+  downloadBlob(base, packed as BlobPart, 'application/zip')
+}
+
 function printPdf(title: string, sheets: ExportSheet[]) {
   const tables = sheets.map((sheet) => {
     const keys = sheet.rows[0] ? Object.keys(sheet.rows[0]) : []
@@ -172,6 +178,7 @@ function printPdf(title: string, sheets: ExportSheet[]) {
   win.document.write(html)
   win.document.close()
   win.focus()
+  win.onafterprint = () => win.close()
   win.print()
 }
 
@@ -180,7 +187,14 @@ export function exportSheets(filename: string, sheets: ExportSheet[], format: Ex
   const fallback = usable.length ? usable : [{ title: 'empty', rows: [{ message: 'no data' }] }]
   const base = safeFile(filename)
   if (format === 'csv') {
-    fallback.forEach((sheet) => downloadBlob(`${base}-${safeFile(sheet.title)}.csv`, csvFrom(sheet.rows), 'text/csv;charset=utf-8'))
+    if (fallback.length === 1) {
+      downloadBlob(`${base}.csv`, csvFrom(fallback[0].rows), 'text/csv;charset=utf-8')
+      return
+    }
+    downloadZip(base, fallback.map((sheet) => ({
+      name: `${safeFile(sheet.title)}.csv`,
+      content: csvFrom(sheet.rows),
+    })))
     return
   }
   if (format === 'xlsx') {

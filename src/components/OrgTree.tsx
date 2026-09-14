@@ -2,6 +2,7 @@ import { ChevronDown, ChevronUp, Download, Eye, Network, TrendingUp, Users } fro
 import { useMemo, useState } from 'react'
 import { useApp } from '../contexts/AppContext'
 import { exportSelected } from './table'
+import { downloadZip } from '../lib/export'
 import { Empty, Modal } from './ui'
 
 export type OrgNode = {
@@ -187,16 +188,6 @@ function htmlTree(rows: FlatRow[]) {
   <body><h1>خروجی درختی شبکه و زیرمجموعه‌ها</h1>${items}</body></html>`
 }
 
-function downloadText(name: string, content: string, mime: string) {
-  const blob = new Blob([content], { type: mime })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
 function NodeRow({
   node,
   depth,
@@ -291,19 +282,17 @@ export function OrgTree({
 
   const exportTree = () => {
     const text = rows.map((r) => `${'  '.repeat(r.level)}- ${r.name} | ${r.role || '—'} | ${r.mobile || '—'} | ${t('orgLevel')} ${r.level} | ${t('orgParent')}: ${r.parent} | ${t('orgDirect')} ${r.direct} | ${t('orgTotal')} ${r.total} | ${t('orgPath')}: ${r.path}`).join('\n')
-    downloadText(locale === 'en' ? 'network-tree.txt' : 'network-tree.txt', text, 'text/plain;charset=utf-8')
-    downloadText(locale === 'en' ? 'network-tree.html' : 'network-tree.html', htmlTree(rows), 'text/html;charset=utf-8')
+    downloadZip(locale === 'en' ? 'network-tree' : 'خروجی-درختی-شبکه', [
+      { name: 'network-tree.txt', content: text },
+      { name: 'network-tree.html', content: htmlTree(rows) },
+    ])
   }
 
   const exportDiagram = () => {
-    const html = htmlOrgChart(visible, rows)
-    downloadText('network-diagram.html', html, 'text/html;charset=utf-8')
-    downloadText('network.svg', svgOf(rows), 'image/svg+xml;charset=utf-8')
-    const preview = window.open('', '_blank')
-    if (preview) {
-      preview.document.write(html)
-      preview.document.close()
-    }
+    downloadZip(locale === 'en' ? 'network-diagram' : 'خروجی-دیاگرام-شبکه', [
+      { name: 'network-diagram.html', content: htmlOrgChart(visible, rows) },
+      { name: 'network.svg', content: svgOf(rows) },
+    ])
   }
 
   return (
