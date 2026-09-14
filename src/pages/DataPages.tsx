@@ -117,10 +117,13 @@ function TeamTable({
 
 function gatewayTone(status: string): 'ok' | 'warn' | 'info' | 'muted' | 'danger' {
   if (status === 'successful') return 'ok'
-  if (status === 'pending_inspection') return 'warn'
-  if (status === 'pending_shaparak') return 'info'
+  if (status === 'pending_inspection' || status === 'pending_shaparak') return 'warn'
   if (status === 'rejected') return 'danger'
   return 'muted'
+}
+
+function isAwaitingInspect(status: string) {
+  return status === 'pending_inspection' || status === 'pending_shaparak'
 }
 
 type GatewaySaleRow = {
@@ -130,7 +133,12 @@ type GatewaySaleRow = {
   sold_at: string
   shaparak_reference?: string | null
   rejection_note?: string | null
-  gateway?: { name: string; external_id: string }
+  gateway?: {
+    name: string
+    external_id: string
+    merchant_code?: string | null
+    transactions?: Array<{ id: number; amount: string; profit: string; status: string; authority?: string | null; paid_at?: string | null }>
+  }
   customer?: {
     name: string
     mobile?: string
@@ -165,18 +173,14 @@ function GatewayTable({
   rows,
   isLoading,
   canInspect,
-  canShaparak,
   onOpen,
   onInspect,
-  onShaparak,
 }: {
   rows: GatewaySaleRow[]
   isLoading: boolean
   canInspect: boolean
-  canShaparak: boolean
   onOpen: (row: GatewaySaleRow) => void
   onInspect: (row: GatewaySaleRow, decision: 'approved' | 'rejected') => void
-  onShaparak: (row: GatewaySaleRow, decision: 'approved' | 'rejected') => void
 }) {
   const { t } = useApp()
   return (
@@ -208,16 +212,10 @@ function GatewayTable({
               <td>
                 <RowActions>
                   <ViewAction onClick={() => onOpen(row)} label={t('gwReview')} />
-                  {canInspect && row.status === 'pending_inspection' && (
+                  {canInspect && isAwaitingInspect(row.status) && (
                     <>
                       <ApproveAction label={t('gwInspect')} onClick={() => onInspect(row, 'approved')} />
                       <IconAction label={t('gwRejectInspect')} tone="delete" icon={X} onClick={() => onInspect(row, 'rejected')} />
-                    </>
-                  )}
-                  {canShaparak && row.status === 'pending_shaparak' && (
-                    <>
-                      <ApproveAction label={t('gwShaparak')} onClick={() => onShaparak(row, 'approved')} />
-                      <IconAction label={t('gwRejectShaparak')} tone="delete" icon={X} onClick={() => onShaparak(row, 'rejected')} />
                     </>
                   )}
                 </RowActions>
@@ -252,16 +250,12 @@ function GatewayReviewModal({
   sale,
   onClose,
   canInspect,
-  canShaparak,
   onInspect,
-  onShaparak,
 }: {
   sale: GatewaySaleRow
   onClose: () => void
   canInspect: boolean
-  canShaparak: boolean
   onInspect: (row: GatewaySaleRow, decision: 'approved' | 'rejected') => void
-  onShaparak: (row: GatewaySaleRow, decision: 'approved' | 'rejected') => void
 }) {
   const { t } = useApp()
   const c = sale.customer
@@ -282,7 +276,7 @@ function GatewayReviewModal({
       <div className="space-y-5" data-testid="gateway-review">
         <div className="flex flex-wrap gap-2 items-center">
           <Badge tone={gatewayTone(sale.status)}>{label(sale.status)}</Badge>
-          {sale.shaparak_reference && <Badge tone="info">{t('gwRef')}: {sale.shaparak_reference}</Badge>}
+          {sale.gateway?.merchant_code && <Badge tone="info">{t('gwMerchantCode')}: {sale.gateway.merchant_code}</Badge>}
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
           <KycItem label={t('kycCustomer')} value={c?.name} />
@@ -350,7 +344,7 @@ function GatewayReviewModal({
                       <DateTimeText value={review.created_at} />
                     </div>
                     {review.note && <div className="text-sm text-surface-700 dark:text-surface-200">{review.note}</div>}
-                    {review.reference && <div className="text-xs text-surface-400">{t('gwRef')}: {review.reference}</div>}
+                    {review.reference && <div className="text-xs text-surface-400">{t('gwMerchantCode')}: {review.reference}</div>}
                   </div>
                 </div>
               </li>
@@ -372,18 +366,29 @@ function GatewayReviewModal({
         ) : (
           <p className="text-sm text-amber-700 dark:text-amber-400 m-0">{t('gwNoCommissionYet')}</p>
         )}
+        {(sale.gateway?.transactions?.length ?? 0) > 0 && (
+          <div>
+            <div className="font-semibold mb-2">{t('gwTransactions')}</div>
+            <div className="grid sm:grid-cols-2 gap-2 text-sm">
+              {(sale.gateway?.transactions ?? []).map((row) => (
+                <div key={row.id} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 space-y-1">
+                  <div className="flex justify-between gap-2">
+                    <span>{label(row.status)}</span>
+                    <span>{money(row.profit)}</span>
+                  </div>
+                  <div className="text-xs text-surface-400">{t('gwTxAmount')}: {money(row.amount)}</div>
+                  {row.authority && <div className="text-xs text-surface-400">{row.authority}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {sale.rejection_note && <p className="text-sm text-red-600 m-0">{sale.rejection_note}</p>}
         <div className="flex flex-wrap gap-2">
-          {canInspect && sale.status === 'pending_inspection' && (
+          {canInspect && isAwaitingInspect(sale.status) && (
             <>
               <button type="button" className="btn btn-primary" onClick={() => onInspect(sale, 'approved')}>{t('gwInspect')}</button>
               <button type="button" className="btn btn-danger" onClick={() => onInspect(sale, 'rejected')}>{t('gwRejectInspect')}</button>
-            </>
-          )}
-          {canShaparak && sale.status === 'pending_shaparak' && (
-            <>
-              <button type="button" className="btn btn-primary" onClick={() => onShaparak(sale, 'approved')}>{t('gwShaparak')}</button>
-              <button type="button" className="btn btn-danger" onClick={() => onShaparak(sale, 'rejected')}>{t('gwRejectShaparak')}</button>
             </>
           )}
         </div>
@@ -401,57 +406,44 @@ export function GatewaysPage() {
   const [openSale, setOpenSale] = useState<GatewaySaleRow | null>(null)
   const rows: GatewaySaleRow[] = data?.data ?? []
   const total = rows.reduce((sum, row) => sum + Number(row.amount ?? 0), 0)
-  const inspectCount = rows.filter((r) => r.status === 'pending_inspection').length
-  const shaparakCount = rows.filter((r) => r.status === 'pending_shaparak').length
+  const inspectCount = rows.filter((r) => isAwaitingInspect(r.status)).length
   const canInspect = Boolean(me?.is_superuser || me?.active_role?.slug === 'senior_manager')
-  const canShaparak = canInspect
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['sales'] })
     qc.invalidateQueries({ queryKey: ['commissions'] })
     qc.invalidateQueries({ queryKey: ['wallets'] })
     qc.invalidateQueries({ queryKey: ['notifications'] })
+    qc.invalidateQueries({ queryKey: ['dashboard'] })
   }
 
   const inspect = async (row: GatewaySaleRow, decision: 'approved' | 'rejected') => {
     let note = ''
+    let merchantCode: string | undefined
     if (decision === 'rejected') {
       const typed = await promptAction({ title: t('gwRejectInspect'), text: t('promoRejectText'), confirmText: t('rejectYes'), placeholder: t('promoRejectReason') })
       if (!typed) return
       note = typed
-    } else if (!await confirmAction({ title: t('gwInspect'), text: t('gwInspectConfirm'), danger: false, confirmText: t('confirmYes') })) {
-      return
-    }
-    try {
-      const { data: updated } = await api.post(`/gateway-sales/${row.id}/inspect`, { decision, note })
-      toast.success(decision === 'approved' ? t('gwInspectOk') : t('reject'))
-      setOpenSale(updated)
-      refresh()
-    } catch {
-      toast.error(t('blockFail'))
-    }
-  }
-
-  const shaparak = async (row: GatewaySaleRow, decision: 'approved' | 'rejected') => {
-    let note = ''
-    let reference: string | undefined
-    if (decision === 'rejected') {
-      const typed = await promptAction({ title: t('gwRejectShaparak'), text: t('promoRejectText'), confirmText: t('rejectYes'), placeholder: t('promoRejectReason') })
-      if (!typed) return
-      note = typed
     } else {
-      if (!await confirmAction({ title: t('gwShaparak'), text: t('gwShaparakConfirm'), danger: false, confirmText: t('confirmYes') })) return
-      const ref = await promptAction({ title: t('gwRef'), text: t('gwShaparakRef'), confirmText: t('confirmYes'), placeholder: t('gwShaparakRef'), danger: false, required: false })
-      if (ref === null) return
-      reference = ref || undefined
+      if (!await confirmAction({ title: t('gwInspect'), text: t('gwInspectConfirm'), danger: false, confirmText: t('confirmYes') })) return
+      const typed = await promptAction({
+        title: t('gwMerchantCode'),
+        text: t('gwMerchantCodeHint'),
+        confirmText: t('confirmYes'),
+        placeholder: 'fino-xxxx-xxxx-xxxx-xxxx',
+        danger: false,
+      })
+      if (!typed) return
+      merchantCode = typed
     }
     try {
-      const { data: updated } = await api.post(`/gateway-sales/${row.id}/shaparak`, { decision, note, reference })
-      toast.success(decision === 'approved' ? t('gwShaparakOk') : t('reject'))
-      setOpenSale(updated)
+      await api.post(`/gateway-sales/${row.id}/inspect`, { decision, note, merchant_code: merchantCode })
+      toast.success(decision === 'approved' ? t('gwInspectOk') : t('reject'))
+      setOpenSale(null)
       refresh()
-    } catch {
-      toast.error(t('blockFail'))
+    } catch (error) {
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(message || t('blockFail'))
     }
   }
 
@@ -466,25 +458,20 @@ export function GatewaysPage() {
           sale={openSale}
           onClose={() => setOpenSale(null)}
           canInspect={canInspect}
-          canShaparak={canShaparak}
           onInspect={inspect}
-          onShaparak={shaparak}
         />
       )}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard title={t('gwCount')} value={rows.length.toLocaleString(localeTag())} icon={CreditCard} color="from-blue-500 to-blue-600" />
         <StatCard title={moneyHeader(t('sumMoney'))} value={money(total)} icon={TrendingUp} color="from-emerald-500 to-emerald-600" />
         <StatCard title={t('gwQueueInspect')} value={inspectCount.toLocaleString(localeTag())} icon={CreditCard} color="from-amber-500 to-amber-600" />
-        <StatCard title={t('gwQueueShaparak')} value={shaparakCount.toLocaleString(localeTag())} icon={CreditCard} color="from-sky-500 to-sky-600" />
       </div>
       <GatewayTable
         rows={rows}
         isLoading={isLoading}
         canInspect={canInspect}
-        canShaparak={canShaparak}
         onOpen={setOpenSale}
         onInspect={inspect}
-        onShaparak={shaparak}
       />
     </div>
   )

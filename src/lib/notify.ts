@@ -10,8 +10,10 @@ const typePath: Record<string, string> = {
   'training.progress': 'training',
   'gateway.submitted': 'gateways',
   'gateway.inspected': 'gateways',
+  'gateway.approved': 'gateways',
   'gateway.shaparak_confirmed': 'gateways',
   'gateway.rejected': 'gateways',
+  'gateway.transaction': 'commissions',
 }
 
 const titlesFa: Record<string, string> = {
@@ -22,9 +24,11 @@ const titlesFa: Record<string, string> = {
   'withdrawal.pending': 'برداشت در انتظار تایید',
   'training.progress': 'پیشرفت آموزش شبکه',
   'gateway.submitted': 'درگاه جدید برای بازرسی',
-  'gateway.inspected': 'درگاه آماده تایید شاپرک',
+  'gateway.inspected': 'درگاه آماده تایید',
+  'gateway.approved': 'درگاه تایید شد',
   'gateway.shaparak_confirmed': 'درگاه تایید شد',
   'gateway.rejected': 'درگاه رد شد',
+  'gateway.transaction': 'تراکنش درگاه تایید شد',
   'system.info': 'راهنمای پنل',
 }
 
@@ -36,9 +40,11 @@ const titlesEn: Record<string, string> = {
   'withdrawal.pending': 'Withdrawal awaiting review',
   'training.progress': 'Network training progress',
   'gateway.submitted': 'New gateway awaiting inspection',
-  'gateway.inspected': 'Gateway ready for Shaparak',
+  'gateway.inspected': 'Gateway ready for approval',
+  'gateway.approved': 'Gateway approved',
   'gateway.shaparak_confirmed': 'Gateway confirmed',
   'gateway.rejected': 'Gateway rejected',
+  'gateway.transaction': 'Gateway transaction verified',
   'system.info': 'Panel guide',
 }
 

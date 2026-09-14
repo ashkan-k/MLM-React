@@ -70,11 +70,11 @@ export function formatExportValue(value: unknown): string {
 }
 
 export const statusLabel: Record<string, string> = {
-  pending_inspection: 'در انتظار بازرسی مدارک',
-  pending_shaparak: 'در انتظار تایید شاپرک',
+  pending_inspection: 'در انتظار تایید مدیر ارشد',
+  pending_shaparak: 'در انتظار تایید مدیر ارشد',
   submitted: 'ارسال مدارک',
-  inspected: 'بازرسی مدارک',
-  shaparak_confirmed: 'تایید شاپرک',
+  inspected: 'تایید مدارک',
+  shaparak_confirmed: 'تایید درگاه',
   commission_posted: 'ثبت پورسانت',
   successful: 'موفق',
   posted: 'ثبت‌شده',
@@ -114,11 +114,11 @@ export const statusLabel: Record<string, string> = {
 }
 
 const statusLabelEn: Record<string, string> = {
-  pending_inspection: 'Pending document inspection',
-  pending_shaparak: 'Pending Shaparak confirmation',
+  pending_inspection: 'Pending senior-manager approval',
+  pending_shaparak: 'Pending senior-manager approval',
   submitted: 'Documents submitted',
   inspected: 'Documents inspected',
-  shaparak_confirmed: 'Shaparak confirmed',
+  shaparak_confirmed: 'Gateway confirmed',
   commission_posted: 'Commission posted',
   successful: 'Successful',
   posted: 'Posted',
@@ -175,11 +175,9 @@ export const permissionLabel: Record<string, string> = {
   'senior_manager.withdrawal.approve': 'مدیر ارشد / تایید برداشت',
   'senior_manager.benefit_transfer.create': 'مدیر ارشد / انتقال مزایا',
   'senior_manager.promotion.decide': 'مدیر ارشد / تصمیم ارتقاء',
-  'senior_manager.gateway.inspect': 'مدیر ارشد / بازرسی مدارک درگاه',
-  'senior_manager.gateway.shaparak': 'مدیر ارشد / تایید شاپرک و فاینوپال',
+  'senior_manager.gateway.inspect': 'مدیر ارشد / تایید درگاه و ثبت کد مرچنت فاینوپال',
   'superuser.commission_rules.update': 'مدیر سامانه / ویرایش قواعد پورسانت',
   'superuser.gateway.create': 'مدیر سامانه / ثبت فروش درگاه',
-  'superuser.gateway.shaparak': 'تایید شاپرک و فاینوپال',
   'chat.cross_branch.message': 'چت بین‌شاخه‌ای',
   'page.dashboard': 'صفحه / داشبورد',
   'page.team': 'صفحه / شبکه و تیم',
@@ -255,8 +253,7 @@ const auditLabelEn: Record<string, string> = {
   'benefit_transfer.all': 'Full benefit transfer',
   'benefit_transfer.share': 'Gateway share transfer',
   'gateway.submitted': 'Gateway submitted for inspection',
-  'gateway.inspected': 'Gateway documents inspected',
-  'gateway.shaparak_confirmed': 'Shaparak / Finopal confirmed',
+  'gateway.approved': 'Gateway approved with merchant code',
   'gateway.rejected': 'Gateway rejected',
 }
 
@@ -283,8 +280,7 @@ export const auditLabel: Record<string, string> = {
   'benefit_transfer.all': 'انتقال کامل مزایا',
   'benefit_transfer.share': 'انتقال سهم درگاه',
   'gateway.submitted': 'ثبت درگاه برای بازرسی',
-  'gateway.inspected': 'بازرسی مدارک درگاه',
-  'gateway.shaparak_confirmed': 'تایید شاپرک / فاینوپال',
+  'gateway.approved': 'تایید درگاه با کد مرچنت فاینوپال',
   'gateway.rejected': 'رد درگاه',
 }
 
