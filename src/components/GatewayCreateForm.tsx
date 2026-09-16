@@ -2,10 +2,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { api } from '../lib/api'
-import { moneyHeader } from '../lib/format'
 import { useAuth } from '../stores/auth'
 import { JalaliDatePicker } from './JalaliDatePicker'
-import { MoneyInput } from './MoneyInput'
 import { SearchSelect } from './SearchSelect'
 import { FieldLabel } from './ui'
 
@@ -24,7 +22,6 @@ type GeoCity = { id: number; state_id: number; title: string; sub_title?: string
 const emptyForm = {
   ownership: 'solo',
   name: '',
-  amount: '',
   shared_link_id: '',
   representative_user_id: '',
   person_type: 'individual',
@@ -130,7 +127,6 @@ export function GatewayCreateForm({ onDone }: { onDone: () => void }) {
       const fd = new FormData()
       fd.append('external_id', `GW-${Date.now()}`)
       fd.append('name', form.name)
-      fd.append('amount', form.amount)
       fd.append('source', 'finopal')
       fd.append('ownership_type', form.ownership)
       if (form.ownership === 'shared' && form.shared_link_id) fd.append('shared_link_id', form.shared_link_id)
@@ -191,9 +187,6 @@ export function GatewayCreateForm({ onDone }: { onDone: () => void }) {
         </label>
         <label className="field"><FieldLabel required>نام درگاه / کسب‌وکار</FieldLabel>
           <input className="input" value={form.name} onChange={(e) => set('name', e.target.value)} required />
-        </label>
-        <label className="field"><FieldLabel required>{moneyHeader()}</FieldLabel>
-          <MoneyInput value={form.amount} onChange={(v) => set('amount', v)} required />
         </label>
         {form.ownership === 'shared' ? (
           <label className="field"><FieldLabel required>لینک اشتراکی فعال</FieldLabel>

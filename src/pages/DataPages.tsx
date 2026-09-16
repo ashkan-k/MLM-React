@@ -129,11 +129,13 @@ function isAwaitingInspect(status: string) {
 type GatewaySaleRow = {
   id: number
   amount: string
+  my_commission_total?: string
   status: string
   sold_at: string
   shaparak_reference?: string | null
   rejection_note?: string | null
   gateway?: {
+    id?: number
     name: string
     external_id: string
     merchant_code?: string | null
@@ -190,8 +192,8 @@ function GatewayTable({
           <tr>
             <th>{t('gateway')}</th>
             <th>{t('customer')}</th>
-            <th>{moneyHeader()}</th>
             <th>{t('reps')}</th>
+            <th>{moneyHeader(t('gwMyProfit'))}</th>
             <th>{t('status')}</th>
             <th>{t('soldAt')}</th>
             <th>{t('details')}</th>
@@ -205,8 +207,8 @@ function GatewayTable({
                 <div className="text-xs text-surface-400">{row.gateway?.external_id}</div>
               </td>
               <td>{row.customer?.name ?? '—'}</td>
-              <td>{money(row.amount)}</td>
               <td>{row.representatives?.map((r) => `${r.user?.name} (${percent(r.share_percent)})`).join('، ') || '—'}</td>
+              <td className="font-semibold text-emerald-700 dark:text-emerald-400">{money(row.my_commission_total ?? 0)}</td>
               <td><Badge tone={gatewayTone(row.status)}>{label(row.status)}</Badge></td>
               <td><DateTimeText value={row.sold_at} /></td>
               <td>
@@ -401,11 +403,16 @@ export function GatewaysPage() {
   const { t } = useApp()
   const qc = useQueryClient()
   const me = useAuth((s) => s.user)
-  const { data, isLoading } = useQuery({ queryKey: ['sales'], queryFn: async () => (await api.get('/gateway-sales')).data })
+  const roleSlug = me?.active_role?.slug
+  const { data, isLoading } = useQuery({
+    queryKey: ['sales', roleSlug],
+    queryFn: async () => (await api.get('/gateway-sales')).data,
+  })
   const [openCreate, setOpenCreate] = useState(false)
   const [openSale, setOpenSale] = useState<GatewaySaleRow | null>(null)
   const rows: GatewaySaleRow[] = data?.data ?? []
-  const total = rows.reduce((sum, row) => sum + Number(row.amount ?? 0), 0)
+  const successCount = rows.filter((r) => r.status === 'successful').length
+  const myProfitTotal = rows.reduce((sum, row) => sum + Number(row.my_commission_total ?? 0), 0)
   const inspectCount = rows.filter((r) => isAwaitingInspect(r.status)).length
   const canInspect = Boolean(me?.is_superuser || me?.active_role?.slug === 'senior_manager')
 
@@ -461,9 +468,10 @@ export function GatewaysPage() {
           onInspect={inspect}
         />
       )}
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title={t('gwCount')} value={rows.length.toLocaleString(localeTag())} icon={CreditCard} color="from-blue-500 to-blue-600" />
-        <StatCard title={moneyHeader(t('sumMoney'))} value={money(total)} icon={TrendingUp} color="from-emerald-500 to-emerald-600" />
+        <StatCard title={t('gwSuccessful')} value={successCount.toLocaleString(localeTag())} icon={TrendingUp} color="from-emerald-500 to-emerald-600" />
+        <StatCard title={moneyHeader(t('gwMyProfit'))} value={money(myProfitTotal)} icon={Wallet} color="from-teal-500 to-emerald-600" />
         <StatCard title={t('gwQueueInspect')} value={inspectCount.toLocaleString(localeTag())} icon={CreditCard} color="from-amber-500 to-amber-600" />
       </div>
       <GatewayTable
@@ -524,16 +532,51 @@ function CommissionTable({ rows, isLoading }: { rows: Array<{
 export function CommissionsPage() {
   const { t } = useApp()
   const roleSlug = useAuth((s) => s.user?.active_role?.slug)
+  const [gatewayId, setGatewayId] = useState('')
+  const { data: salesData } = useQuery({
+    queryKey: ['sales', roleSlug, 'commission-filter'],
+    queryFn: async () => (await api.get('/gateway-sales', { params: { per_page: 100 } })).data,
+  })
   const { data, isLoading } = useQuery({
-    queryKey: ['commissions', roleSlug],
-    queryFn: async () => (await api.get('/commissions')).data,
+    queryKey: ['commissions', roleSlug, gatewayId],
+    queryFn: async () => (await api.get('/commissions', {
+      params: gatewayId ? { gateway_id: gatewayId } : undefined,
+    })).data,
   })
   const rows = data?.data ?? []
   const total = rows.reduce((sum: number, row: { commission_amount: string }) => sum + Number(row.commission_amount ?? 0), 0)
+  const gatewayOptions = Array.from(
+    new Map(
+      ((salesData?.data ?? []) as GatewaySaleRow[])
+        .filter((row) => row.gateway?.id || row.gateway?.name)
+        .map((row) => {
+          const id = String(row.gateway?.id ?? row.id)
+          const label = row.gateway?.name
+            ? `${row.gateway.name}${row.gateway.external_id ? ` · ${row.gateway.external_id}` : ''}`
+            : `#${row.id}`
+          return [id, label] as const
+        }),
+    ).entries(),
+  ).map(([value, label]) => ({ value, label }))
 
   return (
     <div className="space-y-4">
       <PageHeader title={t('commTitle')} subtitle={t('commSub')} />
+      <div className="card p-4">
+        <label className="field max-w-md m-0">{t('commFilterGateway')}
+          <select
+            className="input"
+            data-testid="commission-gateway-filter"
+            value={gatewayId}
+            onChange={(e) => setGatewayId(e.target.value)}
+          >
+            <option value="">{t('commAllGateways')}</option>
+            {gatewayOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+        </label>
+      </div>
       <div className="grid sm:grid-cols-3 gap-4">
         <StatCard title={t('commCount')} value={rows.length.toLocaleString(localeTag())} icon={TrendingUp} color="from-blue-500 to-blue-600" />
         <StatCard title={moneyHeader(t('sumCommission'))} value={money(total)} icon={Wallet} color="from-emerald-500 to-emerald-600" />
