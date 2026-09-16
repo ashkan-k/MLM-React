@@ -12,6 +12,7 @@ import { DashboardPage } from './pages/DashboardPage'
 import { CommissionsPage, FinancePage, GatewaysPage, NotificationsPage, OrgManagersPage, PromotionsPage, ReferralsPage, TeamPage, TrainingPage, TransfersPage, WalletPage, WithdrawalsPage } from './pages/DataPages'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { SharedLinkPage } from './pages/SharedLinkPage'
 import { AdminOrgManagers } from './pages/AdminOrgManagers'
 import { useAuth } from './stores/auth'
 
@@ -62,6 +63,7 @@ const roleChildren = (
 export default function App() {
   return (
     <Routes>
+      <Route path="/shared-link/:token" element={<SharedLinkPage />} />
       <Route element={<Guest />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />

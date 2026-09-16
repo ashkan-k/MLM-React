@@ -14,7 +14,9 @@ export function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { t, darkMode, toggleDarkMode, toggleDirection } = useApp()
-  const needsReferral = Boolean((location.state as { registerNeedsReferral?: boolean } | null)?.registerNeedsReferral)
+  const state = location.state as { registerNeedsReferral?: boolean; from?: string } | null
+  const needsReferral = Boolean(state?.registerNeedsReferral)
+  const returnTo = typeof state?.from === 'string' && state.from.startsWith('/') ? state.from : null
 
   return (
     <div className="login-wrap">
@@ -35,6 +37,10 @@ export function LoginPage() {
             try {
               const { data } = await authApi.login(mobile, password)
               setSession(data.token, data.user)
+              if (returnTo) {
+                navigate(returnTo)
+                return
+              }
               navigate(data.user.active_role?.slug === 'superuser' ? '/superuser' : dashboardPath(data.user.active_role?.slug))
             } catch (err: unknown) {
               const ax = err as { response?: { data?: { errors?: { mobile?: string[] } } }; code?: string }
@@ -61,9 +67,11 @@ export function LoginPage() {
               </button>
             </div>
           </div>
-          <div className={`rounded-xl border text-sm px-3 py-2 ${needsReferral ? 'border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-100' : 'border-surface-200 bg-surface-50 text-surface-600 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-300'}`}>
-            {t('registerNeedsReferral')}
-          </div>
+          {needsReferral && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-100 text-sm px-3 py-2 font-bold">
+              {t('registerNeedsReferral')}
+            </div>
+          )}
           <label className="field">{t('loginMobile')}
             <input className="input" data-testid="login-mobile" value={mobile} onChange={(e) => setMobile(e.target.value)} />
           </label>

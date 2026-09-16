@@ -1093,7 +1093,7 @@ export function ReferralsPage() {
           return (
           <div key={l.id} className="py-3 border-b border-surface-100 dark:border-surface-700 last:border-0 flex justify-between gap-3">
             <div>
-              <CopyLink value={l.token} />
+              <CopyLink value={`${window.location.origin}/shared-link/${l.token}`} href={`${window.location.origin}/shared-link/${l.token}`} />
               <div className="font-mono text-xs text-surface-400 mt-1">{l.token}</div>
               <div className="text-sm text-surface-400">
                 {l.members?.map((m) => `${m.user?.name} ${percent(m.share_percent)} ${m.approved ? t('approved') : t('awaiting')}`).join(' · ')}

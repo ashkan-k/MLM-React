@@ -9,6 +9,7 @@ import { useAuth } from '../stores/auth'
 export function RegisterPage() {
   const [params] = useSearchParams()
   const referralFromLink = (params.get('ref') ?? '').trim()
+  const shareFromLink = (params.get('share') ?? '').trim()
   const [form, setForm] = useState({
     name: '',
     mobile: '',
@@ -19,6 +20,10 @@ export function RegisterPage() {
   const setSession = useAuth((s) => s.setSession)
   const navigate = useNavigate()
   const { t, darkMode, toggleDarkMode, toggleDirection } = useApp()
+
+  if (!referralFromLink && shareFromLink) {
+    return <Navigate to={`/shared-link/${encodeURIComponent(shareFromLink)}`} replace />
+  }
 
   if (!referralFromLink) {
     return <Navigate to="/login" replace state={{ registerNeedsReferral: true }} />
