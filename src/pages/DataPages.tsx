@@ -60,7 +60,7 @@ export function TeamPage() {
       <PageHeader
         title={t('navTeam')}
         subtitle={t('orgSubtitle')}
-        action={canManageOrg ? <Link className="btn btn-primary" to="org-managers">{t('navOrgManagers')}</Link> : undefined}
+        action={canManageOrg ? <Link className="btn btn-primary" to="../org-managers">{t('navOrgManagers')}</Link> : undefined}
       />
       <OrgTree nodes={nodes} testId="org-tree" />
       <TeamTable team={team ?? []} t={t} canBlock={Boolean(canBlock)} onToggleBlock={toggleBlock} />
@@ -581,7 +581,7 @@ export function GatewaysPage() {
   const orgManagersHref = me?.is_superuser
     ? '/superuser/org-managers'
     : me?.active_role?.slug === 'senior_manager'
-      ? 'org-managers'
+      ? '../org-managers'
       : null
 
   const refresh = () => {
