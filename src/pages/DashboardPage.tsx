@@ -18,7 +18,7 @@ export function DashboardPage() {
     queryFn: async () => (await api.get('/dashboard')).data,
   })
   const { data: commissions } = useQuery({
-    queryKey: ['commissions'],
+    queryKey: ['commissions', role?.slug],
     queryFn: async () => (await api.get('/commissions')).data,
   })
   const { data: notifs } = useQuery({

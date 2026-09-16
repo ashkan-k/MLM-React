@@ -523,7 +523,11 @@ function CommissionTable({ rows, isLoading }: { rows: Array<{
 
 export function CommissionsPage() {
   const { t } = useApp()
-  const { data, isLoading } = useQuery({ queryKey: ['commissions'], queryFn: async () => (await api.get('/commissions')).data })
+  const roleSlug = useAuth((s) => s.user?.active_role?.slug)
+  const { data, isLoading } = useQuery({
+    queryKey: ['commissions', roleSlug],
+    queryFn: async () => (await api.get('/commissions')).data,
+  })
   const rows = data?.data ?? []
   const total = rows.reduce((sum: number, row: { commission_amount: string }) => sum + Number(row.commission_amount ?? 0), 0)
 

@@ -28,7 +28,7 @@ const titlesFa: Record<string, string> = {
   'gateway.approved': 'درگاه تایید شد',
   'gateway.shaparak_confirmed': 'درگاه تایید شد',
   'gateway.rejected': 'درگاه رد شد',
-  'gateway.transaction': 'تراکنش درگاه تایید شد',
+  'gateway.transaction': 'تبریک! پورسانت شما واریز شد',
   'system.info': 'راهنمای پنل',
 }
 
@@ -44,7 +44,7 @@ const titlesEn: Record<string, string> = {
   'gateway.approved': 'Gateway approved',
   'gateway.shaparak_confirmed': 'Gateway confirmed',
   'gateway.rejected': 'Gateway rejected',
-  'gateway.transaction': 'Gateway transaction verified',
+  'gateway.transaction': 'Congrats! Your commission was credited',
   'system.info': 'Panel guide',
 }
 
@@ -55,7 +55,7 @@ export type AppNotification = {
   type?: string
   read_at?: string
   created_at: string
-  data?: { link?: string; path?: string; note?: string }
+  data?: { link?: string; path?: string; note?: string; commission_amount?: string }
 }
 
 export function notificationTitle(notification: Pick<AppNotification, 'type' | 'title'>) {
@@ -72,6 +72,10 @@ export function notificationBody(notification: Pick<AppNotification, 'type' | 'b
   }
   if (notification.type === 'promotion.approved') {
     return en ? 'Your promotion request was approved.' : (notification.body || 'درخواست ارتقاء شما تایید شد.')
+  }
+  if (notification.type === 'gateway.transaction' && en && notification.data?.commission_amount) {
+    const amount = Number(notification.data.commission_amount).toLocaleString('en-US')
+    return `Your share of ${amount} Toman was credited to your role wallet. Keep going!`
   }
   return notification.body ?? ''
 }
