@@ -1,6 +1,6 @@
 import { Moon, Network, Sun } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import { useApp } from '../contexts/AppContext'
 import { authApi } from '../lib/api'
 import { dashboardPath } from '../lib/roles'
@@ -8,16 +8,21 @@ import { useAuth } from '../stores/auth'
 
 export function RegisterPage() {
   const [params] = useSearchParams()
+  const referralFromLink = (params.get('ref') ?? '').trim()
   const [form, setForm] = useState({
     name: '',
     mobile: '',
     password: 'Password123!',
-    referral_code: params.get('ref') ?? params.get('share') ?? '',
+    referral_code: referralFromLink,
   })
   const [error, setError] = useState('')
   const setSession = useAuth((s) => s.setSession)
   const navigate = useNavigate()
   const { t, darkMode, toggleDarkMode, toggleDirection } = useApp()
+
+  if (!referralFromLink) {
+    return <Navigate to="/login" replace state={{ registerNeedsReferral: true }} />
+  }
 
   return (
     <div className="login-wrap">
@@ -36,11 +41,12 @@ export function RegisterPage() {
             e.preventDefault()
             setError('')
             try {
-              const { data } = await authApi.register(form)
+              const { data } = await authApi.register({ ...form, referral_code: referralFromLink })
               setSession(data.token, data.user)
               navigate(dashboardPath(data.user.active_role?.slug))
-            } catch {
-              setError(t('registerError'))
+            } catch (err) {
+              const message = (err as { response?: { data?: { message?: string; errors?: Record<string, string[]> } } })?.response?.data
+              setError(message?.errors?.referral_code?.[0] || message?.message || t('registerError'))
             }
           }}
         >
@@ -53,6 +59,9 @@ export function RegisterPage() {
               </button>
             </div>
           </div>
+          <div className="rounded-xl bg-primary-50 dark:bg-primary-900/20 text-sm text-primary-800 dark:text-primary-200 px-3 py-2">
+            {t('registerReferralLocked')}: <code className="font-bold">{referralFromLink}</code>
+          </div>
           <label className="field">{t('registerName')}
             <input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
           </label>
@@ -61,9 +70,6 @@ export function RegisterPage() {
           </label>
           <label className="field">{t('loginPassword')}
             <input className="input" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
-          </label>
-          <label className="field">{t('registerReferral')}
-            <input className="input" value={form.referral_code} onChange={(e) => setForm({ ...form, referral_code: e.target.value })} />
           </label>
           {error && <div className="text-danger-500 text-sm">{error}</div>}
           <button className="btn btn-primary" type="submit">{t('registerSubmit')}</button>

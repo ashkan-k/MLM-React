@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Copy, CreditCard, ExternalLink, Network, Repeat, TrendingUp, Users, Wallet, X } from 'lucide-react'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { MoneyInput } from '../components/MoneyInput'
 import { OrgTree, type OrgNode } from '../components/OrgTree'
@@ -9,6 +9,7 @@ import { SearchSelect } from '../components/SearchSelect'
 import { ApproveAction, BlockAction, BulkBar, BulkButton, CheckBox, IconAction, RowActions, UnblockAction, ViewAction, exportSelected, useSelection } from '../components/table'
 import { Badge, DateTimeText, Empty, Modal, PageHeader, ProgressBar, StatCard } from '../components/ui'
 import { GatewayCreateForm } from '../components/GatewayCreateForm'
+import { ManagerReassignCard } from '../components/ManagerReassignCard'
 import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
 import { confirmAction, promptAction } from '../lib/confirm'
@@ -21,6 +22,7 @@ export function TeamPage() {
   const qc = useQueryClient()
   const me = useAuth((s) => s.user)
   const canBlock = me?.is_superuser || me?.active_role?.slug === 'senior_manager'
+  const canManageOrg = me?.active_role?.slug === 'senior_manager'
   const { data: tree } = useQuery({ queryKey: ['tree'], queryFn: async () => (await api.get('/organization/tree')).data })
   const { data: team } = useQuery({ queryKey: ['team'], queryFn: async () => (await api.get('/organization/team')).data })
   const nodes = Array.isArray(tree) ? tree as OrgNode[] : []
@@ -55,8 +57,27 @@ export function TeamPage() {
 
   return (
     <div className="space-y-6">
+      <PageHeader
+        title={t('navTeam')}
+        subtitle={t('orgSubtitle')}
+        action={canManageOrg ? <Link className="btn btn-primary" to="org-managers">{t('navOrgManagers')}</Link> : undefined}
+      />
       <OrgTree nodes={nodes} testId="org-tree" />
       <TeamTable team={team ?? []} t={t} canBlock={Boolean(canBlock)} onToggleBlock={toggleBlock} />
+    </div>
+  )
+}
+
+export function OrgManagersPage() {
+  const { t } = useApp()
+  const me = useAuth((s) => s.user)
+  if (me?.active_role?.slug !== 'senior_manager' && !me?.is_superuser) {
+    return <Navigate to=".." relative="path" replace />
+  }
+  return (
+    <div className="space-y-6">
+      <PageHeader title={t('navOrgManagers')} subtitle={t('orgManagersSub')} />
+      <ManagerReassignCard />
     </div>
   )
 }
@@ -166,7 +187,8 @@ type GatewaySaleRow = {
     company_name?: string
     document_urls?: Record<string, string | null>
   }
-  representatives?: Array<{ user?: { name: string }; share_percent: string }>
+  representatives?: Array<{ user_id?: number; user?: { id?: number; name: string }; share_percent: string }>
+  managers?: Array<{ user_id?: number; user?: { id?: number; name: string }; role?: { name: string; slug: string }; commission_percent?: string }>
   reviews?: Array<{ id: number; stage: string; decision: string; note?: string | null; reference?: string | null; created_at: string; actor?: { name: string } | null }>
   commissions?: Array<{ id: number; commission_percent: string; commission_amount: string; role?: { name: string } }>
 }
@@ -252,14 +274,51 @@ function GatewayReviewModal({
   sale,
   onClose,
   canInspect,
+  canEditParties,
   onInspect,
+  onUpdated,
 }: {
   sale: GatewaySaleRow
   onClose: () => void
   canInspect: boolean
+  canEditParties: boolean
   onInspect: (row: GatewaySaleRow, decision: 'approved' | 'rejected') => void
+  onUpdated: (row: GatewaySaleRow) => void
 }) {
   const { t } = useApp()
+  const { data: directory = [] } = useQuery({
+    queryKey: ['directory'],
+    queryFn: async () => (await api.get('/users/directory')).data as Array<{
+      id: number
+      name: string
+      mobile: string
+      roles: Array<{ slug: string; name: string }>
+    }>,
+    enabled: canEditParties,
+  })
+  const [editing, setEditing] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [reps, setReps] = useState<Array<{ user_id: string; share_percent: string }>>(
+    () => (sale.representatives ?? []).map((r) => ({
+      user_id: String(r.user_id ?? r.user?.id ?? ''),
+      share_percent: String(r.share_percent ?? '100'),
+    })),
+  )
+  const [managers, setManagers] = useState(() => {
+    const bySlug: Record<string, string> = {}
+    for (const m of sale.managers ?? []) {
+      if (m.role?.slug) bySlug[m.role.slug] = String(m.user_id ?? m.user?.id ?? '')
+    }
+    return {
+      sales_manager: bySlug.sales_manager ?? '',
+      development_manager: bySlug.development_manager ?? '',
+      senior_manager: bySlug.senior_manager ?? '',
+    }
+  })
+
+  const repOptions = directory.filter((u) => u.roles.some((r) => r.slug === 'representative'))
+  const optionsFor = (slug: string) => directory.filter((u) => u.roles.some((r) => r.slug === slug))
+
   const c = sale.customer
   const docLabels: Record<string, string> = {
     national_id_front: t('docNationalIdFront'),
@@ -273,6 +332,40 @@ function GatewayReviewModal({
   const gender = c?.gender === 'male' ? t('kycMale') : c?.gender === 'female' ? t('kycFemale') : c?.gender
   const personType = c?.person_type === 'legal' ? t('kycLegal') : c?.person_type === 'individual' ? t('kycIndividual') : c?.person_type
   const reviews = sale.reviews ?? []
+
+  const saveParties = async () => {
+    const shareSum = reps.reduce((sum, row) => sum + Number(row.share_percent || 0), 0)
+    if (reps.length === 0 || Math.abs(shareSum - 100) > 0.01) {
+      toast.error(t('gwPartiesShareError'))
+      return
+    }
+    if (reps.some((row) => !row.user_id)) {
+      toast.error(t('gwPartiesRepRequired'))
+      return
+    }
+    setBusy(true)
+    try {
+      const managersPayload = (['sales_manager', 'development_manager', 'senior_manager'] as const)
+        .filter((slug) => managers[slug])
+        .map((slug) => ({ user_id: Number(managers[slug]), role_slug: slug }))
+      const { data } = await api.post(`/gateway-sales/${sale.id}/parties`, {
+        representatives: reps.map((row) => ({
+          user_id: Number(row.user_id),
+          share_percent: Number(row.share_percent),
+        })),
+        managers: managersPayload,
+      })
+      toast.success(t('gwPartiesOk'))
+      setEditing(false)
+      onUpdated(data as GatewaySaleRow)
+    } catch (error) {
+      const message = (error as { response?: { data?: { message?: string } } })?.response?.data?.message
+      toast.error(message || t('gwPartiesFail'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <Modal wide open title={sale.gateway?.name ?? t('gateway')} subtitle={t('gwReview')} onClose={onClose}>
       <div className="space-y-5" data-testid="gateway-review">
@@ -320,6 +413,75 @@ function GatewayReviewModal({
             </div>
           </div>
         )}
+
+        <div className="rounded-xl border border-surface-200 dark:border-surface-700 p-4 space-y-3" data-testid="gateway-parties">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="font-semibold">{t('gwPartiesTitle')}</div>
+            {canEditParties && !editing && (
+              <button type="button" className="btn btn-ghost text-sm" onClick={() => setEditing(true)}>{t('gwPartiesEdit')}</button>
+            )}
+          </div>
+          {!editing ? (
+            <div className="grid sm:grid-cols-2 gap-3 text-sm">
+              <div>
+                <div className="text-xs text-surface-500 mb-1">{t('reps')}</div>
+                <div>{sale.representatives?.map((r) => `${r.user?.name} (${percent(r.share_percent)})`).join('، ') || '—'}</div>
+              </div>
+              <div>
+                <div className="text-xs text-surface-500 mb-1">{t('gwManagers')}</div>
+                <div>{sale.managers?.map((m) => `${m.role?.name ?? '—'}: ${m.user?.name ?? '—'}`).join('، ') || '—'}</div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <div className="text-sm font-medium">{t('reps')}</div>
+                {reps.map((row, index) => (
+                  <div key={index} className="grid sm:grid-cols-[1fr_120px_auto] gap-2">
+                    <SearchSelect
+                      value={row.user_id}
+                      onChange={(value) => setReps((prev) => prev.map((item, i) => i === index ? { ...item, user_id: value } : item))}
+                      options={repOptions.map((u) => ({ value: u.id, label: `${u.name} — ${u.mobile}` }))}
+                      placeholder={t('searchPlaceholder')}
+                    />
+                    <input
+                      className="input"
+                      type="number"
+                      min={0}
+                      max={100}
+                      step="0.001"
+                      value={row.share_percent}
+                      onChange={(e) => setReps((prev) => prev.map((item, i) => i === index ? { ...item, share_percent: e.target.value } : item))}
+                    />
+                    <button type="button" className="btn btn-ghost" onClick={() => setReps((prev) => prev.filter((_, i) => i !== index))}>{t('cancel')}</button>
+                  </div>
+                ))}
+                <button type="button" className="btn btn-ghost text-sm" onClick={() => setReps((prev) => [...prev, { user_id: '', share_percent: '0' }])}>+ {t('reps')}</button>
+              </div>
+              <div className="grid sm:grid-cols-3 gap-3">
+                {([
+                  ['sales_manager', t('role_sales_manager')],
+                  ['development_manager', t('role_development_manager')],
+                  ['senior_manager', t('role_senior_manager')],
+                ] as const).map(([slug, title]) => (
+                  <label key={slug} className="field">{title}
+                    <SearchSelect
+                      value={managers[slug]}
+                      onChange={(value) => setManagers((prev) => ({ ...prev, [slug]: value }))}
+                      options={optionsFor(slug).map((u) => ({ value: u.id, label: `${u.name} — ${u.mobile}` }))}
+                      placeholder={t('searchPlaceholder')}
+                    />
+                  </label>
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button type="button" className="btn btn-primary" disabled={busy} onClick={saveParties}>{t('save')}</button>
+                <button type="button" className="btn btn-ghost" disabled={busy} onClick={() => setEditing(false)}>{t('cancel')}</button>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div>
           <div className="font-semibold mb-3">{t('gwReview')}</div>
           <ol className="space-y-0">
@@ -415,6 +577,12 @@ export function GatewaysPage() {
   const myProfitTotal = rows.reduce((sum, row) => sum + Number(row.my_commission_total ?? 0), 0)
   const inspectCount = rows.filter((r) => isAwaitingInspect(r.status)).length
   const canInspect = Boolean(me?.is_superuser || me?.active_role?.slug === 'senior_manager')
+  const canEditParties = canInspect
+  const orgManagersHref = me?.is_superuser
+    ? '/superuser/org-managers'
+    : me?.active_role?.slug === 'senior_manager'
+      ? 'org-managers'
+      : null
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['sales'] })
@@ -456,7 +624,16 @@ export function GatewaysPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={t('gwTitle')} subtitle={t('gwSub')} action={<button className="btn btn-primary" onClick={() => setOpenCreate(true)}>{t('gwNew')}</button>} />
+      <PageHeader
+        title={t('gwTitle')}
+        subtitle={t('gwSub')}
+        action={(
+          <div className="flex flex-wrap gap-2">
+            {orgManagersHref && <Link className="btn btn-ghost" to={orgManagersHref}>{t('navOrgManagers')}</Link>}
+            <button className="btn btn-primary" onClick={() => setOpenCreate(true)}>{t('gwNew')}</button>
+          </div>
+        )}
+      />
       <Modal wide open={openCreate} title={t('gwNew')} subtitle={t('gwSub')} onClose={() => setOpenCreate(false)}>
         <GatewayCreateForm onDone={() => setOpenCreate(false)} />
       </Modal>
@@ -465,7 +642,12 @@ export function GatewaysPage() {
           sale={openSale}
           onClose={() => setOpenSale(null)}
           canInspect={canInspect}
+          canEditParties={canEditParties}
           onInspect={inspect}
+          onUpdated={(row) => {
+            setOpenSale(row)
+            refresh()
+          }}
         />
       )}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -789,8 +971,17 @@ export function ReferralsPage() {
   const { t } = useApp()
   const qc = useQueryClient()
   const user = useAuth((s) => s.user)
-  const { data: codes } = useQuery({ queryKey: ['codes'], queryFn: async () => (await api.get('/referrals/codes')).data })
-  const { data: referrals } = useQuery({ queryKey: ['refs'], queryFn: async () => (await api.get('/referrals')).data })
+  const isRepresentative = user?.active_role?.slug === 'representative'
+  const { data: codes } = useQuery({
+    queryKey: ['codes'],
+    queryFn: async () => (await api.get('/referrals/codes')).data,
+    enabled: isRepresentative,
+  })
+  const { data: referrals } = useQuery({
+    queryKey: ['refs'],
+    queryFn: async () => (await api.get('/referrals')).data,
+    enabled: isRepresentative,
+  })
   const { data: links } = useQuery({ queryKey: ['links'], queryFn: async () => (await api.get('/shared-links')).data })
   const { data: people } = useQuery({ queryKey: ['dir'], queryFn: async () => (await api.get('/users/directory')).data })
   const [openShare, setOpenShare] = useState(false)
@@ -826,33 +1017,41 @@ export function ReferralsPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={t('refTitle')} subtitle={t('refSub')} action={<button className="btn btn-primary" onClick={() => setOpenShare(true)}>{t('refNew')}</button>} />
-      <div className="grid sm:grid-cols-2 gap-4">
-        <StatCard title={t('refCodes')} value={(codes ?? []).length.toLocaleString(localeTag())} icon={Users} color="from-blue-500 to-blue-600" />
-        <StatCard title={t('refReferred')} value={(referrals ?? []).length.toLocaleString(localeTag())} icon={Network} color="from-emerald-500 to-emerald-600" />
-      </div>
-      <div className="card p-5">
-        <div className="font-semibold mb-2 text-surface-800 dark:text-surface-200">{t('refCodeTitle')}</div>
-        {(codes ?? []).map((c: { id: number; code: string }) => {
-          const href = `${window.location.origin}/register?ref=${c.code}`
-          return (
-            <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 border-b border-surface-100 dark:border-surface-700 last:border-0">
-              <code data-testid="referral-code" className="font-bold text-primary-700 dark:text-primary-400">{c.code}</code>
-              <CopyLink value={href} href={href} />
-            </div>
-          )
-        })}
-      </div>
-      <div className="card p-5">
-        <div className="font-semibold mb-3 text-surface-800 dark:text-surface-200">{t('refReferred')}</div>
-        {(referrals ?? []).length === 0 && <Empty text={t('refEmpty')} />}
-        {(referrals ?? []).map((r: { id: number; referred?: { name: string; mobile: string } }) => (
-          <div key={r.id} className="flex items-center gap-3 py-2 border-b border-surface-100 dark:border-surface-700 last:border-0">
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-white text-xs font-bold flex items-center justify-center">{(r.referred?.name ?? '?').charAt(0)}</div>
-            <div>{r.referred?.name} · {r.referred?.mobile}</div>
+      <PageHeader
+        title={isRepresentative ? t('refTitle') : t('shareOnlyTitle')}
+        subtitle={isRepresentative ? t('refSub') : t('shareOnlySub')}
+        action={<button className="btn btn-primary" onClick={() => setOpenShare(true)}>{t('refNew')}</button>}
+      />
+      {isRepresentative && (
+        <>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <StatCard title={t('refCodes')} value={(codes ?? []).length.toLocaleString(localeTag())} icon={Users} color="from-blue-500 to-blue-600" />
+            <StatCard title={t('refReferred')} value={(referrals ?? []).length.toLocaleString(localeTag())} icon={Network} color="from-emerald-500 to-emerald-600" />
           </div>
-        ))}
-      </div>
+          <div className="card p-5" data-testid="referral-codes">
+            <div className="font-semibold mb-2 text-surface-800 dark:text-surface-200">{t('refCodeTitle')}</div>
+            {(codes ?? []).map((c: { id: number; code: string }) => {
+              const href = `${window.location.origin}/register?ref=${c.code}`
+              return (
+                <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 border-b border-surface-100 dark:border-surface-700 last:border-0">
+                  <code data-testid="referral-code" className="font-bold text-primary-700 dark:text-primary-400">{c.code}</code>
+                  <CopyLink value={href} href={href} />
+                </div>
+              )
+            })}
+          </div>
+          <div className="card p-5">
+            <div className="font-semibold mb-3 text-surface-800 dark:text-surface-200">{t('refReferred')}</div>
+            {(referrals ?? []).length === 0 && <Empty text={t('refEmpty')} />}
+            {(referrals ?? []).map((r: { id: number; referred?: { name: string; mobile: string } }) => (
+              <div key={r.id} className="flex items-center gap-3 py-2 border-b border-surface-100 dark:border-surface-700 last:border-0">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-white text-xs font-bold flex items-center justify-center">{(r.referred?.name ?? '?').charAt(0)}</div>
+                <div>{r.referred?.name} · {r.referred?.mobile}</div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
       <Modal open={openShare} title={t('shareModal')} subtitle={t('shareModalSub')} onClose={() => setOpenShare(false)}>
         <div className="grid gap-3">
           <div className="font-semibold text-sm">{t('shareMembers')}</div>
@@ -894,7 +1093,7 @@ export function ReferralsPage() {
           return (
           <div key={l.id} className="py-3 border-b border-surface-100 dark:border-surface-700 last:border-0 flex justify-between gap-3">
             <div>
-              <CopyLink value={`${window.location.origin}/register?share=${l.token}`} href={`${window.location.origin}/register?share=${l.token}`} />
+              <CopyLink value={l.token} />
               <div className="font-mono text-xs text-surface-400 mt-1">{l.token}</div>
               <div className="text-sm text-surface-400">
                 {l.members?.map((m) => `${m.user?.name} ${percent(m.share_percent)} ${m.approved ? t('approved') : t('awaiting')}`).join(' · ')}

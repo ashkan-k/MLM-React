@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { DateTimeText, PageHeader, ProgressBar, StatCard } from '../components/ui'
 import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
+import { canAccessPage } from '../lib/access'
 import { localeTag, money } from '../lib/format'
 import { roleLabel } from '../lib/i18n'
 import { notificationBody, notificationHref, notificationTitle, type AppNotification } from '../lib/notify'
@@ -135,7 +136,7 @@ export function DashboardPage() {
               { to: 'team', label: t('dashQuickTeam'), icon: GitBranch, color: 'bg-purple-500' },
               { to: 'training', label: t('dashQuickTrain'), icon: BookOpen, color: 'bg-cyan-500' },
               { to: 'referrals', label: t('dashQuickRef'), icon: Users, color: 'bg-pink-500' },
-            ].map((action) => (
+            ].filter((action) => canAccessPage(user, action.to)).map((action) => (
               <Link key={action.to} to={action.to} className="flex flex-col items-center gap-2 p-3 rounded-xl border border-surface-200 dark:border-surface-700 hover:border-primary-300 dark:hover:border-primary-600 hover:shadow-md transition-all">
                 <div className={`w-10 h-10 rounded-lg ${action.color} flex items-center justify-center`}>
                   <action.icon className="w-5 h-5 text-white" />

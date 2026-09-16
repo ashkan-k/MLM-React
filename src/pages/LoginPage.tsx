@@ -1,6 +1,6 @@
 import { Moon, Network, Sun } from 'lucide-react'
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '../contexts/AppContext'
 import { authApi } from '../lib/api'
 import { dashboardPath } from '../lib/roles'
@@ -12,7 +12,9 @@ export function LoginPage() {
   const [error, setError] = useState('')
   const setSession = useAuth((s) => s.setSession)
   const navigate = useNavigate()
+  const location = useLocation()
   const { t, darkMode, toggleDarkMode, toggleDirection } = useApp()
+  const needsReferral = Boolean((location.state as { registerNeedsReferral?: boolean } | null)?.registerNeedsReferral)
 
   return (
     <div className="login-wrap">
@@ -59,6 +61,9 @@ export function LoginPage() {
               </button>
             </div>
           </div>
+          <div className={`rounded-xl border text-sm px-3 py-2 ${needsReferral ? 'border-amber-300 bg-amber-50 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-100' : 'border-surface-200 bg-surface-50 text-surface-600 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-300'}`}>
+            {t('registerNeedsReferral')}
+          </div>
           <label className="field">{t('loginMobile')}
             <input className="input" data-testid="login-mobile" value={mobile} onChange={(e) => setMobile(e.target.value)} />
           </label>
@@ -67,7 +72,6 @@ export function LoginPage() {
           </label>
           {error && <div className="text-danger-500 text-sm">{error}</div>}
           <button className="btn btn-primary" data-testid="login-submit" type="submit">{t('loginSubmit')}</button>
-          <Link className="text-sm text-primary-600" to="/register">{t('loginRegister')}</Link>
         </form>
       </div>
     </div>

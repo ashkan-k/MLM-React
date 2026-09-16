@@ -9,9 +9,10 @@ import { AdminNetwork } from './pages/AdminNetwork'
 import { AdminReports } from './pages/AdminReports'
 import { ChatPage } from './pages/ChatPage'
 import { DashboardPage } from './pages/DashboardPage'
-import { CommissionsPage, FinancePage, GatewaysPage, NotificationsPage, PromotionsPage, ReferralsPage, TeamPage, TrainingPage, TransfersPage, WalletPage, WithdrawalsPage } from './pages/DataPages'
+import { CommissionsPage, FinancePage, GatewaysPage, NotificationsPage, OrgManagersPage, PromotionsPage, ReferralsPage, TeamPage, TrainingPage, TransfersPage, WalletPage, WithdrawalsPage } from './pages/DataPages'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
+import { AdminOrgManagers } from './pages/AdminOrgManagers'
 import { useAuth } from './stores/auth'
 
 function Guard({ superuserOnly = false }: { superuserOnly?: boolean }) {
@@ -42,6 +43,7 @@ const roleChildren = (
   <>
     <Route index element={<PageGate page=""><DashboardPage /></PageGate>} />
     <Route path="team" element={<PageGate page="team"><TeamPage /></PageGate>} />
+    <Route path="org-managers" element={<PageGate page="team"><OrgManagersPage /></PageGate>} />
     <Route path="gateways" element={<PageGate page="gateways"><GatewaysPage /></PageGate>} />
     <Route path="commissions" element={<PageGate page="commissions"><CommissionsPage /></PageGate>} />
     <Route path="wallet" element={<PageGate page="wallet"><WalletPage /></PageGate>} />
@@ -77,6 +79,7 @@ export default function App() {
           <Route path="reports" element={<AdminReports />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="network" element={<AdminNetwork />} />
+          <Route path="org-managers" element={<AdminOrgManagers />} />
           <Route path="permissions" element={<AdminPermissions />} />
           <Route path="gateways" element={<GatewaysPage />} />
           <Route path="rules" element={<AdminRules />} />

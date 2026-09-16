@@ -43,7 +43,10 @@ type NavGroup = { key: string; items: LinkItem[] }
 
 const roleGroups: NavGroup[] = [
   { key: 'navMain', items: [{ to: '', labelKey: 'navDashboard', icon: LayoutDashboard, end: true }] },
-  { key: 'navOrg', items: [{ to: 'team', labelKey: 'navTeam', icon: GitBranch }] },
+  { key: 'navOrg', items: [
+    { to: 'team', labelKey: 'navTeam', icon: GitBranch },
+    { to: 'org-managers', labelKey: 'navOrgManagers', icon: Users },
+  ] },
   {
     key: 'navSales',
     items: [
@@ -91,6 +94,7 @@ const adminGroups: NavGroup[] = [
     items: [
       { to: '/superuser/users', labelKey: 'navUsersPage', icon: Users },
       { to: '/superuser/network', labelKey: 'navNetwork', icon: GitBranch },
+      { to: '/superuser/org-managers', labelKey: 'navOrgManagers', icon: Building2 },
       { to: '/superuser/permissions', labelKey: 'navPermissions', icon: Shield },
       { to: '/superuser/gateways', labelKey: 'navGateways', icon: CreditCard },
     ],
@@ -116,6 +120,7 @@ const adminGroups: NavGroup[] = [
 const titleKeys: Record<string, string> = {
   '': 'titleDashboard',
   team: 'navTeam',
+  'org-managers': 'navOrgManagers',
   gateways: 'navGateways',
   commissions: 'navCommissions',
   wallet: 'navWallet',
@@ -132,6 +137,7 @@ const titleKeys: Record<string, string> = {
   '/superuser/reports': 'navReports',
   '/superuser/users': 'navUsersPage',
   '/superuser/network': 'navNetwork',
+  '/superuser/org-managers': 'navOrgManagers',
   '/superuser/permissions': 'navPermissions',
   '/superuser/gateways': 'navGateways',
   '/superuser/rules': 'navRules',
@@ -163,7 +169,10 @@ function SidebarNav({ groups, extra }: { groups: NavGroup[]; extra?: ReactNode }
     () => groups
       .map((group) => ({
         ...group,
-        items: group.items.filter((item) => canAccessPage(user, item.to.startsWith('/') ? item.to : item.to)),
+        items: group.items.filter((item) => {
+          if (item.to === 'org-managers' && user?.active_role?.slug !== 'senior_manager') return false
+          return canAccessPage(user, item.to.startsWith('/') ? item.to : item.to)
+        }),
       }))
       .filter((group) => group.items.length > 0),
     [groups, user],
