@@ -793,22 +793,27 @@ export function AdminSettings() {
   const { data } = useQuery({ queryKey: ['settings'], queryFn: async () => (await api.get('/superuser/settings')).data })
   const items = Array.isArray(data) ? data : data?.items ?? []
   const schema: SettingSchema = data?.schema ?? {}
-  const [edits, setEdits] = useState<Record<string, Record<string, string | number>>>({})
+  const [edits, setEdits] = useState<Record<string, Record<string, string | number | boolean>>>({})
 
   return (
     <div className="grid gap-3">
       <PageHeader title={t('adminSettingsTitle')} subtitle={t('adminSettingsSub')} />
       {items.map((s: { id: number; key: string; value: Record<string, unknown> }) => {
         const meta = schema[s.key]
-        const current = edits[s.key] ?? Object.fromEntries(Object.entries(s.value ?? {}).map(([k, v]) => [k, v as string | number]))
+        const current = edits[s.key] ?? Object.fromEntries(Object.entries(s.value ?? {}).map(([k, v]) => [k, v as string | number | boolean]))
         const fields = meta?.fields ?? Object.keys(s.value ?? {}).map((key) => ({ key, label: key, type: 'number' }))
         return (
           <form key={s.id} className="card p-5 grid gap-3" data-testid={`setting-${s.key}`} onSubmit={async (e) => {
             e.preventDefault()
-            const value = Object.fromEntries(fields.map((f) => [f.key, f.type === 'number' ? Number(current[f.key] ?? 0) : current[f.key]]))
+            const value = Object.fromEntries(fields.map((f) => {
+              if (f.type === 'number') return [f.key, Number(current[f.key] ?? 0)]
+              if (f.type === 'boolean') return [f.key, Boolean(current[f.key])]
+              return [f.key, current[f.key]]
+            }))
             await api.post('/superuser/settings', { key: s.key, value })
             toast.success('تنظیمات ذخیره شد')
             qc.invalidateQueries({ queryKey: ['settings'] })
+            await useAuth.getState().hydrate()
           }}>
             <div>
               <div className="font-bold">{meta?.label ?? settingLabel[s.key] ?? s.key}</div>
@@ -816,16 +821,31 @@ export function AdminSettings() {
             </div>
             <div className="grid md:grid-cols-2 gap-3">
               {fields.map((field) => (
-                <label key={field.key} className="field">
-                  {field.label}
-                  <input
-                    className="input"
-                    type={field.type === 'number' ? 'number' : 'text'}
-                    value={current[field.key] ?? ''}
-                    onChange={(e) => setEdits({ ...edits, [s.key]: { ...current, [field.key]: e.target.value } })}
-                  />
-                  {field.hint && <FieldHint>{field.hint}</FieldHint>}
-                </label>
+                field.type === 'boolean' ? (
+                  <label key={field.key} className="field flex flex-row items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="w-4 h-4 accent-primary-600"
+                      checked={Boolean(current[field.key])}
+                      onChange={(e) => setEdits({ ...edits, [s.key]: { ...current, [field.key]: e.target.checked } })}
+                    />
+                    <span>
+                      <div>{field.label}</div>
+                      {field.hint && <FieldHint>{field.hint}</FieldHint>}
+                    </span>
+                  </label>
+                ) : (
+                  <label key={field.key} className="field">
+                    {field.label}
+                    <input
+                      className="input"
+                      type={field.type === 'number' ? 'number' : 'text'}
+                      value={String(current[field.key] ?? '')}
+                      onChange={(e) => setEdits({ ...edits, [s.key]: { ...current, [field.key]: e.target.value } })}
+                    />
+                    {field.hint && <FieldHint>{field.hint}</FieldHint>}
+                  </label>
+                )
               ))}
             </div>
             <button className="btn btn-primary w-fit" type="submit">ذخیره</button>

@@ -228,6 +228,7 @@ export const criterionLabel: Record<string, string> = new Proxy({}, {
 export const settingLabel: Record<string, string> = {
   qualification_thresholds: 'آستانه‌های پاداش ماهانه',
   promotion_criteria: 'معیارهای ارتقاء سازمانی',
+  shared_link_features: 'لینک‌های اشتراکی',
 }
 
 const auditLabelEn: Record<string, string> = {

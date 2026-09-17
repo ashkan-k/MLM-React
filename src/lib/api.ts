@@ -23,6 +23,12 @@ export type AuthUser = {
   roles: Role[]
   active_role: { id: number; name: string; slug: string } | null
   permissions?: string[]
+  features?: {
+    shared_links?: {
+      referral_enabled?: boolean
+      gateway_sale_enabled?: boolean
+    }
+  }
 }
 
 export const authApi = {

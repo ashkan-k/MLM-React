@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Copy, CreditCard, ExternalLink, Network, Repeat, TrendingUp, Users, Wallet, X } from 'lucide-react'
-import { useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { MoneyInput } from '../components/MoneyInput'
 import { OrgTree, type OrgNode } from '../components/OrgTree'
@@ -565,13 +565,30 @@ export function GatewaysPage() {
   const { t } = useApp()
   const qc = useQueryClient()
   const me = useAuth((s) => s.user)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const sharedToken = (searchParams.get('shared') ?? '').trim()
   const roleSlug = me?.active_role?.slug
+  const gatewayShareEnabled = me?.features?.shared_links?.gateway_sale_enabled !== false
   const { data, isLoading } = useQuery({
     queryKey: ['sales', roleSlug],
     queryFn: async () => (await api.get('/gateway-sales')).data,
   })
   const [openCreate, setOpenCreate] = useState(false)
   const [openSale, setOpenSale] = useState<GatewaySaleRow | null>(null)
+
+  useEffect(() => {
+    if (sharedToken && gatewayShareEnabled) setOpenCreate(true)
+  }, [sharedToken, gatewayShareEnabled])
+
+  const closeCreate = () => {
+    setOpenCreate(false)
+    if (sharedToken) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('shared')
+      setSearchParams(next, { replace: true })
+    }
+  }
+
   const rows: GatewaySaleRow[] = data?.data ?? []
   const successCount = rows.filter((r) => r.status === 'successful').length
   const myProfitTotal = rows.reduce((sum, row) => sum + Number(row.my_commission_total ?? 0), 0)
@@ -634,8 +651,11 @@ export function GatewaysPage() {
           </div>
         )}
       />
-      <Modal wide open={openCreate} title={t('gwNew')} subtitle={t('gwSub')} onClose={() => setOpenCreate(false)}>
-        <GatewayCreateForm onDone={() => setOpenCreate(false)} />
+      <Modal wide open={openCreate} title={t('gwNew')} subtitle={t('gwSub')} onClose={closeCreate}>
+        <GatewayCreateForm
+          initialSharedToken={gatewayShareEnabled ? sharedToken || undefined : undefined}
+          onDone={closeCreate}
+        />
       </Modal>
       {openSale && (
         <GatewayReviewModal
@@ -972,6 +992,9 @@ export function ReferralsPage() {
   const qc = useQueryClient()
   const user = useAuth((s) => s.user)
   const isRepresentative = user?.active_role?.slug === 'representative'
+  const referralShareOn = user?.features?.shared_links?.referral_enabled !== false
+  const gatewayShareOn = user?.features?.shared_links?.gateway_sale_enabled !== false
+  const anyShareOn = referralShareOn || gatewayShareOn
   const { data: codes } = useQuery({
     queryKey: ['codes'],
     queryFn: async () => (await api.get('/referrals/codes')).data,
@@ -983,8 +1006,12 @@ export function ReferralsPage() {
     enabled: isRepresentative,
   })
   const { data: links } = useQuery({ queryKey: ['links'], queryFn: async () => (await api.get('/shared-links')).data })
-  const { data: people } = useQuery({ queryKey: ['dir'], queryFn: async () => (await api.get('/users/directory')).data })
+  const { data: people } = useQuery({
+    queryKey: ['share-partners'],
+    queryFn: async () => (await api.get('/shared-links/partners')).data,
+  })
   const [openShare, setOpenShare] = useState(false)
+  const [shareType, setShareType] = useState<'referral' | 'gateway_sale'>(referralShareOn ? 'referral' : 'gateway_sale')
   const [members, setMembers] = useState<Array<{ user_id: string; share_percent: string }>>([
     { user_id: String(user?.id ?? ''), share_percent: '50' },
     { user_id: '', share_percent: '50' },
@@ -1001,13 +1028,13 @@ export function ReferralsPage() {
       const total = filled.reduce((sum, m) => sum + Number(m.share_percent || 0), 0)
       if (Math.abs(total - 100) > 0.001) throw new Error(t('shareSum'))
       return api.post('/shared-links', {
-        type: 'gateway_sale',
+        type: shareType,
         members: filled.map((m) => ({ user_id: Number(m.user_id), share_percent: Number(m.share_percent) })),
       })
     },
     onSuccess: () => { toast.success(t('shareSubmit')); setOpenShare(false); qc.invalidateQueries({ queryKey: ['links'] }) },
     onError: (error: { message?: string; response?: { data?: { message?: string; errors?: Record<string, string[]> } } }) => {
-      toast.error(error.response?.data?.errors?.members?.[0] ?? error.response?.data?.message ?? error.message ?? t('shareSum'))
+      toast.error(error.response?.data?.errors?.type?.[0] ?? error.response?.data?.errors?.members?.[0] ?? error.response?.data?.message ?? error.message ?? t('shareSum'))
     },
   })
   const approve = useMutation({
@@ -1015,13 +1042,33 @@ export function ReferralsPage() {
     onSuccess: () => { toast.success(t('approved')); qc.invalidateQueries({ queryKey: ['links'] }) },
   })
 
+  const openCreateModal = () => {
+    setShareType(referralShareOn ? 'referral' : 'gateway_sale')
+    setMembers([
+      { user_id: String(user?.id ?? ''), share_percent: '50' },
+      { user_id: '', share_percent: '50' },
+    ])
+    setOpenShare(true)
+  }
+
+  const linkHref = (l: { token: string; type?: string }) => (
+    l.type === 'gateway_sale'
+      ? `${window.location.origin}/shared-link/${l.token}`
+      : `${window.location.origin}/register?share=${l.token}`
+  )
+
   return (
     <div className="space-y-4">
       <PageHeader
         title={isRepresentative ? t('refTitle') : t('shareOnlyTitle')}
         subtitle={isRepresentative ? t('refSub') : t('shareOnlySub')}
-        action={<button className="btn btn-primary" onClick={() => setOpenShare(true)}>{t('refNew')}</button>}
+        action={anyShareOn ? <button className="btn btn-primary" onClick={openCreateModal}>{t('refNew')}</button> : undefined}
       />
+      {!anyShareOn && (
+        <div className="card p-4 text-sm text-amber-800 dark:text-amber-100 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+          {t('shareFeaturesOff')}
+        </div>
+      )}
       {isRepresentative && (
         <>
           <div className="grid sm:grid-cols-2 gap-4">
@@ -1054,6 +1101,19 @@ export function ReferralsPage() {
       )}
       <Modal open={openShare} title={t('shareModal')} subtitle={t('shareModalSub')} onClose={() => setOpenShare(false)}>
         <div className="grid gap-3">
+          {(referralShareOn && gatewayShareOn) ? (
+            <label className="field">{t('shareType')}
+              <select className="input" value={shareType} onChange={(e) => setShareType(e.target.value as 'referral' | 'gateway_sale')}>
+                <option value="referral">{t('shareTypeReferral')}</option>
+                <option value="gateway_sale">{t('shareTypeGateway')}</option>
+              </select>
+            </label>
+          ) : (
+            <div className="text-sm font-semibold text-surface-700 dark:text-surface-200">
+              {shareType === 'referral' ? t('shareTypeReferral') : t('shareTypeGateway')}
+            </div>
+          )}
+          <p className="text-xs text-surface-500 m-0">{shareType === 'referral' ? t('shareTypeReferralHint') : t('shareTypeGatewayHint')}</p>
           <div className="font-semibold text-sm">{t('shareMembers')}</div>
           {members.map((member, index) => (
             <div key={index} className="grid sm:grid-cols-[1fr_120px_auto] gap-2 items-end">
@@ -1087,19 +1147,20 @@ export function ReferralsPage() {
       </Modal>
       <div className="card p-5" data-testid="shared-links">
         <div className="font-semibold mb-3 text-surface-800 dark:text-surface-200">{t('shareLinks')}</div>
-        {(links ?? []).map((l: { id: number; token: string; status: string; members?: Array<{ user_id?: number; user?: { id?: number; name: string }; share_percent: string; approved: boolean | number }> }) => {
+        {(links ?? []).map((l: { id: number; token: string; type?: string; status: string; members?: Array<{ user_id?: number; user?: { id?: number; name: string }; share_percent: string; approved: boolean | number }> }) => {
           const mine = l.members?.find((m) => Number(m.user_id ?? m.user?.id) === Number(user?.id))
           const myPending = Boolean(mine) && !mine?.approved
+          const href = linkHref(l)
           return (
           <div key={l.id} className="py-3 border-b border-surface-100 dark:border-surface-700 last:border-0 flex justify-between gap-3">
-            <div>
-              <CopyLink value={`${window.location.origin}/shared-link/${l.token}`} href={`${window.location.origin}/shared-link/${l.token}`} />
-              <div className="font-mono text-xs text-surface-400 mt-1">{l.token}</div>
+            <div className="min-w-0 flex-1">
+              <CopyLink value={href} href={href} />
+              <div className="text-xs text-surface-500 mt-1">{l.type === 'gateway_sale' ? t('shareTypeGateway') : t('shareTypeReferral')} · {label(l.status)}</div>
               <div className="text-sm text-surface-400">
                 {l.members?.map((m) => `${m.user?.name} ${percent(m.share_percent)} ${m.approved ? t('approved') : t('awaiting')}`).join(' · ')}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <Badge tone={l.status === 'active' ? 'ok' : 'warn'}>{label(l.status)}</Badge>
               {myPending && <button className="btn btn-ok" onClick={() => approve.mutate(l.id)}>{t('approveMyShare')}</button>}
             </div>

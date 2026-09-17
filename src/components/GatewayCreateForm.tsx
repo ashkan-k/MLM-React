@@ -86,9 +86,10 @@ function FileField({ label, file, onChange }: { label: string; file?: File | nul
   )
 }
 
-export function GatewayCreateForm({ onDone }: { onDone: () => void }) {
+export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () => void; initialSharedToken?: string }) {
   const qc = useQueryClient()
   const me = useAuth((s) => s.user)
+  const gatewayShareEnabled = me?.features?.shared_links?.gateway_sale_enabled !== false
   const { data: links } = useQuery({ queryKey: ['links'], queryFn: async () => (await api.get('/shared-links')).data })
   const { data: reps } = useQuery({ queryKey: ['reps'], queryFn: async () => (await api.get('/representatives')).data })
   const { data: geo } = useQuery({ queryKey: ['geo-locations'], queryFn: async () => (await api.get('/geo/locations')).data })
@@ -96,6 +97,16 @@ export function GatewayCreateForm({ onDone }: { onDone: () => void }) {
   const [docs, setDocs] = useState<Docs>({})
   const [busy, setBusy] = useState(false)
   const set = (key: keyof typeof emptyForm, value: string) => setForm((prev) => ({ ...prev, [key]: value }))
+
+  useEffect(() => {
+    if (!initialSharedToken || !links || !gatewayShareEnabled) return
+    const link = (links as Array<{ id: number; token: string; type?: string; status: string }>).find(
+      (l) => l.token === initialSharedToken && l.type === 'gateway_sale' && l.status === 'active',
+    )
+    if (link) {
+      setForm((prev) => ({ ...prev, ownership: 'shared', shared_link_id: String(link.id) }))
+    }
+  }, [initialSharedToken, links, gatewayShareEnabled])
 
   const states: GeoState[] = geo?.states ?? []
   const cities: GeoCity[] = geo?.cities ?? []
@@ -179,16 +190,25 @@ export function GatewayCreateForm({ onDone }: { onDone: () => void }) {
     <form className="grid gap-5" data-testid="gateway-form" onSubmit={async (e) => { e.preventDefault(); await submit() }}>
       <section className="grid md:grid-cols-2 gap-3">
         <label className="field">نوع مالکیت درگاه
-          <select className="input" value={form.ownership} onChange={(e) => set('ownership', e.target.value)}>
+          <select
+            className="input"
+            value={form.ownership}
+            onChange={(e) => {
+              const next = e.target.value
+              if (next === 'shared' && !gatewayShareEnabled) return
+              set('ownership', next)
+              if (next !== 'shared') set('shared_link_id', '')
+            }}
+          >
             <option value="solo">انفرادی</option>
-            <option value="shared">اشتراکی</option>
+            {gatewayShareEnabled && <option value="shared">اشتراکی</option>}
             <option value="referral">با معرف</option>
           </select>
         </label>
         <label className="field"><FieldLabel required>نام درگاه / کسب‌وکار</FieldLabel>
           <input className="input" value={form.name} onChange={(e) => set('name', e.target.value)} required />
         </label>
-        {form.ownership === 'shared' ? (
+        {form.ownership === 'shared' && gatewayShareEnabled ? (
           <label className="field"><FieldLabel required>لینک اشتراکی فعال</FieldLabel>
             <SearchSelect
               testId="gateway-shared-link"
@@ -196,7 +216,7 @@ export function GatewayCreateForm({ onDone }: { onDone: () => void }) {
               onChange={(v) => set('shared_link_id', v)}
               placeholder="انتخاب کنید"
               required
-              options={(links ?? []).filter((l: { status: string }) => l.status === 'active').map((l: { id: number; token: string }) => ({ value: l.id, label: l.token }))}
+              options={(links ?? []).filter((l: { status: string; type?: string }) => l.status === 'active' && l.type === 'gateway_sale').map((l: { id: number; token: string }) => ({ value: l.id, label: l.token }))}
             />
           </label>
         ) : me?.is_superuser ? (
