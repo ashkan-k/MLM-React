@@ -881,22 +881,39 @@ export function WithdrawalsPage() {
   const isSenior = user?.active_role?.slug === 'senior_manager'
   const canDecide = Boolean(isSuper || isSenior)
   const { data: wallets } = useQuery({ queryKey: ['wallets', user?.active_role?.slug], queryFn: async () => (await api.get('/wallets')).data })
+  const { data: aggregate } = useQuery({ queryKey: ['wallets-aggregate'], queryFn: async () => (await api.get('/wallets/aggregate')).data })
   const { data } = useQuery({ queryKey: ['wd'], queryFn: async () => (await api.get('/withdrawals')).data })
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState('1000')
-  const walletRows: Array<{ id: number; balance: string; held_balance?: string; role?: { name: string } }> = wallets ?? []
+  const [scope, setScope] = useState<'active_role' | 'all_roles'>('active_role')
+  type WalletRow = { id: number; balance: string; held_balance?: string; role?: { id?: number; name: string; slug?: string } }
+  const walletRows: WalletRow[] = wallets ?? []
+  const allWallets: WalletRow[] = aggregate?.by_role ?? []
+  const multiRole = allWallets.length > 1
   const availableOf = (w: { balance: string; held_balance?: string }) => Number(w.balance) - Number(w.held_balance ?? 0)
-  const funded = walletRows.find((w) => availableOf(w) >= Number(amount || 0))
-  const available = walletRows.reduce((sum, w) => sum + Math.max(0, availableOf(w)), 0)
+  const activeAvailable = walletRows.reduce((sum, w) => sum + Math.max(0, availableOf(w)), 0)
+  const totalAvailable = allWallets.reduce((sum, w) => sum + Math.max(0, availableOf(w)), 0)
+  const available = scope === 'all_roles' ? totalAvailable : activeAvailable
   const mutate = useMutation({
     mutationFn: async () => {
       const need = Number(amount)
-      if (!funded?.id || need <= 0 || availableOf(funded) < need) {
+      if (need <= 0 || available < need) {
         throw Object.assign(new Error(t('withdrawNoBalance')), { response: { data: { message: t('withdrawNoBalance') } } })
       }
-      return api.post('/withdrawals', { wallet_id: funded.id, amount, idempotency_key: `ui-${Date.now()}` })
+      return api.post('/withdrawals', {
+        scope,
+        amount,
+        ...(scope === 'active_role' && walletRows[0]?.id ? { wallet_id: walletRows[0].id } : {}),
+        idempotency_key: `ui-${Date.now()}`,
+      })
     },
-    onSuccess: () => { toast.success(t('withdrawOk')); setOpen(false); qc.invalidateQueries({ queryKey: ['wd'] }); qc.invalidateQueries({ queryKey: ['wallets'] }) },
+    onSuccess: () => {
+      toast.success(t('withdrawOk'))
+      setOpen(false)
+      qc.invalidateQueries({ queryKey: ['wd'] })
+      qc.invalidateQueries({ queryKey: ['wallets'] })
+      qc.invalidateQueries({ queryKey: ['wallets-aggregate'] })
+    },
     onError: (error: { response?: { data?: { message?: string } } }) => toast.error(error.response?.data?.message ?? t('withdrawCreateFail')),
   })
   const decide = useMutation({
@@ -904,7 +921,7 @@ export function WithdrawalsPage() {
     onSuccess: () => { toast.success(t('withdrawDecided')); qc.invalidateQueries({ queryKey: ['wd'] }) },
     onError: (error: { response?: { data?: { message?: string } } }) => toast.error(error.response?.data?.message ?? t('withdrawFail')),
   })
-  const rows: Array<{ id: number; amount: string; status: string; requested_at: string; user?: { name: string } }> = data?.data ?? []
+  const rows: Array<{ id: number; amount: string; status: string; requested_at: string; user?: { name: string }; wallet?: { role?: { name: string } }; wallet_allocations?: Array<{ wallet_id: number; amount: string }> | null }> = data?.data ?? []
   const sel = useSelection(rows.map((r) => r.id))
   const canApprove = (status: string) => {
     if (isSuper) return ['senior_manager_pending', 'superuser_pending', 'rejected'].includes(status)
@@ -937,14 +954,45 @@ export function WithdrawalsPage() {
       </div>
       <Modal open={open} title={t('withdrawModal')} subtitle={t('withdrawModalSub')} onClose={() => setOpen(false)}>
         <div className="grid gap-3">
-          <div className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 text-sm">
-            <div className="text-surface-500">{t('dashWallet')}</div>
-            <div className="font-semibold mt-1">{money(available)} {t('toman')}</div>
+          {multiRole && (
+            <div className="grid gap-2">
+              <div className="text-sm font-medium text-surface-700 dark:text-surface-200">{t('withdrawScopeLabel')}</div>
+              <label className="flex items-start gap-2 rounded-xl border border-surface-200 dark:border-surface-700 p-3 cursor-pointer">
+                <input type="radio" name="wd-scope" className="mt-1" checked={scope === 'active_role'} onChange={() => setScope('active_role')} />
+                <span>
+                  <span className="font-medium block">{t('withdrawScopeActive')}</span>
+                  <span className="text-xs text-surface-500">{t('dashWallet')}: {money(activeAvailable)} {t('toman')}</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 rounded-xl border border-surface-200 dark:border-surface-700 p-3 cursor-pointer">
+                <input type="radio" name="wd-scope" className="mt-1" checked={scope === 'all_roles'} onChange={() => setScope('all_roles')} />
+                <span>
+                  <span className="font-medium block">{t('withdrawScopeAll')}</span>
+                  <span className="text-xs text-surface-500">{t('withdrawTotalAll')}: {money(totalAvailable)} {t('toman')}</span>
+                </span>
+              </label>
+            </div>
+          )}
+          <div className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 text-sm space-y-2">
+            <div className="flex justify-between gap-2">
+              <span className="text-surface-500">{scope === 'all_roles' ? t('withdrawTotalAll') : t('dashWallet')}</span>
+              <span className="font-semibold">{money(available)} {t('toman')}</span>
+            </div>
+            {scope === 'all_roles' && allWallets.length > 0 && (
+              <div className="space-y-1 pt-1 border-t border-surface-100 dark:border-surface-800">
+                {allWallets.map((w) => (
+                  <div key={w.id} className="flex justify-between gap-2 text-xs text-surface-500">
+                    <span>{w.role?.name ?? '—'}</span>
+                    <span>{money(Math.max(0, availableOf(w)))}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <label className="field">{moneyHeader()}
             <MoneyInput testId="withdraw-amount" value={amount} onChange={setAmount} />
           </label>
-          <button className="btn btn-primary" data-testid="withdraw-submit" disabled={!funded || mutate.isPending} onClick={() => mutate.mutate()}>{t('withdrawSubmit')}</button>
+          <button className="btn btn-primary" data-testid="withdraw-submit" disabled={available < Number(amount || 0) || mutate.isPending} onClick={() => mutate.mutate()}>{t('withdrawSubmit')}</button>
         </div>
       </Modal>
       <BulkBar count={sel.count}>
@@ -966,7 +1014,14 @@ export function WithdrawalsPage() {
             {rows.map((row) => (
               <tr key={row.id}>
                 <td><CheckBox checked={sel.selected.includes(row.id)} onChange={() => sel.toggle(row.id)} label={`${t('selectAll')} ${row.id}`} /></td>
-                <td>{row.user?.name ?? t('you')}</td>
+                <td>
+                  <div>{row.user?.name ?? t('you')}</div>
+                  {row.wallet_allocations && row.wallet_allocations.length > 1 ? (
+                    <div className="text-xs text-surface-400 mt-0.5">{t('withdrawMultiWallet')}</div>
+                  ) : row.wallet?.role?.name ? (
+                    <div className="text-xs text-surface-400 mt-0.5">{row.wallet.role.name}</div>
+                  ) : null}
+                </td>
                 <td>{money(row.amount)}</td>
                 <td>
                   <Badge tone={row.status === 'completed' ? 'ok' : row.status.includes('pending') ? 'warn' : 'muted'}>{label(row.status)}</Badge>
@@ -1211,19 +1266,21 @@ function PromotionList({
   })
   return (
     <div className="space-y-3">
-      <BulkBar count={sel.count}>
-        {canDecide && <BulkButton tone="ok" onClick={() => { items.filter((p) => sel.selected.includes(p.id) && p.status === 'pending').forEach((p) => onDecide(p.id, 'approved')); sel.clear() }}>{t('withdrawBulkApprove')}</BulkButton>}
-        {canDecide && <BulkButton tone="danger" onClick={async () => {
-          const note = await promptAction({ title: t('promoRejectTitle'), text: t('promoRejectText'), confirmText: t('rejectYes'), placeholder: t('promoRejectReason') })
-          if (!note) return
-          items.filter((p) => sel.selected.includes(p.id) && p.status === 'pending').forEach((p) => onDecide(p.id, 'rejected', note))
-          sel.clear()
-        }}>{t('withdrawBulkReject')}</BulkButton>}
-      </BulkBar>
+      {canDecide && (
+        <BulkBar count={sel.count}>
+          <BulkButton tone="ok" onClick={() => { items.filter((p) => sel.selected.includes(p.id) && p.status === 'pending').forEach((p) => onDecide(p.id, 'approved')); sel.clear() }}>{t('withdrawBulkApprove')}</BulkButton>
+          <BulkButton tone="danger" onClick={async () => {
+            const note = await promptAction({ title: t('promoRejectTitle'), text: t('promoRejectText'), confirmText: t('rejectYes'), placeholder: t('promoRejectReason') })
+            if (!note) return
+            items.filter((p) => sel.selected.includes(p.id) && p.status === 'pending').forEach((p) => onDecide(p.id, 'rejected', note))
+            sel.clear()
+          }}>{t('withdrawBulkReject')}</BulkButton>
+        </BulkBar>
+      )}
       {items.map((p) => (
         <div key={p.id} className="card p-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <CheckBox checked={sel.selected.includes(p.id)} onChange={() => sel.toggle(p.id)} label={`${t('navPromotions')} ${p.id}`} />
+            {canDecide && <CheckBox checked={sel.selected.includes(p.id)} onChange={() => sel.toggle(p.id)} label={`${t('navPromotions')} ${p.id}`} />}
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-white text-sm font-bold flex items-center justify-center">{(p.user?.name ?? '?').charAt(0)}</div>
             <div>
               <div className="font-semibold text-surface-800 dark:text-surface-100">{p.user?.name}</div>
