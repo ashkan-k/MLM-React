@@ -103,6 +103,7 @@ const adminGroups: NavGroup[] = [
     key: 'navMlm',
     items: [
       { to: '/superuser/rules', labelKey: 'navRules', icon: TrendingUp },
+      { to: '/superuser/org-criteria', labelKey: 'navOrgCriteria', icon: Award },
       { to: '/superuser/courses', labelKey: 'navCourses', icon: BookOpen },
     ],
   },
@@ -141,6 +142,7 @@ const titleKeys: Record<string, string> = {
   '/superuser/permissions': 'navPermissions',
   '/superuser/gateways': 'navGateways',
   '/superuser/rules': 'navRules',
+  '/superuser/org-criteria': 'navOrgCriteria',
   '/superuser/courses': 'navCourses',
   '/superuser/chat': 'navChat',
   '/superuser/notifications': 'navNotifications',

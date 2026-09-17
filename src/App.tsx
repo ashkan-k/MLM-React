@@ -4,7 +4,7 @@ import { AppShell, SuperuserShell } from './layouts/AppShell'
 import { canAccessPage } from './lib/access'
 import { dashboardPath } from './lib/roles'
 import { AdminAuditDetail } from './pages/AdminAuditDetail'
-import { AdminAudits, AdminCourses, AdminFraSoft, AdminHome, AdminPermissions, AdminRules, AdminSettings, AdminUsers } from './pages/AdminPages'
+import { AdminAudits, AdminCourses, AdminFraSoft, AdminHome, AdminOrgCriteria, AdminPermissions, AdminRules, AdminSettings, AdminUsers } from './pages/AdminPages'
 import { AdminNetwork } from './pages/AdminNetwork'
 import { AdminReports } from './pages/AdminReports'
 import { ChatPage } from './pages/ChatPage'
@@ -87,6 +87,7 @@ export default function App() {
           <Route path="rules" element={<AdminRules />} />
           <Route path="courses" element={<AdminCourses />} />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="org-criteria" element={<AdminOrgCriteria />} />
           <Route path="audits" element={<AdminAudits />} />
           <Route path="audits/:id" element={<AdminAuditDetail />} />
           <Route path="chat" element={<ChatPage />} />

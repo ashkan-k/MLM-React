@@ -805,16 +805,46 @@ export function AdminCourses() {
 }
 
 export function AdminSettings() {
+  return <SettingsEditor excludeKeys={['qualification_thresholds', 'promotion_criteria']} />
+}
+
+/** آستانه‌های پاداش ماهانه + معیارهای ارتقاء سازمانی */
+export function AdminOrgCriteria() {
+  return (
+    <SettingsEditor
+      onlyKeys={['qualification_thresholds', 'promotion_criteria']}
+      titleKey="adminOrgCriteriaTitle"
+      subtitleKey="adminOrgCriteriaSub"
+    />
+  )
+}
+
+function SettingsEditor({
+  onlyKeys,
+  excludeKeys,
+  titleKey = 'adminSettingsTitle',
+  subtitleKey = 'adminSettingsSub',
+}: {
+  onlyKeys?: string[]
+  excludeKeys?: string[]
+  titleKey?: string
+  subtitleKey?: string
+}) {
   const { t } = useApp()
   const qc = useQueryClient()
   const { data } = useQuery({ queryKey: ['settings'], queryFn: async () => (await api.get('/superuser/settings')).data })
-  const items = Array.isArray(data) ? data : data?.items ?? []
+  const rawItems = Array.isArray(data) ? data : data?.items ?? []
+  const items = rawItems.filter((s: { key: string }) => {
+    if (onlyKeys) return onlyKeys.includes(s.key)
+    if (excludeKeys) return !excludeKeys.includes(s.key)
+    return true
+  })
   const schema: SettingSchema = data?.schema ?? {}
   const [edits, setEdits] = useState<Record<string, Record<string, string | number | boolean>>>({})
 
   return (
     <div className="grid gap-3">
-      <PageHeader title={t('adminSettingsTitle')} subtitle={t('adminSettingsSub')} />
+      <PageHeader title={t(titleKey)} subtitle={t(subtitleKey)} />
       {items.map((s: { id: number; key: string; value: Record<string, unknown> }) => {
         const meta = schema[s.key]
         const current = edits[s.key] ?? Object.fromEntries(Object.entries(s.value ?? {}).map(([k, v]) => [k, v as string | number | boolean]))

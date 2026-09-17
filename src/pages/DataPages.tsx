@@ -1066,19 +1066,20 @@ export function ReferralsPage() {
   const { t } = useApp()
   const qc = useQueryClient()
   const user = useAuth((s) => s.user)
-  const isRepresentative = user?.active_role?.slug === 'representative'
+  const roleSlug = user?.active_role?.slug
+  const showReferralCode = roleSlug === 'representative' || roleSlug === 'representative_referrer'
   const referralShareOn = user?.features?.shared_links?.referral_enabled !== false
   const gatewayShareOn = user?.features?.shared_links?.gateway_sale_enabled !== false
   const anyShareOn = referralShareOn || gatewayShareOn
   const { data: codes } = useQuery({
     queryKey: ['codes'],
     queryFn: async () => (await api.get('/referrals/codes')).data,
-    enabled: isRepresentative,
+    enabled: showReferralCode,
   })
   const { data: referrals } = useQuery({
     queryKey: ['refs'],
     queryFn: async () => (await api.get('/referrals')).data,
-    enabled: isRepresentative,
+    enabled: showReferralCode,
   })
   const { data: links } = useQuery({ queryKey: ['links'], queryFn: async () => (await api.get('/shared-links')).data })
   const { data: people } = useQuery({
@@ -1135,8 +1136,8 @@ export function ReferralsPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title={isRepresentative ? t('refTitle') : t('shareOnlyTitle')}
-        subtitle={isRepresentative ? t('refSub') : t('shareOnlySub')}
+        title={showReferralCode ? t('refTitle') : t('shareOnlyTitle')}
+        subtitle={showReferralCode ? t('refSub') : t('shareOnlySub')}
         action={anyShareOn ? <button className="btn btn-primary" onClick={openCreateModal}>{t('refNew')}</button> : undefined}
       />
       {!anyShareOn && (
@@ -1144,7 +1145,7 @@ export function ReferralsPage() {
           {t('shareFeaturesOff')}
         </div>
       )}
-      {isRepresentative && (
+      {showReferralCode && (
         <>
           <div className="grid sm:grid-cols-2 gap-4">
             <StatCard title={t('refCodes')} value={(codes ?? []).length.toLocaleString(localeTag())} icon={Users} color="from-blue-500 to-blue-600" />
@@ -1161,6 +1162,7 @@ export function ReferralsPage() {
                 </div>
               )
             })}
+            {(codes ?? []).length === 0 && <Empty text={t('refEmpty')} />}
           </div>
           <div className="card p-5">
             <div className="font-semibold mb-3 text-surface-800 dark:text-surface-200">{t('refReferred')}</div>
