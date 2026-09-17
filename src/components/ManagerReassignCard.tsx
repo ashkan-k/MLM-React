@@ -22,25 +22,32 @@ export function ManagerReassignCard() {
     queryFn: async () => (await api.get('/users/directory')).data as DirectoryUser[],
   })
   const [mode, setMode] = useState<Mode>('reassign')
-  const [managerRole, setManagerRole] = useState<'sales_manager' | 'development_manager'>('sales_manager')
+  const [managerRole, setManagerRole] = useState<'sales_manager' | 'development_manager' | 'representative'>('sales_manager')
   const [targetUserId, setTargetUserId] = useState('')
   const [managerUserId, setManagerUserId] = useState('')
   const [appointUserId, setAppointUserId] = useState('')
 
-  const childSlug = managerRole === 'sales_manager' ? 'representative' : 'sales_manager'
-  const parentSlug = managerRole === 'sales_manager' ? 'development_manager' : 'senior_manager'
+  const childSlug = managerRole === 'sales_manager' ? 'representative' : managerRole === 'development_manager' ? 'sales_manager' : 'representative'
 
   const targets = useMemo(
     () => directory.filter((u) => u.roles.some((r) => r.slug === childSlug)),
     [directory, childSlug],
   )
   const managers = useMemo(
-    () => directory.filter((u) => u.roles.some((r) => r.slug === managerRole)),
+    () => directory.filter((u) => u.roles.some((r) => r.slug === (managerRole === 'representative' ? 'sales_manager' : managerRole))),
     [directory, managerRole],
   )
   const parents = useMemo(
-    () => directory.filter((u) => u.roles.some((r) => r.slug === parentSlug || (parentSlug === 'development_manager' && r.slug === 'senior_manager'))),
-    [directory, parentSlug],
+    () => directory.filter((u) => {
+      if (managerRole === 'representative') {
+        return u.roles.some((r) => ['sales_manager', 'development_manager', 'senior_manager'].includes(r.slug))
+      }
+      if (managerRole === 'sales_manager') {
+        return u.roles.some((r) => r.slug === 'development_manager' || r.slug === 'senior_manager')
+      }
+      return u.roles.some((r) => r.slug === 'senior_manager')
+    }),
+    [directory, managerRole],
   )
   const appointCandidates = useMemo(
     () => directory.filter((u) => !u.roles.some((r) => r.slug === 'superuser')),
@@ -54,23 +61,24 @@ export function ManagerReassignCard() {
   const mutate = useMutation({
     mutationFn: async () => {
       if (mode === 'appoint') {
-        await api.post('/organization/reassign-manager', {
+        const { data } = await api.post('/organization/reassign-manager', {
           mode: 'appoint',
           appoint_user_id: Number(appointUserId),
           manager_user_id: Number(managerUserId),
           manager_role: managerRole,
         })
-        return
+        return data as { message?: string }
       }
-      await api.post('/organization/reassign-manager', {
+      const { data } = await api.post('/organization/reassign-manager', {
         mode: 'reassign',
         target_user_id: Number(targetUserId),
         manager_user_id: Number(managerUserId),
         manager_role: managerRole,
       })
+      return data as { message?: string }
     },
-    onSuccess: () => {
-      toast.success(mode === 'appoint' ? t('appointOk') : t('reassignOk'))
+    onSuccess: (data) => {
+      toast.success(data?.message || (mode === 'appoint' ? t('appointOk') : t('reassignOk')))
       setTargetUserId('')
       setManagerUserId('')
       setAppointUserId('')
@@ -159,13 +167,14 @@ export function ManagerReassignCard() {
               className="input"
               value={managerRole}
               onChange={(e) => {
-                setManagerRole(e.target.value as 'sales_manager' | 'development_manager')
+                setManagerRole(e.target.value as 'sales_manager' | 'development_manager' | 'representative')
                 setAppointUserId('')
                 setManagerUserId('')
               }}
             >
               <option value="sales_manager">{t('role_sales_manager')}</option>
               <option value="development_manager">{t('role_development_manager')}</option>
+              <option value="representative">{t('role_representative')}</option>
             </select>
           </label>
           <label className="field">{t('appointUser')}
