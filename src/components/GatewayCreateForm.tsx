@@ -51,7 +51,17 @@ const emptyForm = {
   legal_national_id: '',
 }
 
-function FileField({ label, file, onChange }: { label: string; file?: File | null; onChange: (file: File | null) => void }) {
+function FileField({
+  label,
+  file,
+  onChange,
+  required,
+}: {
+  label: string
+  file?: File | null
+  onChange: (file: File | null) => void
+  required?: boolean
+}) {
   const [preview, setPreview] = useState<string | null>(null)
   const image = file ? file.type.startsWith('image/') : false
 
@@ -67,8 +77,8 @@ function FileField({ label, file, onChange }: { label: string; file?: File | nul
 
   return (
     <div className="field">
-      <span>{label}</span>
-      <input className="input" type="file" accept="image/*,.pdf" onChange={(e) => onChange(e.target.files?.[0] ?? null)} />
+      <FieldLabel required={required}>{label}</FieldLabel>
+      <input className="input" type="file" accept="image/*,.pdf" required={required && !file} onChange={(e) => onChange(e.target.files?.[0] ?? null)} />
       {file && (
         <div className="flex items-center gap-3 mt-1">
           {preview ? (
@@ -86,6 +96,33 @@ function FileField({ label, file, onChange }: { label: string; file?: File | nul
   )
 }
 
+function apiErrorMessage(error: unknown): string {
+  const ax = error as {
+    code?: string
+    message?: string
+    response?: { status?: number; data?: { message?: string; errors?: Record<string, string[]> } }
+  }
+  if (!ax.response) {
+    if (ax.code === 'ERR_NETWORK' || ax.message?.toLowerCase().includes('network')) {
+      return 'اتصال به سرور برقرار نشد. اینترنت یا سرویس API را بررسی کنید.'
+    }
+    return 'ارتباط با سرور برقرار نشد. دوباره تلاش کنید.'
+  }
+  const status = ax.response.status ?? 0
+  const data = ax.response.data
+  if (status === 422 && data?.errors) {
+    const first = Object.values(data.errors).flat().find(Boolean)
+    if (first) return String(first)
+  }
+  if (status === 403) return data?.message || 'دسترسی مجاز نیست. نقش نماینده را فعال کنید یا عضو لینک اشتراکی باشید.'
+  if (status === 401) return 'نشست شما منقضی شده؛ دوباره وارد شوید.'
+  if (status >= 500) return 'خطای داخلی سرور رخ داد. لطفاً کمی بعد دوباره تلاش کنید.'
+  if (data?.message && !/exception|stack|sqlstate|vendor\\/i.test(data.message)) {
+    return data.message
+  }
+  return 'ثبت درگاه ناموفق بود. فیلدهای الزامی را بررسی کنید.'
+}
+
 export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () => void; initialSharedToken?: string }) {
   const qc = useQueryClient()
   const me = useAuth((s) => s.user)
@@ -96,6 +133,7 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
   const [form, setForm] = useState(emptyForm)
   const [docs, setDocs] = useState<Docs>({})
   const [busy, setBusy] = useState(false)
+  const isLegal = form.person_type === 'legal'
   const set = (key: keyof typeof emptyForm, value: string) => setForm((prev) => ({ ...prev, [key]: value }))
 
   useEffect(() => {
@@ -132,7 +170,40 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
     [cities, states],
   )
 
+  const validateClient = (): string | null => {
+    if (!form.name.trim()) return 'نام درگاه الزامی است.'
+    if (form.ownership === 'shared' && !form.shared_link_id) return 'لینک اشتراکی فعال را انتخاب کنید.'
+    if (!form.customer_name.trim()) return 'نام متقاضی الزامی است.'
+    if (!/^\d{10}$/.test(form.national_id)) return 'کد ملی باید ۱۰ رقم باشد.'
+    if (!form.mobile.trim()) return 'موبایل الزامی است.'
+    if (!form.sheba.trim()) return 'شبا الزامی است.'
+    if (!docs.national_id_front) return 'تصویر روی کارت ملی الزامی است.'
+    if (!docs.national_id_back) return 'تصویر پشت کارت ملی الزامی است.'
+    if (!docs.birth_certificate) return 'تصویر شناسنامه الزامی است.'
+    if (!docs.selfie) return 'سلفی احراز هویت الزامی است.'
+    if (isLegal) {
+      if (!form.company_name.trim()) return 'نام شرکت الزامی است.'
+      if (!form.legal_national_id.trim()) return 'شناسه ملی شرکت الزامی است.'
+      if (!form.registration_no.trim()) return 'شماره ثبت الزامی است.'
+      if (!form.economic_code.trim()) return 'شناسه اقتصادی الزامی است.'
+      if (!form.province.trim()) return 'استان الزامی است.'
+      if (!form.city.trim()) return 'شهر الزامی است.'
+      if (!form.address.trim()) return 'نشانی کامل الزامی است.'
+      if (!form.postal_code.trim()) return 'کد پستی الزامی است.'
+      if (!form.shop_name.trim()) return 'نام فروشگاه الزامی است.'
+      if (!form.shop_category.trim()) return 'صنف / دسته الزامی است.'
+      if (!docs.gazette) return 'روزنامه رسمی / آگهی تأسیس الزامی است.'
+      if (!docs.license) return 'مجوز یا پروانه کسب الزامی است.'
+    }
+    return null
+  }
+
   const submit = async () => {
+    const clientError = validateClient()
+    if (clientError) {
+      toast.error(clientError)
+      return
+    }
     setBusy(true)
     try {
       const fd = new FormData()
@@ -179,8 +250,8 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
       toast.success('درگاه با مدارک هویتی ثبت شد')
       qc.invalidateQueries({ queryKey: ['sales'] })
       onDone()
-    } catch {
-      toast.error('ثبت درگاه ناموفق بود. فیلدهای هویتی و مدارک را بررسی کنید.')
+    } catch (error) {
+      toast.error(apiErrorMessage(error))
     } finally {
       setBusy(false)
     }
@@ -275,40 +346,42 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
         </div>
       </section>
 
-      {form.person_type === 'legal' && (
+      {isLegal && (
         <section className="grid md:grid-cols-2 gap-3">
           <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">مشخصات حقوقی</div>
-          <label className="field">نام شرکت<input className="input" value={form.company_name} onChange={(e) => set('company_name', e.target.value)} /></label>
-          <label className="field">شناسه ملی شرکت<input className="input" value={form.legal_national_id} onChange={(e) => set('legal_national_id', e.target.value)} /></label>
-          <label className="field">شماره ثبت<input className="input" value={form.registration_no} onChange={(e) => set('registration_no', e.target.value)} /></label>
-          <label className="field">شناسه اقتصادی<input className="input" value={form.economic_code} onChange={(e) => set('economic_code', e.target.value)} /></label>
+          <label className="field"><FieldLabel required>نام شرکت</FieldLabel><input className="input" value={form.company_name} onChange={(e) => set('company_name', e.target.value)} required={isLegal} /></label>
+          <label className="field"><FieldLabel required>شناسه ملی شرکت</FieldLabel><input className="input" value={form.legal_national_id} onChange={(e) => set('legal_national_id', e.target.value)} required={isLegal} /></label>
+          <label className="field"><FieldLabel required>شماره ثبت</FieldLabel><input className="input" value={form.registration_no} onChange={(e) => set('registration_no', e.target.value)} required={isLegal} /></label>
+          <label className="field"><FieldLabel required>شناسه اقتصادی</FieldLabel><input className="input" value={form.economic_code} onChange={(e) => set('economic_code', e.target.value)} required={isLegal} /></label>
         </section>
       )}
 
       <section className="grid md:grid-cols-2 gap-3">
         <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">آدرس و کسب‌وکار</div>
-        <label className="field">استان
+        <label className="field"><FieldLabel required={isLegal}>استان</FieldLabel>
           <SearchSelect
             testId="gateway-province"
             value={form.province}
             onChange={(v) => setForm((prev) => ({ ...prev, province: v, city: '' }))}
             placeholder="انتخاب استان"
+            required={isLegal}
             options={states.map((s) => ({ value: s.title, label: s.title, keywords: s.slug ?? '' }))}
           />
         </label>
-        <label className="field">شهر
+        <label className="field"><FieldLabel required={isLegal}>شهر</FieldLabel>
           <SearchSelect
             testId="gateway-city"
             value={form.city}
             onChange={(v) => set('city', v)}
             placeholder={form.province ? 'انتخاب شهر' : 'اول استان را انتخاب کنید'}
+            required={isLegal}
             options={cityOptions}
           />
         </label>
-        <label className="field md:col-span-2">نشانی کامل<input className="input" value={form.address} onChange={(e) => set('address', e.target.value)} /></label>
-        <label className="field">کد پستی<input className="input" value={form.postal_code} onChange={(e) => set('postal_code', e.target.value)} /></label>
-        <label className="field">نام فروشگاه<input className="input" value={form.shop_name} onChange={(e) => set('shop_name', e.target.value)} /></label>
-        <label className="field">صنف / دسته<input className="input" value={form.shop_category} onChange={(e) => set('shop_category', e.target.value)} /></label>
+        <label className="field md:col-span-2"><FieldLabel required={isLegal}>نشانی کامل</FieldLabel><input className="input" value={form.address} onChange={(e) => set('address', e.target.value)} required={isLegal} /></label>
+        <label className="field"><FieldLabel required={isLegal}>کد پستی</FieldLabel><input className="input" value={form.postal_code} onChange={(e) => set('postal_code', e.target.value)} required={isLegal} /></label>
+        <label className="field"><FieldLabel required={isLegal}>نام فروشگاه</FieldLabel><input className="input" value={form.shop_name} onChange={(e) => set('shop_name', e.target.value)} required={isLegal} /></label>
+        <label className="field"><FieldLabel required={isLegal}>صنف / دسته</FieldLabel><input className="input" value={form.shop_category} onChange={(e) => set('shop_category', e.target.value)} required={isLegal} /></label>
         <label className="field">وب‌سایت<input className="input" value={form.website} onChange={(e) => set('website', e.target.value)} /></label>
       </section>
 
@@ -322,14 +395,14 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
 
       <section className="grid md:grid-cols-2 gap-3">
         <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">مدارک هویتی</div>
-        <FileField label="تصویر روی کارت ملی" file={docs.national_id_front} onChange={(file) => setDocs((d) => ({ ...d, national_id_front: file }))} />
-        <FileField label="تصویر پشت کارت ملی" file={docs.national_id_back} onChange={(file) => setDocs((d) => ({ ...d, national_id_back: file }))} />
-        <FileField label="تصویر شناسنامه" file={docs.birth_certificate} onChange={(file) => setDocs((d) => ({ ...d, birth_certificate: file }))} />
-        <FileField label="سلفی احراز هویت با کارت ملی" file={docs.selfie} onChange={(file) => setDocs((d) => ({ ...d, selfie: file }))} />
-        {form.person_type === 'legal' && (
+        <FileField required label="تصویر روی کارت ملی" file={docs.national_id_front} onChange={(file) => setDocs((d) => ({ ...d, national_id_front: file }))} />
+        <FileField required label="تصویر پشت کارت ملی" file={docs.national_id_back} onChange={(file) => setDocs((d) => ({ ...d, national_id_back: file }))} />
+        <FileField required label="تصویر شناسنامه" file={docs.birth_certificate} onChange={(file) => setDocs((d) => ({ ...d, birth_certificate: file }))} />
+        <FileField required label="سلفی احراز هویت با کارت ملی" file={docs.selfie} onChange={(file) => setDocs((d) => ({ ...d, selfie: file }))} />
+        {isLegal && (
           <>
-            <FileField label="روزنامه رسمی / آگهی تأسیس" file={docs.gazette} onChange={(file) => setDocs((d) => ({ ...d, gazette: file }))} />
-            <FileField label="مجوز یا پروانه کسب" file={docs.license} onChange={(file) => setDocs((d) => ({ ...d, license: file }))} />
+            <FileField required label="روزنامه رسمی / آگهی تأسیس" file={docs.gazette} onChange={(file) => setDocs((d) => ({ ...d, gazette: file }))} />
+            <FileField required label="مجوز یا پروانه کسب" file={docs.license} onChange={(file) => setDocs((d) => ({ ...d, license: file }))} />
           </>
         )}
       </section>

@@ -286,12 +286,16 @@ select {
     radial-gradient(900px 420px at 100% 0%, rgba(37,99,235,.22), transparent),
     #020617;
 }
+.login-form { padding: 32px; background: #ffffff; }
+.dark .login-form { background: transparent; }
 .login-card {
   width: min(960px, 100%);
   display: grid;
   grid-template-columns: 1.05fr .95fr;
   overflow: hidden;
+  background: #ffffff;
 }
+.dark .login-card { background: rgb(15 23 42 / 0.92); }
 @media (max-width: 820px) {
   .login-card { grid-template-columns: 1fr; }
 }
@@ -302,7 +306,6 @@ select {
 }
 .login-hero h2 { color: white; margin: 12px 0 8px; }
 .login-hero p { color: rgba(255,255,255,.82); margin: 0; line-height: 1.8; }
-.login-form { padding: 32px; }
 
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button { opacity: 1; }

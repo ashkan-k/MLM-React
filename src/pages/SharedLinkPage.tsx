@@ -4,10 +4,18 @@ import { api } from '../lib/api'
 import { dashboardPath } from '../lib/roles'
 import { useAuth } from '../stores/auth'
 
-function gatewaysHref(user: { is_superuser?: boolean; active_role?: { slug: string } | null } | null, token: string) {
+function gatewaysHref(user: {
+  is_superuser?: boolean
+  active_role?: { slug: string } | null
+  roles?: Array<{ slug: string; is_active?: boolean }>
+} | null, token: string) {
   const q = `shared=${encodeURIComponent(token)}`
   if (user?.is_superuser || user?.active_role?.slug === 'superuser') {
     return `/superuser/gateways?${q}`
+  }
+  const hasRep = user?.roles?.some((r) => r.slug === 'representative' && r.is_active !== false)
+  if (hasRep) {
+    return `/dashboard/representative/gateways?${q}`
   }
   return `${dashboardPath(user?.active_role?.slug)}/gateways?${q}`
 }

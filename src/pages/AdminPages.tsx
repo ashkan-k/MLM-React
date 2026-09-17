@@ -32,7 +32,7 @@ type SettingField = { key: string; label: string; hint?: string; type: string }
 type SettingSchema = Record<string, { label: string; hint?: string; fields: SettingField[] }>
 type PermRow = { id: number; slug: string; name: string }
 
-const emptyUser = { name: '', mobile: '', email: '', password: 'Password123!', is_active: true, role_slugs: ['representative'] }
+const emptyUser = { name: '', mobile: '', email: '', password: 'Password123!', password_confirmation: 'Password123!', is_active: true, role_slugs: ['representative'] }
 const emptyLevel = (): CourseLevel => ({ title: 'سطح ۱', sort_order: 1, passing_score: 70, content_type: 'text', content_body: '', content_url: '', file: null })
 const emptyCourse = { title: '', description: '', is_required_for_promotion: true, role_ids: [] as number[], levels: [emptyLevel()] }
 const CONTENT_TYPES = [
@@ -127,6 +127,7 @@ export function AdminUsers() {
       mobile: user.mobile,
       email: user.email ?? '',
       password: '',
+      password_confirmation: '',
       is_active: user.is_active,
       role_slugs: user.roles?.map((r) => r.slug) ?? ['representative'],
     })
@@ -136,13 +137,24 @@ export function AdminUsers() {
   }
 
   const save = async () => {
-    const payload = { ...form, password: form.password || undefined }
+    if (!editing && !form.password) {
+      toast.error('رمز عبور الزامی است.')
+      return
+    }
+    if (form.password && form.password !== form.password_confirmation) {
+      toast.error('رمز عبور و تکرار آن یکسان نیستند.')
+      return
+    }
+    const payload = { ...form, password: form.password || undefined, password_confirmation: form.password ? form.password_confirmation : undefined }
     if (avatarFile) {
       const fd = new FormData()
       fd.append('name', form.name)
       fd.append('mobile', form.mobile)
       if (form.email) fd.append('email', form.email)
-      if (form.password) fd.append('password', form.password)
+      if (form.password) {
+        fd.append('password', form.password)
+        fd.append('password_confirmation', form.password_confirmation)
+      }
       fd.append('is_active', form.is_active ? '1' : '0')
       form.role_slugs.forEach((slug) => fd.append('role_slugs[]', slug))
       fd.append('avatar', avatarFile)
@@ -339,6 +351,11 @@ export function AdminUsers() {
           <label className="field">{editing ? 'رمز عبور جدید (اختیاری)' : 'رمز عبور'}
             <input className="input" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required={!editing} />
           </label>
+          {(!editing || form.password) && (
+            <label className="field">تکرار رمز عبور
+              <input className="input" type="password" value={form.password_confirmation} onChange={(e) => setForm({ ...form, password_confirmation: e.target.value })} required={!editing || Boolean(form.password)} />
+            </label>
+          )}
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} />
             حساب فعال باشد
