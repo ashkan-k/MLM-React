@@ -96,6 +96,52 @@ function FileField({
   )
 }
 
+const FIELD_LABELS: Record<string, string> = {
+  name: 'نام درگاه',
+  'customer.name': 'نام متقاضی',
+  'customer.mobile': 'موبایل',
+  'customer.national_id': 'کد ملی',
+  'customer.sheba': 'شبا',
+  'customer.email': 'ایمیل',
+  'customer.province': 'استان',
+  'customer.city': 'شهر',
+  'customer.address': 'نشانی',
+  'customer.postal_code': 'کد پستی',
+  'customer.shop_name': 'نام فروشگاه',
+  'customer.shop_category': 'صنف / دسته',
+  'customer.company_name': 'نام شرکت',
+  'customer.registration_no': 'شماره ثبت',
+  'customer.economic_code': 'شناسه اقتصادی',
+  'customer.legal_national_id': 'شناسه ملی شرکت',
+  'documents.national_id_front': 'تصویر روی کارت ملی',
+  'documents.national_id_back': 'تصویر پشت کارت ملی',
+  'documents.birth_certificate': 'تصویر شناسنامه',
+  'documents.selfie': 'سلفی احراز هویت',
+  'documents.gazette': 'روزنامه رسمی',
+  'documents.license': 'مجوز / پروانه کسب',
+  shared_link_id: 'لینک اشتراکی',
+  representative_user_id: 'نماینده',
+}
+
+function normalizeSheba(value: string): string {
+  return value.replace(/[\s\-]/g, '').toUpperCase()
+}
+
+function isValidSheba(value: string): boolean {
+  return /^(IR)?[0-9]{24}$/i.test(normalizeSheba(value))
+}
+
+function apiFieldErrors(error: unknown): Record<string, string> {
+  const ax = error as { response?: { status?: number; data?: { errors?: Record<string, string[]> } } }
+  if (ax.response?.status !== 422 || !ax.response.data?.errors) return {}
+  const out: Record<string, string> = {}
+  Object.entries(ax.response.data.errors).forEach(([key, messages]) => {
+    const msg = messages.find(Boolean)
+    if (msg) out[key] = String(msg)
+  })
+  return out
+}
+
 function apiErrorMessage(error: unknown): string {
   const ax = error as {
     code?: string
@@ -111,8 +157,11 @@ function apiErrorMessage(error: unknown): string {
   const status = ax.response.status ?? 0
   const data = ax.response.data
   if (status === 422 && data?.errors) {
-    const first = Object.values(data.errors).flat().find(Boolean)
-    if (first) return String(first)
+    const lines = Object.entries(data.errors).flatMap(([key, messages]) => {
+      const label = FIELD_LABELS[key] ?? key.replace(/^customer\./, '').replace(/^documents\./, '')
+      return messages.filter(Boolean).map((msg) => `${label}: ${msg}`)
+    })
+    if (lines.length) return lines.slice(0, 5).join('\n')
   }
   if (status === 403) return data?.message || 'دسترسی مجاز نیست. نقش نماینده را فعال کنید یا عضو لینک اشتراکی باشید.'
   if (status === 401) return 'نشست شما منقضی شده؛ دوباره وارد شوید.'
@@ -133,8 +182,40 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
   const [form, setForm] = useState(emptyForm)
   const [docs, setDocs] = useState<Docs>({})
   const [busy, setBusy] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const isLegal = form.person_type === 'legal'
-  const set = (key: keyof typeof emptyForm, value: string) => setForm((prev) => ({ ...prev, [key]: value }))
+  const set = (key: keyof typeof emptyForm, value: string) => {
+    setForm((prev) => ({ ...prev, [key]: value }))
+    setFieldErrors((prev) => {
+      const next = { ...prev }
+      const map: Partial<Record<keyof typeof emptyForm, string>> = {
+        name: 'name',
+        customer_name: 'customer.name',
+        mobile: 'customer.mobile',
+        national_id: 'customer.national_id',
+        sheba: 'customer.sheba',
+        email: 'customer.email',
+        province: 'customer.province',
+        city: 'customer.city',
+        address: 'customer.address',
+        postal_code: 'customer.postal_code',
+        shop_name: 'customer.shop_name',
+        shop_category: 'customer.shop_category',
+        company_name: 'customer.company_name',
+        registration_no: 'customer.registration_no',
+        economic_code: 'customer.economic_code',
+        legal_national_id: 'customer.legal_national_id',
+        shared_link_id: 'shared_link_id',
+      }
+      const errKey = map[key]
+      if (errKey) delete next[errKey]
+      return next
+    })
+  }
+
+  const err = (key: string) => fieldErrors[key]
+  const fieldClass = (key: string) => `input${err(key) ? ' border-red-500 focus:border-red-500' : ''}`
+  const ErrText = ({ k }: { k: string }) => (err(k) ? <span className="text-xs text-red-600 mt-1">{err(k)}</span> : null)
 
   useEffect(() => {
     if (!initialSharedToken || !links || !gatewayShareEnabled) return
@@ -177,6 +258,7 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
     if (!/^\d{10}$/.test(form.national_id)) return 'کد ملی باید ۱۰ رقم باشد.'
     if (!form.mobile.trim()) return 'موبایل الزامی است.'
     if (!form.sheba.trim()) return 'شبا الزامی است.'
+    if (!isValidSheba(form.sheba)) return 'شبا باید ۲۴ رقم باشد (با یا بدون پیشوند IR).'
     if (!docs.national_id_front) return 'تصویر روی کارت ملی الزامی است.'
     if (!docs.national_id_back) return 'تصویر پشت کارت ملی الزامی است.'
     if (!docs.birth_certificate) return 'تصویر شناسنامه الزامی است.'
@@ -199,8 +281,10 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
   }
 
   const submit = async () => {
+    setFieldErrors({})
     const clientError = validateClient()
     if (clientError) {
+      if (clientError.includes('شبا')) setFieldErrors({ 'customer.sheba': clientError })
       toast.error(clientError)
       return
     }
@@ -218,7 +302,7 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
         mobile: form.mobile,
         person_type: form.person_type,
         national_id: form.national_id,
-        sheba: form.sheba,
+        sheba: normalizeSheba(form.sheba),
         email: form.email,
         father_name: form.father_name,
         birth_date: form.birth_date,
@@ -251,7 +335,9 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
       qc.invalidateQueries({ queryKey: ['sales'] })
       onDone()
     } catch (error) {
-      toast.error(apiErrorMessage(error))
+      const fields = apiFieldErrors(error)
+      setFieldErrors(fields)
+      toast.error(apiErrorMessage(error), { duration: 6000 })
     } finally {
       setBusy(false)
     }
@@ -387,7 +473,7 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
 
       <section className="grid md:grid-cols-2 gap-3">
         <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">حساب بانکی تسویه</div>
-        <label className="field"><FieldLabel required>شبا</FieldLabel><input className="input" value={form.sheba} onChange={(e) => set('sheba', e.target.value)} required /></label>
+        <label className="field"><FieldLabel required>شبا</FieldLabel><input className={fieldClass('customer.sheba')} value={form.sheba} onChange={(e) => set('sheba', e.target.value)} placeholder="IRxxxxxxxxxxxxxxxxxxxxxxxx یا ۲۴ رقم" required /><ErrText k="customer.sheba" /></label>
         <label className="field">نام بانک<input className="input" value={form.bank_name} onChange={(e) => set('bank_name', e.target.value)} /></label>
         <label className="field">شماره حساب<input className="input" value={form.account_number} onChange={(e) => set('account_number', e.target.value)} /></label>
         <label className="field">صاحب حساب<input className="input" value={form.account_holder} onChange={(e) => set('account_holder', e.target.value)} /></label>

@@ -507,7 +507,18 @@ function GatewayReviewModal({
                       <span>{t('gwPostedBy')}: {review.actor?.name ?? t('gwSystemActor')}</span>
                       <DateTimeText value={review.created_at} />
                     </div>
-                    {review.note && <div className="text-sm text-surface-700 dark:text-surface-200">{review.note}</div>}
+                    {review.note && (
+                      <div className={`rounded-lg px-3 py-2 text-sm ${
+                        review.decision === 'rejected' || review.stage === 'rejected'
+                          ? 'bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
+                          : 'bg-surface-50 dark:bg-surface-800/60 text-surface-700 dark:text-surface-200'
+                      }`}>
+                        <div className="text-xs font-semibold mb-1 opacity-80">
+                          {review.decision === 'rejected' || review.stage === 'rejected' ? t('gwRejectReason') : t('gwReviewNote')}
+                        </div>
+                        <div className="leading-relaxed whitespace-pre-wrap">{review.note}</div>
+                      </div>
+                    )}
                     {review.reference && <div className="text-xs text-surface-400">{t('gwMerchantCode')}: {review.reference}</div>}
                   </div>
                 </div>
@@ -547,7 +558,16 @@ function GatewayReviewModal({
             </div>
           </div>
         )}
-        {sale.rejection_note && <p className="text-sm text-red-600 m-0">{sale.rejection_note}</p>}
+        {sale.rejection_note && (
+          <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 flex items-start gap-3">
+            <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold">!</span>
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-red-800 dark:text-red-200">{t('gwRejectedBanner')}</div>
+              <div className="text-xs font-medium text-red-700/80 dark:text-red-300/80 mt-0.5 mb-1">{t('gwRejectReason')}</div>
+              <div className="text-sm text-red-800 dark:text-red-200 leading-relaxed whitespace-pre-wrap">{sale.rejection_note}</div>
+            </div>
+          </div>
+        )}
         <div className="flex flex-wrap gap-2">
           {canInspect && isAwaitingInspect(sale.status) && (
             <>
