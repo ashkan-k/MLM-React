@@ -34,7 +34,8 @@ export function formatGrouped(value: string) {
 export function percent(value?: string | number | null) {
   const n = Number(value ?? 0)
   const mark = currentLocale() === 'en' ? '%' : '٪'
-  return `${n.toLocaleString(localeTag(), { maximumFractionDigits: 3, minimumFractionDigits: 0 })}${mark}`
+  const rounded = Math.round(n * 100) / 100
+  return `${rounded.toLocaleString(localeTag(), { maximumFractionDigits: 2, minimumFractionDigits: 0 })}${mark}`
 }
 
 export function dateTime(value?: string | null) {
