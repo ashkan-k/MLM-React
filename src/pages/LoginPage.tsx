@@ -7,7 +7,7 @@ import { dashboardPath } from '../lib/roles'
 import { useAuth } from '../stores/auth'
 
 export function LoginPage() {
-  const [mobile, setMobile] = useState('09125555555')
+  const [mobile, setMobile] = useState('09121111111')
   const [password, setPassword] = useState('Password123!')
   const [error, setError] = useState('')
   const setSession = useAuth((s) => s.setSession)
