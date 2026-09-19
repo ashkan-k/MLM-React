@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query'
-import { BookOpen, GitBranch, Repeat, TrendingUp, Users, Wallet } from 'lucide-react'
+import { BookOpen, GitBranch, Repeat, TrendingUp, Users, Wallet, Award } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { DateTimeText, PageHeader, ProgressBar, StatCard } from '../components/ui'
 import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
 import { canAccessPage } from '../lib/access'
-import { localeTag, money } from '../lib/format'
+import { localeTag, money, percent } from '../lib/format'
 import { roleLabel } from '../lib/i18n'
 import { notificationBody, notificationHref, notificationTitle, type AppNotification } from '../lib/notify'
 import { useAuth } from '../stores/auth'
@@ -26,7 +26,19 @@ export function DashboardPage() {
     queryKey: ['notif'],
     queryFn: async () => (await api.get('/notifications')).data,
   })
-  const q = data?.qualification
+  const q = data?.qualification as {
+    actual?: number
+    required?: number
+    metric_label?: string
+    unit?: string
+  } | undefined
+  const bonus = data?.monthly_bonus as {
+    eligible?: boolean
+    qualified?: boolean
+    profit_sum?: string
+    bonus_percent?: string
+    bonus_amount?: string
+  } | undefined
   const recent = (commissions?.data ?? []).slice(0, 6)
   const latestPromo = (data?.latest_rejected_promotion ?? data?.latest_promotion) as {
     status?: string
@@ -50,15 +62,56 @@ export function DashboardPage() {
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="card p-5 lg:col-span-2" data-testid="qualification-box">
           <div className="font-semibold text-surface-800 dark:text-surface-100 mb-2">{t('dashQual')}</div>
-          {q ? (
+          {q && Number(q.required) > 0 ? (
             <>
               <div className="flex items-end justify-between gap-3 mb-3">
-                <div className="text-sm text-surface-500">{q.actual} از {q.required}</div>
+                <div className="text-sm text-surface-500 space-y-0.5">
+                  {q.metric_label && <div className="font-medium text-surface-600 dark:text-surface-300">{q.metric_label}</div>}
+                  <div>
+                    <span dir="ltr" className="datetime-ltr inline-block">
+                      {Number(q.actual).toLocaleString(localeTag())} / {Number(q.required).toLocaleString(localeTag())}
+                    </span>
+                    {q.unit ? ` ${q.unit}` : ''}
+                  </div>
+                </div>
                 <div className="text-lg font-bold text-surface-800 dark:text-surface-100">
                   {Math.min(100, Math.round((Number(q.actual) / (Number(q.required) || 1)) * 100)).toLocaleString(localeTag())}{locale === 'en' ? '%' : '٪'}
                 </div>
               </div>
               <ProgressBar value={Number(q.actual)} max={Number(q.required) || 1} />
+              {bonus?.eligible && (
+                <div className="mt-4 rounded-xl border border-surface-200 dark:border-surface-700 p-3 space-y-2" data-testid="monthly-bonus-box">
+                  <div className={`text-sm font-medium ${bonus.qualified ? 'text-emerald-600' : 'text-surface-500'}`}>
+                    {bonus.qualified ? t('dashBonusEligible') : t('dashBonusWaiting')}
+                  </div>
+                  <div className="grid sm:grid-cols-3 gap-2 text-sm">
+                    <div>
+                      <div className="text-xs text-surface-500">{t('dashBonusProfit')}</div>
+                      <div className="font-bold text-surface-800 dark:text-surface-100">{money(bonus.profit_sum)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-surface-500">{t('dashBonusPercent')}</div>
+                      <div className="font-bold text-surface-800 dark:text-surface-100">{percent(bonus.bonus_percent)}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-surface-500">{t('dashBonusAmount')}</div>
+                      <div className="font-bold text-emerald-600">{money(bonus.bonus_amount)}</div>
+                    </div>
+                  </div>
+                  {canAccessPage(user, 'monthly-bonus') && (
+                    <Link to="monthly-bonus" className="inline-block text-xs text-primary-600 hover:text-primary-700 font-medium">
+                      {t('dashBonusOpen')}
+                    </Link>
+                  )}
+                </div>
+              )}
+              {(!bonus?.eligible && canAccessPage(user, 'monthly-bonus')) && (
+                <div className="mt-3">
+                  <Link to="monthly-bonus" className="text-xs text-primary-600 hover:text-primary-700 font-medium">
+                    {t('dashBonusOpen')}
+                  </Link>
+                </div>
+              )}
             </>
           ) : <div className="text-sm text-surface-500">{t('dashQualNone')}</div>}
           <div className="grid sm:grid-cols-2 gap-3 mt-5">
@@ -131,6 +184,7 @@ export function DashboardPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
               { to: 'commissions', label: t('dashQuickComm'), icon: TrendingUp, color: 'bg-blue-500' },
+              { to: 'monthly-bonus', label: t('navMonthlyBonus'), icon: Award, color: 'bg-violet-500' },
               { to: 'wallet', label: t('dashQuickWallet'), icon: Wallet, color: 'bg-emerald-500' },
               { to: 'withdrawals', label: t('dashQuickWd'), icon: Repeat, color: 'bg-amber-500' },
               { to: 'team', label: t('dashQuickTeam'), icon: GitBranch, color: 'bg-purple-500' },

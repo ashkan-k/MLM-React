@@ -1,12 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Copy, CreditCard, ExternalLink, Network, Repeat, TrendingUp, Users, Wallet, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { MoneyInput } from '../components/MoneyInput'
 import { OrgTree, type OrgNode } from '../components/OrgTree'
 import { SearchSelect } from '../components/SearchSelect'
-import { ApproveAction, BlockAction, BulkBar, BulkButton, CheckBox, IconAction, RowActions, UnblockAction, ViewAction, exportSelected, useSelection } from '../components/table'
+import { ApproveAction, BlockAction, BulkBar, BulkButton, CheckBox, IconAction, RowActions, TablePager, UnblockAction, ViewAction, exportSelected, useSelection } from '../components/table'
 import { Badge, DateTimeText, Empty, Modal, PageHeader, ProgressBar, StatCard } from '../components/ui'
 import { GatewayCreateForm } from '../components/GatewayCreateForm'
 import { ManagerReassignCard } from '../components/ManagerReassignCard'
@@ -199,16 +199,19 @@ function GatewayTable({
   canInspect,
   onOpen,
   onInspect,
+  footer,
 }: {
   rows: GatewaySaleRow[]
   isLoading: boolean
   canInspect: boolean
   onOpen: (row: GatewaySaleRow) => void
   onInspect: (row: GatewaySaleRow, decision: 'approved' | 'rejected') => void
+  footer?: ReactNode
 }) {
   const { t } = useApp()
   return (
-    <div className="card overflow-auto" data-testid="gateway-table">
+    <div className="card overflow-hidden" data-testid="gateway-table">
+      <div className="overflow-auto">
       <table className="table">
         <thead>
           <tr>
@@ -248,7 +251,9 @@ function GatewayTable({
           ))}
         </tbody>
       </table>
+      </div>
       {!isLoading && rows.length === 0 && <Empty text={t('gwEmpty')} />}
+      {footer}
     </div>
   )
 }
@@ -589,9 +594,10 @@ export function GatewaysPage() {
   const sharedToken = (searchParams.get('shared') ?? '').trim()
   const roleSlug = me?.active_role?.slug
   const gatewayShareEnabled = me?.features?.shared_links?.gateway_sale_enabled !== false
-  const { data, isLoading } = useQuery({
-    queryKey: ['sales', roleSlug],
-    queryFn: async () => (await api.get('/gateway-sales')).data,
+  const [page, setPage] = useState(1)
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['sales', roleSlug, page],
+    queryFn: async () => (await api.get('/gateway-sales', { params: { page, per_page: 20 } })).data,
   })
   const [openCreate, setOpenCreate] = useState(false)
   const [openSale, setOpenSale] = useState<GatewaySaleRow | null>(null)
@@ -691,7 +697,7 @@ export function GatewaysPage() {
         />
       )}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title={t('gwCount')} value={rows.length.toLocaleString(localeTag())} icon={CreditCard} color="from-blue-500 to-blue-600" />
+        <StatCard title={t('gwCount')} value={(data?.total ?? rows.length).toLocaleString(localeTag())} icon={CreditCard} color="from-blue-500 to-blue-600" />
         <StatCard title={t('gwSuccessful')} value={successCount.toLocaleString(localeTag())} icon={TrendingUp} color="from-emerald-500 to-emerald-600" />
         <StatCard title={moneyHeader(t('gwMyProfit'))} value={money(myProfitTotal)} icon={Wallet} color="from-teal-500 to-emerald-600" />
         <StatCard title={t('gwQueueInspect')} value={inspectCount.toLocaleString(localeTag())} icon={CreditCard} color="from-amber-500 to-amber-600" />
@@ -702,12 +708,23 @@ export function GatewaysPage() {
         canInspect={canInspect}
         onOpen={setOpenSale}
         onInspect={inspect}
+        footer={(
+          <TablePager
+            page={data?.current_page ?? page}
+            last={data?.last_page ?? 1}
+            from={data?.from}
+            to={data?.to}
+            total={data?.total ?? rows.length}
+            disabled={isFetching}
+            onPage={setPage}
+          />
+        )}
       />
     </div>
   )
 }
 
-function CommissionTable({ rows, isLoading }: { rows: Array<{
+function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
   id: number
   commission_percent: string
   commission_amount: string
@@ -716,10 +733,11 @@ function CommissionTable({ rows, isLoading }: { rows: Array<{
   created_at: string
   role?: { name: string }
   sale?: { gateway?: { name: string } }
-}>; isLoading: boolean }) {
+}>; isLoading: boolean; footer?: ReactNode }) {
   const { t } = useApp()
   return (
-    <div className="card overflow-auto" data-testid="commission-table">
+    <div className="card overflow-hidden" data-testid="commission-table">
+      <div className="overflow-auto">
       <table className="table">
         <thead>
           <tr>
@@ -746,7 +764,9 @@ function CommissionTable({ rows, isLoading }: { rows: Array<{
           ))}
         </tbody>
       </table>
+      </div>
       {!isLoading && rows.length === 0 && <Empty text={t('commEmpty')} />}
+      {footer}
     </div>
   )
 }
@@ -755,14 +775,15 @@ export function CommissionsPage() {
   const { t } = useApp()
   const roleSlug = useAuth((s) => s.user?.active_role?.slug)
   const [gatewayId, setGatewayId] = useState('')
+  const [page, setPage] = useState(1)
   const { data: salesData } = useQuery({
     queryKey: ['sales', roleSlug, 'commission-filter'],
     queryFn: async () => (await api.get('/gateway-sales', { params: { per_page: 100 } })).data,
   })
-  const { data, isLoading } = useQuery({
-    queryKey: ['commissions', roleSlug, gatewayId],
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['commissions', roleSlug, gatewayId, page],
     queryFn: async () => (await api.get('/commissions', {
-      params: gatewayId ? { gateway_id: gatewayId } : undefined,
+      params: { page, per_page: 20, ...(gatewayId ? { gateway_id: gatewayId } : {}) },
     })).data,
   })
   const rows = data?.data ?? []
@@ -790,7 +811,7 @@ export function CommissionsPage() {
             className="input"
             data-testid="commission-gateway-filter"
             value={gatewayId}
-            onChange={(e) => setGatewayId(e.target.value)}
+            onChange={(e) => { setGatewayId(e.target.value); setPage(1) }}
           >
             <option value="">{t('commAllGateways')}</option>
             {gatewayOptions.map((opt) => (
@@ -800,11 +821,25 @@ export function CommissionsPage() {
         </label>
       </div>
       <div className="grid sm:grid-cols-3 gap-4">
-        <StatCard title={t('commCount')} value={rows.length.toLocaleString(localeTag())} icon={TrendingUp} color="from-blue-500 to-blue-600" />
+        <StatCard title={t('commCount')} value={(data?.total ?? rows.length).toLocaleString(localeTag())} icon={TrendingUp} color="from-blue-500 to-blue-600" />
         <StatCard title={moneyHeader(t('sumCommission'))} value={money(total)} icon={Wallet} color="from-emerald-500 to-emerald-600" />
         <StatCard title={moneyHeader(t('avgEach'))} value={money(rows.length ? total / rows.length : 0)} icon={Users} color="from-amber-500 to-amber-600" />
       </div>
-      <CommissionTable rows={rows} isLoading={isLoading} />
+      <CommissionTable
+        rows={rows}
+        isLoading={isLoading}
+        footer={(
+          <TablePager
+            page={data?.current_page ?? page}
+            last={data?.last_page ?? 1}
+            from={data?.from}
+            to={data?.to}
+            total={data?.total ?? rows.length}
+            disabled={isFetching}
+            onPage={setPage}
+          />
+        )}
+      />
     </div>
   )
 }
@@ -812,8 +847,12 @@ export function CommissionsPage() {
 export function WalletPage() {
   const { t } = useApp()
   const user = useAuth((s) => s.user)
+  const [page, setPage] = useState(1)
   const { data: wallets } = useQuery({ queryKey: ['wallets', user?.active_role?.slug], queryFn: async () => (await api.get('/wallets')).data })
-  const { data: txs } = useQuery({ queryKey: ['wtx'], queryFn: async () => (await api.get('/wallet-transactions')).data })
+  const { data: txs, isFetching } = useQuery({
+    queryKey: ['wtx', page],
+    queryFn: async () => (await api.get('/wallet-transactions', { params: { page, per_page: 20 } })).data,
+  })
   const txRows: Array<{ id: number; type: string; amount: string; balance_after: string; created_at: string }> = txs?.data ?? []
 
   return (
@@ -829,8 +868,9 @@ export function WalletPage() {
           </div>
         ))}
       </div>
-      <div className="card overflow-auto">
+      <div className="card overflow-hidden">
         <div className="px-4 pt-4 font-semibold text-surface-800 dark:text-surface-200">{t('walletLedger')}</div>
+        <div className="overflow-auto">
         <table className="table">
           <thead><tr><th>{t('type')}</th><th>{moneyHeader()}</th><th>{moneyHeader(t('balanceAfter'))}</th><th>{t('date')}</th></tr></thead>
           <tbody>
@@ -844,6 +884,16 @@ export function WalletPage() {
             ))}
           </tbody>
         </table>
+        </div>
+        <TablePager
+          page={txs?.current_page ?? page}
+          last={txs?.last_page ?? 1}
+          from={txs?.from}
+          to={txs?.to}
+          total={txs?.total ?? txRows.length}
+          disabled={isFetching}
+          onPage={setPage}
+        />
       </div>
     </div>
   )
@@ -882,7 +932,11 @@ export function WithdrawalsPage() {
   const canDecide = Boolean(isSuper || isSenior)
   const { data: wallets } = useQuery({ queryKey: ['wallets', user?.active_role?.slug], queryFn: async () => (await api.get('/wallets')).data })
   const { data: aggregate } = useQuery({ queryKey: ['wallets-aggregate'], queryFn: async () => (await api.get('/wallets/aggregate')).data })
-  const { data } = useQuery({ queryKey: ['wd'], queryFn: async () => (await api.get('/withdrawals')).data })
+  const [page, setPage] = useState(1)
+  const { data, isFetching } = useQuery({
+    queryKey: ['wd', page],
+    queryFn: async () => (await api.get('/withdrawals', { params: { page, per_page: 20 } })).data,
+  })
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState('1000')
   const [scope, setScope] = useState<'active_role' | 'all_roles'>('active_role')
@@ -949,7 +1003,7 @@ export function WithdrawalsPage() {
     <div className="space-y-4">
       <PageHeader title={t('withdrawTitle')} subtitle={t('withdrawSub')} action={<button className="btn btn-primary" data-testid="withdraw-open" onClick={() => setOpen(true)}>{t('withdrawOpen')}</button>} />
       <div className="grid sm:grid-cols-2 gap-4">
-        <StatCard title={t('withdrawCount')} value={rows.length.toLocaleString(localeTag())} icon={Repeat} color="from-amber-500 to-amber-600" />
+        <StatCard title={t('withdrawCount')} value={(data?.total ?? rows.length).toLocaleString(localeTag())} icon={Repeat} color="from-amber-500 to-amber-600" />
         <StatCard title={moneyHeader(t('sumAmount'))} value={money(rows.reduce((sum, row) => sum + Number(row.amount ?? 0), 0))} icon={Wallet} color="from-blue-500 to-blue-600" />
       </div>
       <Modal open={open} title={t('withdrawModal')} subtitle={t('withdrawModalSub')} onClose={() => setOpen(false)}>
@@ -1007,7 +1061,8 @@ export function WithdrawalsPage() {
         {canDecide && <BulkButton tone="ok" onClick={() => bulkDecide('approved')}>{t('withdrawBulkApprove')}</BulkButton>}
         {canDecide && <BulkButton tone="danger" onClick={() => bulkDecide('rejected')}>{t('withdrawBulkReject')}</BulkButton>}
       </BulkBar>
-      <div className="card overflow-auto">
+      <div className="card overflow-hidden">
+        <div className="overflow-auto">
         <table className="table">
           <thead><tr><th><CheckBox checked={sel.allSelected} onChange={sel.toggleAll} label={t('selectAll')} /></th><th>{t('withdrawRequester')}</th><th>{moneyHeader()}</th><th>{t('status')}</th><th>{t('date')}</th><th className="text-center">{t('actions')}</th></tr></thead>
           <tbody>
@@ -1044,6 +1099,16 @@ export function WithdrawalsPage() {
             ))}
           </tbody>
         </table>
+        </div>
+        <TablePager
+          page={data?.current_page ?? page}
+          last={data?.last_page ?? 1}
+          from={data?.from}
+          to={data?.to}
+          total={data?.total ?? rows.length}
+          disabled={isFetching}
+          onPage={setPage}
+        />
       </div>
     </div>
   )
@@ -1601,7 +1666,11 @@ export function NotificationsPage() {
   const { t } = useApp()
   const qc = useQueryClient()
   const user = useAuth((s) => s.user)
-  const { data } = useQuery({ queryKey: ['notif'], queryFn: async () => (await api.get('/notifications')).data })
+  const [page, setPage] = useState(1)
+  const { data, isFetching } = useQuery({
+    queryKey: ['notif', page],
+    queryFn: async () => (await api.get('/notifications', { params: { page, per_page: 20 } })).data,
+  })
   const refreshNotifs = async () => {
     await Promise.all([
       qc.invalidateQueries({ queryKey: ['notif'] }),
@@ -1639,7 +1708,7 @@ export function NotificationsPage() {
             type="button"
             data-testid={`notif-filter-${id}`}
             className={`btn ${filter === id ? 'btn-primary' : 'btn-ghost'}`}
-            onClick={() => setFilter(id)}
+            onClick={() => { setFilter(id); setPage(1) }}
           >
             {labelText}
           </button>
@@ -1675,6 +1744,15 @@ export function NotificationsPage() {
           })}
         </div>
         {visible.length === 0 && <Empty text={t('notifEmpty')} />}
+        <TablePager
+          page={data?.current_page ?? page}
+          last={data?.last_page ?? 1}
+          from={data?.from}
+          to={data?.to}
+          total={data?.total ?? rows.length}
+          disabled={isFetching}
+          onPage={setPage}
+        />
       </div>
     </div>
   )

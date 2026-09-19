@@ -5,6 +5,7 @@ export const PAGE_PERMISSION: Record<string, string> = {
   team: 'page.team',
   gateways: 'page.gateways',
   commissions: 'page.commissions',
+  'monthly-bonus': 'page.monthly_bonus',
   wallet: 'page.wallet',
   finance: 'page.finance',
   withdrawals: 'page.withdrawals',

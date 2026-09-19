@@ -89,14 +89,14 @@ test.describe('سازمان فروش فاینوپال', () => {
     await expect(page.getByText('شاخه جدا')).toHaveCount(0)
   })
 
-  test('پنل مدیر سامانه: آمار فارسی، دسترسی‌ها و درصد از پاداش', async ({ page }) => {
+  test('پنل مدیر سامانه: آمار فارسی، دسترسی‌ها و درصد پاداش ماهانه', async ({ page }) => {
     await login(page, '09120000000')
     await expect(page).toHaveURL(/superuser/)
     await expect(page.getByTestId('admin-stats')).toBeVisible()
     await expect(page.getByText('کاربران فعال')).toBeVisible()
     await navLink(page, 'فروش چندسطحی', 'قواعد پورسانت', false)
     await expect(page.getByTestId('commission-rules')).toContainText('نماینده')
-    await expect(page.getByText('درصد از پاداش').first()).toBeVisible()
+    await expect(page.getByText('درصد پاداش ماهانه').first()).toBeVisible()
     await expect(page.getByRole('button', { name: 'ذخیره' }).first()).toBeVisible()
     await navLink(page, 'کاربران و دسترسی', 'دسترسی‌ها', false)
     await expect(page.getByText('تعیین دسترسی نقش‌ها')).toBeVisible()

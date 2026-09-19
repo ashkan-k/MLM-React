@@ -3,6 +3,7 @@ import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../contexts/AppContext'
 import { exportSheets, type ExportFormat, type ExportSheet } from '../lib/export'
+import { localeTag } from '../lib/format'
 
 const actionClass: Record<string, string> = {
   view: 'hover:text-blue-500',
@@ -128,6 +129,19 @@ export function IconTool({ label, icon: Icon, onClick }: { label: string; icon: 
   )
 }
 
+function pageWindow(current: number, last: number, size = 5): number[] {
+  if (last <= 0) return []
+  if (last <= size) return Array.from({ length: last }, (_, i) => i + 1)
+  const half = Math.floor(size / 2)
+  let start = Math.max(1, current - half)
+  let end = start + size - 1
+  if (end > last) {
+    end = last
+    start = Math.max(1, end - size + 1)
+  }
+  return Array.from({ length: end - start + 1 }, (_, i) => start + i)
+}
+
 export function TablePager({
   page,
   last,
@@ -135,31 +149,60 @@ export function TablePager({
   to,
   total,
   onPage,
+  disabled = false,
 }: {
   page: number
   last: number
-  from?: number
-  to?: number
+  from?: number | null
+  to?: number | null
   total: number
   onPage: (page: number) => void
+  disabled?: boolean
 }) {
-  if (total === 0) return null
+  const { t, locale } = useApp()
+  if (total <= 0) return null
+  const pages = pageWindow(page, Math.max(1, last))
+  const n = (v: number) => v.toLocaleString(localeTag())
+  const summary = locale === 'en'
+    ? `Showing ${n(from ?? 1)} to ${n(to ?? total)} of ${n(total)}`
+    : `نمایش ${n(from ?? 1)} تا ${n(to ?? total)} از ${n(total)} مورد`
+
   return (
-    <div className="flex items-center justify-between p-4 border-t border-surface-200 dark:border-surface-700">
-      <span className="text-xs text-surface-500">
-        نمایش {(from ?? 1).toLocaleString('fa-IR')} تا {(to ?? total).toLocaleString('fa-IR')} از {total.toLocaleString('fa-IR')} مورد
-      </span>
-      <div className="flex items-center gap-1">
-        <button type="button" disabled={page <= 1} onClick={() => onPage(page - 1)} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 disabled:opacity-40" aria-label="صفحه قبل">
-          <ChevronRight className="w-4 h-4" />
-        </button>
-        {Array.from({ length: Math.min(last, 5) }, (_, i) => i + 1).map((p) => (
-          <button key={p} type="button" onClick={() => onPage(p)} className={`w-8 h-8 rounded-lg text-xs font-medium ${p === page ? 'bg-primary-600 text-white' : 'text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-700'}`}>{p.toLocaleString('fa-IR')}</button>
-        ))}
-        <button type="button" disabled={page >= last} onClick={() => onPage(page + 1)} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 disabled:opacity-40" aria-label="صفحه بعد">
-          <ChevronLeft className="w-4 h-4" />
-        </button>
-      </div>
+    <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-t border-surface-200 dark:border-surface-700">
+      <span className="text-xs text-surface-500">{summary}</span>
+      {last > 1 && (
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            disabled={disabled || page <= 1}
+            onClick={() => onPage(page - 1)}
+            className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 disabled:opacity-40"
+            aria-label={t('prev')}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          {pages.map((p) => (
+            <button
+              key={p}
+              type="button"
+              disabled={disabled}
+              onClick={() => onPage(p)}
+              className={`w-8 h-8 rounded-lg text-xs font-medium ${p === page ? 'bg-primary-600 text-white' : 'text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-700'}`}
+            >
+              {n(p)}
+            </button>
+          ))}
+          <button
+            type="button"
+            disabled={disabled || page >= last}
+            onClick={() => onPage(page + 1)}
+            className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 disabled:opacity-40"
+            aria-label={t('next')}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -140,6 +140,7 @@ html.light body { color: #1e293b; }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
 .btn-primary { background: #2563eb; color: white; }
 .btn-primary:hover { background: #1d4ed8; }
+.btn-sm { padding: 0.35rem 0.75rem; font-size: 0.75rem; line-height: 1.25rem; border-radius: 0.5rem; }
 .btn-ghost { background: transparent; border: 1px solid #e2e8f0; color: #334155; }
 .dark .btn-ghost { border-color: #334155; color: #cbd5e1; }
 .btn-ghost:hover { background: #f1f5f9; }
@@ -147,7 +148,9 @@ html.light body { color: #1e293b; }
 .btn-danger { background: #fef2f2; color: #ef4444; }
 .dark .btn-danger { background: rgba(239,68,68,.12); }
 .btn-ok { background: #ecfdf5; color: #059669; }
+.btn-ok:hover { background: #d1fae5; }
 .dark .btn-ok { background: rgba(16,185,129,.12); }
+.dark .btn-ok:hover { background: rgba(16,185,129,.2); }
 
 .input, textarea, .field select, select.input {
   width: 100%; border: 1px solid #c9d6e4; background: #fff; border-radius: 12px;

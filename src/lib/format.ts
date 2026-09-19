@@ -44,6 +44,17 @@ export function dateTime(value?: string | null) {
   return formatJalali(date, 'yyyy/MM/dd HH:mm')
 }
 
+/** YYYY-MM یا تاریخ کامل → نام ماه شمسی + سال (مثلاً شهریور ۱۴۰۵) */
+export function jalaliMonth(value?: string | null) {
+  if (!value) return '—'
+  const raw = value.length === 7 ? `${value}-01T12:00:00` : value
+  const date = new Date(raw)
+  if (Number.isNaN(date.getTime())) return value
+  const text = formatJalali(date, 'MMMM yyyy')
+  if (currentLocale() === 'en') return text
+  return text.replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)])
+}
+
 export function isDateLike(value: unknown): value is string {
   if (typeof value !== 'string' || value.length < 8) return false
   if (!/^\d{4}-\d{2}-\d{2}/.test(value) && !/^\d{4}\/\d{2}\/\d{2}/.test(value)) return false
@@ -183,6 +194,7 @@ export const permissionLabel: Record<string, string> = {
   'page.team': 'صفحه / شبکه و تیم',
   'page.gateways': 'صفحه / درگاه‌ها',
   'page.commissions': 'صفحه / پورسانت',
+  'page.monthly_bonus': 'صفحه / پاداش ماهانه',
   'page.wallet': 'صفحه / کیف پول',
   'page.finance': 'صفحه / گزارش تجمیعی',
   'page.withdrawals': 'صفحه / برداشت',

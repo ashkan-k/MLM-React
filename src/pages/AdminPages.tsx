@@ -29,7 +29,8 @@ type CourseLevel = {
 }
 type CourseRow = { id: number; title: string; description?: string; is_required_for_promotion: boolean; is_active?: boolean; levels?: CourseLevel[]; roles?: Array<{ id: number; name: string }> }
 type SettingField = { key: string; label: string; hint?: string; type: string }
-type SettingSchema = Record<string, { label: string; hint?: string; fields: SettingField[] }>
+type SettingGroup = { label: string; hint?: string; fields: SettingField[] }
+type SettingSchema = Record<string, { label: string; hint?: string; fields?: SettingField[]; groups?: SettingGroup[] }>
 type PermRow = { id: number; slug: string; name: string }
 
 const emptyUser = { name: '', mobile: '', email: '', password: 'Password123!', password_confirmation: 'Password123!', is_active: true, role_slugs: ['representative'] }
@@ -582,13 +583,13 @@ export function AdminRules() {
                 <button className="btn btn-primary" type="submit">ذخیره</button>
               </div>
               <div className="rule-fields">
-                <label className="field">درصد پایه
+                <label className="field">درصد پایه (پورسانت تراکنش)
                   <input className="input" type="number" step="0.1" value={draft.percent} onChange={(e) => setDrafts({ ...drafts, [r.id]: { ...draft, percent: e.target.value } })} />
-                  <FieldHint>درصد پیش‌فرض همین نقش قبل از رسیدن به حد نصاب پاداش.</FieldHint>
+                  <FieldHint>روی سود هر تراکنش موفق همیشه همین درصد اعمال می‌شود؛ با رسیدن به حد نصاب عوض نمی‌شود.</FieldHint>
                 </label>
-                <label className="field">درصد از پاداش
+                <label className="field">درصد پاداش ماهانه
                   <input className="input" type="number" step="0.1" value={draft.qualified_percent} onChange={(e) => setDrafts({ ...drafts, [r.id]: { ...draft, qualified_percent: e.target.value } })} />
-                  <FieldHint>درصدی که بعد از رسیدن به حد نصاب پاداش، از مبلغ پاداش محاسبه می‌شود.</FieldHint>
+                  <FieldHint>اگر حد نصاب ماه جاری نقش برقرار باشد، همین درصد روی مجموع سود تراکنش‌های همان ماه محاسبه و واریز می‌شود.</FieldHint>
                 </label>
               </div>
             </form>
@@ -848,9 +849,12 @@ function SettingsEditor({
       {items.map((s: { id: number; key: string; value: Record<string, unknown> }) => {
         const meta = schema[s.key]
         const current = edits[s.key] ?? Object.fromEntries(Object.entries(s.value ?? {}).map(([k, v]) => [k, v as string | number | boolean]))
-        const fields = meta?.fields ?? Object.keys(s.value ?? {}).map((key) => ({ key, label: key, type: 'number' }))
+        const groups: SettingGroup[] = meta?.groups?.length
+          ? meta.groups
+          : [{ label: '', fields: meta?.fields ?? Object.keys(s.value ?? {}).map((key) => ({ key, label: key, type: 'number' })) }]
+        const fields = groups.flatMap((g) => g.fields)
         return (
-          <form key={s.id} className="card p-5 grid gap-3" data-testid={`setting-${s.key}`} onSubmit={async (e) => {
+          <form key={s.id} className="card p-5 grid gap-4" data-testid={`setting-${s.key}`} onSubmit={async (e) => {
             e.preventDefault()
             const value = Object.fromEntries(fields.map((f) => {
               if (f.type === 'number') return [f.key, Number(current[f.key] ?? 0)]
@@ -863,36 +867,51 @@ function SettingsEditor({
             await useAuth.getState().hydrate()
           }}>
             <div>
-              <div className="font-bold">{meta?.label ?? settingLabel[s.key] ?? s.key}</div>
+              <div className="font-bold text-lg">{meta?.label ?? settingLabel[s.key] ?? s.key}</div>
               {meta?.hint && <FieldHint>{meta.hint}</FieldHint>}
             </div>
-            <div className="grid md:grid-cols-2 gap-3">
-              {fields.map((field) => (
-                field.type === 'boolean' ? (
-                  <label key={field.key} className="field flex flex-row items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="w-4 h-4 accent-primary-600"
-                      checked={Boolean(current[field.key])}
-                      onChange={(e) => setEdits({ ...edits, [s.key]: { ...current, [field.key]: e.target.checked } })}
-                    />
-                    <span>
-                      <div>{field.label}</div>
-                      {field.hint && <FieldHint>{field.hint}</FieldHint>}
-                    </span>
-                  </label>
-                ) : (
-                  <label key={field.key} className="field">
-                    {field.label}
-                    <input
-                      className="input"
-                      type={field.type === 'number' ? 'number' : 'text'}
-                      value={String(current[field.key] ?? '')}
-                      onChange={(e) => setEdits({ ...edits, [s.key]: { ...current, [field.key]: e.target.value } })}
-                    />
-                    {field.hint && <FieldHint>{field.hint}</FieldHint>}
-                  </label>
-                )
+            <div className="grid gap-4">
+              {groups.map((group) => (
+                <div
+                  key={group.label || 'default'}
+                  className={group.label ? 'rounded-xl border border-surface-200 dark:border-surface-700 p-4 space-y-3' : 'space-y-3'}
+                >
+                  {group.label && (
+                    <div>
+                      <div className="font-semibold text-surface-800 dark:text-surface-100">{group.label}</div>
+                      {group.hint && <FieldHint>{group.hint}</FieldHint>}
+                    </div>
+                  )}
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {group.fields.map((field) => (
+                      field.type === 'boolean' ? (
+                        <label key={field.key} className="field flex flex-row items-center gap-3 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 accent-primary-600"
+                            checked={Boolean(current[field.key])}
+                            onChange={(e) => setEdits({ ...edits, [s.key]: { ...current, [field.key]: e.target.checked } })}
+                          />
+                          <span>
+                            <div>{field.label}</div>
+                            {field.hint && <FieldHint>{field.hint}</FieldHint>}
+                          </span>
+                        </label>
+                      ) : (
+                        <label key={field.key} className="field">
+                          {field.label}
+                          <input
+                            className="input"
+                            type={field.type === 'number' ? 'number' : 'text'}
+                            value={String(current[field.key] ?? '')}
+                            onChange={(e) => setEdits({ ...edits, [s.key]: { ...current, [field.key]: e.target.value } })}
+                          />
+                          {field.hint && <FieldHint>{field.hint}</FieldHint>}
+                        </label>
+                      )
+                    ))}
+                  </div>
+                </div>
               ))}
             </div>
             <button className="btn btn-primary w-fit" type="submit">ذخیره</button>
@@ -944,14 +963,15 @@ export function AdminAudits() {
   const [action, setAction] = useState('')
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
-  const filters = { action: action || undefined, from: from || undefined, to: to || undefined }
-  const { data } = useQuery({
-    queryKey: ['audits', action, from, to],
+  const [page, setPage] = useState(1)
+  const filters = { action: action || undefined, from: from || undefined, to: to || undefined, page }
+  const { data, isFetching } = useQuery({
+    queryKey: ['audits', action, from, to, page],
     queryFn: async () => (await api.get('/superuser/audits', { params: filters })).data,
   })
   const { data: exportLogs } = useQuery({
     queryKey: ['audits-export', action, from, to],
-    queryFn: async () => (await api.get('/superuser/audits/export', { params: filters })).data,
+    queryFn: async () => (await api.get('/superuser/audits/export', { params: { action: action || undefined, from: from || undefined, to: to || undefined } })).data,
   })
 
   const rows: AuditRow[] = data?.data ?? []
@@ -967,19 +987,20 @@ export function AdminAudits() {
       />
       <form className="card p-4 grid md:grid-cols-3 gap-3" onSubmit={(e) => e.preventDefault()}>
         <label className="field">نوع اقدام
-          <input className="input" placeholder="مثلا user یا withdrawal" value={action} onChange={(e) => setAction(e.target.value)} />
+          <input className="input" placeholder="مثلا user یا withdrawal" value={action} onChange={(e) => { setAction(e.target.value); setPage(1) }} />
         </label>
         <label className="field">از تاریخ
-          <JalaliDatePicker value={from} onChange={setFrom} />
+          <JalaliDatePicker value={from} onChange={(v) => { setFrom(v); setPage(1) }} />
         </label>
         <label className="field">تا تاریخ
-          <JalaliDatePicker value={to} onChange={setTo} />
+          <JalaliDatePicker value={to} onChange={(v) => { setTo(v); setPage(1) }} />
         </label>
         <BulkBar count={sel.count}>
           <BulkButton tone="info" onClick={() => exportSelected('رویدادهای-انتخابی', auditSheets(selectedRows)[0].rows)}>خروجی انتخاب‌شده</BulkButton>
         </BulkBar>
       </form>
-      <div className="card overflow-auto" data-testid="audit-log">
+      <div className="card overflow-hidden" data-testid="audit-log">
+        <div className="overflow-auto">
         <table className="table">
           <thead><tr><th><CheckBox checked={sel.allSelected} onChange={sel.toggleAll} label="انتخاب همه" /></th><th>اقدام</th><th>عامل</th><th>موجودیت</th><th>شناسه</th><th>آی‌پی</th><th>زمان</th><th className="text-center">عملیات</th></tr></thead>
           <tbody>
@@ -997,6 +1018,16 @@ export function AdminAudits() {
             ))}
           </tbody>
         </table>
+        </div>
+        <TablePager
+          page={data?.current_page ?? page}
+          last={data?.last_page ?? 1}
+          from={data?.from}
+          to={data?.to}
+          total={data?.total ?? rows.length}
+          disabled={isFetching}
+          onPage={setPage}
+        />
       </div>
     </div>
   )
@@ -1005,7 +1036,11 @@ export function AdminAudits() {
 export function AdminFraSoft() {
   const { t } = useApp()
   const qc = useQueryClient()
-  const { data } = useQuery({ queryKey: ['fs'], queryFn: async () => (await api.get('/superuser/frasoft/logs')).data })
+  const [page, setPage] = useState(1)
+  const { data, isFetching } = useQuery({
+    queryKey: ['fs', page],
+    queryFn: async () => (await api.get('/superuser/frasoft/logs', { params: { page, per_page: 30 } })).data,
+  })
   const [open, setOpen] = useState(false)
   const [mobile, setMobile] = useState('09120002222')
   const [name, setName] = useState('نماینده فراسافت')
@@ -1023,7 +1058,8 @@ export function AdminFraSoft() {
       <BulkBar count={sel.count}>
         <BulkButton tone="info" onClick={() => exportSelected('فراسافت', logs.filter((l) => sel.selected.includes(l.id)).map((l) => ({ رویداد: l.event_type, جهت: label(l.direction), وضعیت: label(l.status) })))}>خروجی انتخاب‌شده</BulkButton>
       </BulkBar>
-      <div className="card overflow-auto">
+      <div className="card overflow-hidden">
+        <div className="overflow-auto">
         <table className="table">
           <thead><tr><th><CheckBox checked={sel.allSelected} onChange={sel.toggleAll} label="انتخاب همه" /></th><th>رویداد</th><th>جهت</th><th>وضعیت</th><th>زمان</th></tr></thead>
           <tbody>
@@ -1038,6 +1074,16 @@ export function AdminFraSoft() {
             ))}
           </tbody>
         </table>
+        </div>
+        <TablePager
+          page={data?.current_page ?? page}
+          last={data?.last_page ?? 1}
+          from={data?.from}
+          to={data?.to}
+          total={data?.total ?? logs.length}
+          disabled={isFetching}
+          onPage={setPage}
+        />
       </div>
       <Modal open={open} title="همگام‌سازی نماینده فراسافت" onClose={() => setOpen(false)}>
         <form className="grid gap-3" onSubmit={async (e) => {

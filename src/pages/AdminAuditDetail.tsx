@@ -13,7 +13,7 @@ const fieldNames: Record<string, string> = {
   title: 'عنوان',
   description: 'شرح',
   percent: 'درصد پایه',
-  qualified_percent: 'درصد از پاداش',
+  qualified_percent: 'درصد پاداش ماهانه',
   role: 'نقش',
   role_id: 'شناسه نقش',
   permission_id: 'شناسه دسترسی',

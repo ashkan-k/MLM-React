@@ -2,7 +2,7 @@ import { X, type LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Area, AreaChart, Bar, BarChart as ReBarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useApp } from '../contexts/AppContext'
-import { dateTime } from '../lib/format'
+import { dateTime, jalaliMonth } from '../lib/format'
 
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
@@ -60,6 +60,13 @@ export function ProgressBar({ value, max }: { value: number; max: number }) {
 
 export function DateTimeText({ value }: { value?: string | null }) {
   return <time className="datetime-ltr" dir="ltr" dateTime={value ?? undefined}>{dateTime(value)}</time>
+}
+
+export function MonthText({ value }: { value?: string | null }) {
+  const text = jalaliMonth(value)
+  if (!value || text === '—') return <span>—</span>
+  // نام ماه فارسی را در جریان RTL نگه می‌داریم؛ رقم‌ها داخل متن هستند
+  return <span className="font-medium tracking-tight">{text}</span>
 }
 
 export function FieldHint({ children }: { children: ReactNode }) {

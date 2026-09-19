@@ -39,10 +39,10 @@ import { dashboardPath } from '../lib/roles'
 import { useAuth } from '../stores/auth'
 
 type LinkItem = { to: string; labelKey: string; icon: typeof LayoutDashboard; end?: boolean }
-type NavGroup = { key: string; items: LinkItem[] }
+type NavGroup = { key: string; items: LinkItem[]; standalone?: boolean }
 
 const roleGroups: NavGroup[] = [
-  { key: 'navMain', items: [{ to: '', labelKey: 'navDashboard', icon: LayoutDashboard, end: true }] },
+  { key: 'navDashboard', standalone: true, items: [{ to: '', labelKey: 'navDashboard', icon: LayoutDashboard, end: true }] },
   { key: 'navOrg', items: [
     { to: 'team', labelKey: 'navTeam', icon: GitBranch },
     { to: 'org-managers', labelKey: 'navOrgManagers', icon: Users },
@@ -52,6 +52,7 @@ const roleGroups: NavGroup[] = [
     items: [
       { to: 'gateways', labelKey: 'navGateways', icon: CreditCard },
       { to: 'commissions', labelKey: 'navCommissions', icon: TrendingUp },
+      { to: 'monthly-bonus', labelKey: 'navMonthlyBonus', icon: Award },
     ],
   },
   {
@@ -83,9 +84,15 @@ const roleGroups: NavGroup[] = [
 
 const adminGroups: NavGroup[] = [
   {
-    key: 'navMain',
+    key: 'navDashboard',
+    standalone: true,
     items: [
       { to: '/superuser', labelKey: 'navStats', icon: LayoutDashboard, end: true },
+    ],
+  },
+  {
+    key: 'navMain',
+    items: [
       { to: '/superuser/reports', labelKey: 'navReports', icon: FileBarChart },
     ],
   },
@@ -124,6 +131,7 @@ const titleKeys: Record<string, string> = {
   'org-managers': 'navOrgManagers',
   gateways: 'navGateways',
   commissions: 'navCommissions',
+  'monthly-bonus': 'navMonthlyBonus',
   wallet: 'navWallet',
   finance: 'navFinanceReport',
   withdrawals: 'navWithdrawals',
@@ -219,13 +227,13 @@ function SidebarNav({ groups, extra }: { groups: NavGroup[]; extra?: ReactNode }
         <nav className="flex-1 overflow-y-auto py-3 px-2">
           {visibleGroups.map((group) => (
             <div key={group.key} className="mb-1">
-              {!sidebarCollapsed && (
+              {!sidebarCollapsed && !group.standalone && (
                 <button type="button" onClick={() => setOpenGroups((prev) => prev.includes(group.key) ? prev.filter((g) => g !== group.key) : [...prev, group.key])} className="w-full flex items-center justify-between px-3 py-1.5 text-[11px] font-semibold text-surface-400 uppercase">
                   <span>{t(group.key)}</span>
                   <ChevronDown className={`w-3 h-3 transition-transform ${openGroups.includes(group.key) ? 'rotate-180' : ''}`} />
                 </button>
               )}
-              {(sidebarCollapsed || openGroups.includes(group.key)) && (
+              {(sidebarCollapsed || group.standalone || openGroups.includes(group.key)) && (
                 <div className="space-y-0.5">
                   {group.items.map((item) => (
                     <NavLink
