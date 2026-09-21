@@ -291,10 +291,10 @@ function DetailModal({
                     onClick={() => {
                       const n = Number(delta)
                       if (!Number.isFinite(n) || n === 0) {
-                        toast.error('مقدار معتبر وارد کنید')
+                        toast.error('یک عدد غیرصفر وارد کنید')
                         return
                       }
-                      onAdjust(Math.abs(n), note)
+                      onAdjust(Math.trunc(Math.abs(n)) || Math.round(Math.abs(n)), note)
                     }}
                   >
                     <Plus className="w-3.5 h-3.5" /> افزایش
@@ -306,10 +306,11 @@ function DetailModal({
                     onClick={() => {
                       const n = Number(delta)
                       if (!Number.isFinite(n) || n === 0) {
-                        toast.error('مقدار معتبر وارد کنید')
+                        toast.error('یک عدد غیرصفر وارد کنید')
                         return
                       }
-                      onAdjust(-Math.abs(n), note)
+                      const amount = Math.trunc(Math.abs(n)) || Math.round(Math.abs(n))
+                      onAdjust(-amount, note)
                     }}
                   >
                     <Minus className="w-3.5 h-3.5" /> کاهش
@@ -501,8 +502,10 @@ export function PointsMonitorPage() {
       qc.invalidateQueries({ queryKey: ['monthly-bonus'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
     },
-    onError: (err: { response?: { data?: { message?: string } } }) => {
-      toast.error(err.response?.data?.message ?? 'خطا در ویرایش امتیاز')
+    onError: (err: { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }) => {
+      const data = err.response?.data
+      const firstFieldError = data?.errors ? Object.values(data.errors).flat()[0] : undefined
+      toast.error(firstFieldError ?? data?.message ?? 'خطا در ویرایش امتیاز')
     },
   })
 
