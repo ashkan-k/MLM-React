@@ -3,7 +3,7 @@ import { Award, Banknote, TrendingUp, Users, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { TablePager } from '../components/table'
-import { Badge, DateTimeText, Empty, MonthText, PageHeader, ProgressBar, StatCard } from '../components/ui'
+import { Badge, DateTimeText, Empty, MonthText, PageHeader, ProgressBar, ScorePair, StatCard } from '../components/ui'
 import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
 import { confirmAction } from '../lib/confirm'
@@ -214,10 +214,7 @@ export function MonthlyBonusPage() {
                         <td className="px-5 py-3">{row.role_name}</td>
                         <td className="px-5 py-3">
                           <div className="text-xs text-surface-500 mb-0.5">{row.metric_label}</div>
-                          <span dir="ltr" className="datetime-ltr inline-block">
-                            {Number(row.actual).toLocaleString(localeTag())} / {Number(row.required).toLocaleString(localeTag())}
-                          </span>
-                          {row.unit ? ` ${row.unit}` : ''}
+                          <ScorePair actual={Number(row.actual)} required={Number(row.required)} unit={row.unit} compact />
                         </td>
                         <td className="px-5 py-3">
                           {row.bonus_posted ? (
@@ -304,10 +301,7 @@ export function MonthlyBonusPage() {
               <div className="space-y-1">
                 <div className="text-sm font-medium text-surface-700 dark:text-surface-200">{metricLabel}</div>
                 <div className="text-sm text-surface-500">
-                  <span dir="ltr" className="datetime-ltr inline-block">
-                    {actual.toLocaleString(localeTag())} / {required.toLocaleString(localeTag())}
-                  </span>
-                  {unit ? ` ${unit}` : ''}
+                  <ScorePair actual={actual} required={required} unit={unit || undefined} />
                 </div>
               </div>
               <div className={`text-sm font-medium ${current?.qualified ? 'text-emerald-600' : 'text-amber-600'}`}>

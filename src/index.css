@@ -145,12 +145,20 @@ html.light body { color: #1e293b; }
 .dark .btn-ghost { border-color: #334155; color: #cbd5e1; }
 .btn-ghost:hover { background: #f1f5f9; }
 .dark .btn-ghost:hover { background: #334155; }
-.btn-danger { background: #fef2f2; color: #ef4444; }
-.dark .btn-danger { background: rgba(239,68,68,.12); }
-.btn-ok { background: #ecfdf5; color: #059669; }
+.btn-danger { background: #fef2f2; color: #ef4444; border: 1px solid #fecaca; }
+.btn-danger:hover { background: #fee2e2; }
+.dark .btn-danger { background: rgba(239,68,68,.14); color: #fca5a5; border-color: rgba(239,68,68,.35); }
+.dark .btn-danger:hover { background: rgba(239,68,68,.22); }
+.btn-ok { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
 .btn-ok:hover { background: #d1fae5; }
-.dark .btn-ok { background: rgba(16,185,129,.12); }
-.dark .btn-ok:hover { background: rgba(16,185,129,.2); }
+.dark .btn-ok { background: rgba(16,185,129,.14); color: #6ee7b7; border-color: rgba(16,185,129,.35); }
+.dark .btn-ok:hover { background: rgba(16,185,129,.22); }
+.btn-soft {
+  background: #f1f5f9; color: #334155; border: 1px solid #e2e8f0;
+}
+.btn-soft:hover { background: #e2e8f0; }
+.dark .btn-soft { background: #1e293b; color: #e2e8f0; border-color: #334155; }
+.dark .btn-soft:hover { background: #334155; }
 
 .input, textarea, .field select, select.input {
   width: 100%; border: 1px solid #c9d6e4; background: #fff; border-radius: 12px;

@@ -38,6 +38,13 @@ export function percent(value?: string | number | null) {
   return `${rounded.toLocaleString(localeTag(), { maximumFractionDigits: 2, minimumFractionDigits: 0 })}${mark}`
 }
 
+/** امتیاز کسب‌شده نسبت به حد نصاب — بدون / تا در RTL جابه‌جا نشود */
+export function scorePairText(actual: number, required: number) {
+  const a = Number(actual).toLocaleString(localeTag())
+  const r = Number(required).toLocaleString(localeTag())
+  return currentLocale() === 'en' ? `${a} of ${r}` : `${a} از ${r}`
+}
+
 export function dateTime(value?: string | null) {
   if (!value) return '—'
   const date = new Date(value)
@@ -196,6 +203,7 @@ export const permissionLabel: Record<string, string> = {
   'page.gateways': 'صفحه / درگاه‌ها',
   'page.commissions': 'صفحه / پورسانت',
   'page.monthly_bonus': 'صفحه / پاداش ماهانه',
+  'page.points': 'صفحه / مانیتورینگ امتیاز',
   'page.wallet': 'صفحه / کیف پول',
   'page.finance': 'صفحه / گزارش تجمیعی',
   'page.withdrawals': 'صفحه / برداشت',

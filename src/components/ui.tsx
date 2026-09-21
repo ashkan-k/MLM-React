@@ -2,7 +2,7 @@ import { X, type LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Area, AreaChart, Bar, BarChart as ReBarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useApp } from '../contexts/AppContext'
-import { dateTime, jalaliMonth } from '../lib/format'
+import { currentLocale, dateTime, jalaliMonth, localeTag } from '../lib/format'
 
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
@@ -56,6 +56,31 @@ export function Badge({ tone = 'info', children }: { tone?: 'ok' | 'warn' | 'inf
 export function ProgressBar({ value, max }: { value: number; max: number }) {
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0
   return <div className="progress"><span style={{ width: `${pct}%` }} /></div>
+}
+
+/** کسب‌شده از حد نصاب — اعداد با bdi جدا می‌شوند تا در RTL برعکس دیده نشوند */
+export function ScorePair({
+  actual,
+  required,
+  unit,
+  compact,
+}: {
+  actual: number
+  required: number
+  unit?: string
+  compact?: boolean
+}) {
+  const a = Number(actual).toLocaleString(localeTag())
+  const r = Number(required).toLocaleString(localeTag())
+  const en = currentLocale() === 'en'
+  return (
+    <span className={`inline-flex items-baseline gap-1 flex-wrap ${compact ? 'text-sm' : ''}`}>
+      <bdi className="tabular-nums font-semibold text-surface-800 dark:text-surface-100" dir="ltr">{a}</bdi>
+      <span className="text-surface-400 text-[11px] font-normal">{en ? 'of' : 'از'}</span>
+      <bdi className="tabular-nums text-surface-500" dir="ltr">{r}</bdi>
+      {unit ? <span className="text-surface-400 text-[11px]">{unit}</span> : null}
+    </span>
+  )
 }
 
 export function DateTimeText({ value }: { value?: string | null }) {

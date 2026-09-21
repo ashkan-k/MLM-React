@@ -7,7 +7,7 @@ import { MoneyInput } from '../components/MoneyInput'
 import { OrgTree, type OrgNode } from '../components/OrgTree'
 import { SearchSelect } from '../components/SearchSelect'
 import { ApproveAction, BlockAction, BulkBar, BulkButton, CheckBox, IconAction, RowActions, TablePager, UnblockAction, ViewAction, exportSelected, useSelection } from '../components/table'
-import { Badge, DateTimeText, Empty, Modal, PageHeader, ProgressBar, StatCard } from '../components/ui'
+import { Badge, DateTimeText, Empty, Modal, PageHeader, ProgressBar, ScorePair, StatCard } from '../components/ui'
 import { GatewayCreateForm } from '../components/GatewayCreateForm'
 import { ManagerReassignCard } from '../components/ManagerReassignCard'
 import { useApp } from '../contexts/AppContext'
@@ -1392,7 +1392,7 @@ function PromotionList({
                   <div key={c.id} className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/70 dark:bg-surface-900/40 p-3 flex items-start justify-between gap-3">
                     <span className="min-w-0 break-words leading-6">{criterionLabel[c.criterion_code] ?? c.criterion_code}</span>
                     <span className="shrink-0 flex items-center gap-2">
-                      <span className="text-xs font-semibold">{c.actual_value} / {c.required_value}</span>
+                      <span><ScorePair actual={Number(c.actual_value)} required={Number(c.required_value)} compact /></span>
                       {c.passed ? <Badge tone="ok">{t('promoPass')}</Badge> : <Badge tone="warn">{t('promoFail')}</Badge>}
                     </span>
                   </div>
@@ -1506,7 +1506,10 @@ export function PromotionsPage() {
               <div key={c.code} className="py-3 border-b border-surface-100 dark:border-surface-700 last:border-0">
                 <div className="flex justify-between mb-2">
                   <span>{criterionLabel[c.code] ?? c.code}</span>
-                  <span>{c.actual} / {c.required} {c.passed ? <Badge tone="ok">{t('promoPass')}</Badge> : <Badge tone="warn">{t('promoFail')}</Badge>}</span>
+                  <span className="inline-flex items-center gap-2">
+                    <ScorePair actual={Number(c.actual)} required={Number(c.required)} compact />
+                    {c.passed ? <Badge tone="ok">{t('promoPass')}</Badge> : <Badge tone="warn">{t('promoFail')}</Badge>}
+                  </span>
                 </div>
                 <ProgressBar value={Number(c.actual)} max={Number(c.required) || 1} />
               </div>

@@ -11,6 +11,7 @@ import { ChatPage } from './pages/ChatPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { CommissionsPage, FinancePage, GatewaysPage, NotificationsPage, OrgManagersPage, PromotionsPage, ReferralsPage, TeamPage, TrainingPage, TransfersPage, WalletPage, WithdrawalsPage } from './pages/DataPages'
 import { MonthlyBonusPage } from './pages/MonthlyBonusPage'
+import { PointsMonitorPage } from './pages/PointsMonitorPage'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { SharedLinkPage } from './pages/SharedLinkPage'
@@ -49,6 +50,7 @@ const roleChildren = (
     <Route path="gateways" element={<PageGate page="gateways"><GatewaysPage /></PageGate>} />
     <Route path="commissions" element={<PageGate page="commissions"><CommissionsPage /></PageGate>} />
     <Route path="monthly-bonus" element={<PageGate page="monthly-bonus"><MonthlyBonusPage /></PageGate>} />
+    <Route path="points" element={<PageGate page="points"><PointsMonitorPage /></PageGate>} />
     <Route path="wallet" element={<PageGate page="wallet"><WalletPage /></PageGate>} />
     <Route path="finance" element={<PageGate page="finance"><FinancePage /></PageGate>} />
     <Route path="withdrawals" element={<PageGate page="withdrawals"><WithdrawalsPage /></PageGate>} />
@@ -86,6 +88,7 @@ export default function App() {
           <Route path="org-managers" element={<AdminOrgManagers />} />
           <Route path="permissions" element={<AdminPermissions />} />
           <Route path="gateways" element={<GatewaysPage />} />
+          <Route path="points" element={<PointsMonitorPage />} />
           <Route path="rules" element={<AdminRules />} />
           <Route path="courses" element={<AdminCourses />} />
           <Route path="settings" element={<AdminSettings />} />

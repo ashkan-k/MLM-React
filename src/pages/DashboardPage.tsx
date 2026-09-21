@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { BookOpen, GitBranch, Repeat, TrendingUp, Users, Wallet, Award } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { DateTimeText, PageHeader, ProgressBar, StatCard } from '../components/ui'
+import { DateTimeText, PageHeader, ProgressBar, ScorePair, StatCard } from '../components/ui'
 import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
 import { canAccessPage } from '../lib/access'
@@ -68,10 +68,7 @@ export function DashboardPage() {
                 <div className="text-sm text-surface-500 space-y-0.5">
                   {q.metric_label && <div className="font-medium text-surface-600 dark:text-surface-300">{q.metric_label}</div>}
                   <div>
-                    <span dir="ltr" className="datetime-ltr inline-block">
-                      {Number(q.actual).toLocaleString(localeTag())} / {Number(q.required).toLocaleString(localeTag())}
-                    </span>
-                    {q.unit ? ` ${q.unit}` : ''}
+                    <ScorePair actual={Number(q.actual)} required={Number(q.required)} unit={q.unit || undefined} />
                   </div>
                 </div>
                 <div className="text-lg font-bold text-surface-800 dark:text-surface-100">
