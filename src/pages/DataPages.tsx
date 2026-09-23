@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Copy, CreditCard, ExternalLink, Network, Repeat, TrendingUp, Users, Wallet, X } from 'lucide-react'
+import { Award, Copy, CreditCard, ExternalLink, Network, Repeat, TrendingUp, Users, Wallet, X } from 'lucide-react'
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
@@ -7,7 +7,7 @@ import { MoneyInput } from '../components/MoneyInput'
 import { OrgTree, type OrgNode } from '../components/OrgTree'
 import { SearchSelect } from '../components/SearchSelect'
 import { ApproveAction, BlockAction, BulkBar, BulkButton, CheckBox, IconAction, RowActions, TablePager, UnblockAction, ViewAction, exportSelected, useSelection } from '../components/table'
-import { Badge, DateTimeText, Empty, Modal, PageHeader, ProgressBar, ScorePair, StatCard } from '../components/ui'
+import { Badge, DateTimeText, Empty, Modal, MonthText, PageHeader, ProgressBar, ScorePair, StatCard } from '../components/ui'
 import { GatewayCreateForm } from '../components/GatewayCreateForm'
 import { ManagerReassignCard } from '../components/ManagerReassignCard'
 import { useApp } from '../contexts/AppContext'
@@ -724,6 +724,18 @@ export function GatewaysPage() {
   )
 }
 
+function commissionKind(row: {
+  idempotency_key?: string | null
+  metadata?: { type?: string; month?: string } | null
+}): 'base' | 'monthly_bonus' | 'monthly_bonus_residual' {
+  const type = row.metadata?.type
+  if (type === 'monthly_bonus' || type === 'monthly_bonus_residual') return type
+  const key = row.idempotency_key ?? ''
+  if (key.startsWith('monthly-bonus-residual:')) return 'monthly_bonus_residual'
+  if (key.startsWith('monthly-bonus:')) return 'monthly_bonus'
+  return 'base'
+}
+
 function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
   id: number
   commission_percent: string
@@ -731,6 +743,8 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
   base_amount: string
   status: string
   created_at: string
+  idempotency_key?: string | null
+  metadata?: { type?: string; month?: string } | null
   role?: { name: string }
   sale?: { gateway?: { name: string } }
 }>; isLoading: boolean; footer?: ReactNode }) {
@@ -743,6 +757,7 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
           <tr>
             <th>{t('gateway')}</th>
             <th>{t('role')}</th>
+            <th>{t('commKind')}</th>
             <th>{t('percent')}</th>
             <th>{moneyHeader(t('commAmount'))}</th>
             <th>{moneyHeader(t('baseAmount'))}</th>
@@ -751,17 +766,55 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr key={row.id}>
-              <td>{row.sale?.gateway?.name ?? '—'}</td>
-              <td>{row.role?.name}</td>
-              <td data-percent={row.commission_percent}>{percent(row.commission_percent)} <span className="sr-only">{row.commission_percent}</span></td>
-              <td>{money(row.commission_amount)}</td>
-              <td>{money(row.base_amount)}</td>
-              <td><Badge tone="ok">{label(row.status)}</Badge></td>
-              <td><DateTimeText value={row.created_at} /></td>
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const kind = commissionKind(row)
+            const isBonus = kind !== 'base'
+            const month = row.metadata?.month
+            return (
+              <tr
+                key={row.id}
+                className={isBonus ? 'bg-violet-50/60 dark:bg-violet-950/25' : undefined}
+                data-commission-kind={kind}
+              >
+                <td>
+                  {isBonus ? (
+                    <div className="space-y-0.5">
+                      <div className="font-medium text-surface-800 dark:text-surface-100 leading-5">
+                        {kind === 'monthly_bonus_residual' ? t('commKindBonusResidual') : t('commKindBonus')}
+                      </div>
+                      {month ? (
+                        <div className="text-xs text-surface-500 leading-4">
+                          {t('bonusMonth')}: <MonthText value={month} />
+                        </div>
+                      ) : (
+                        <div className="text-xs text-surface-400 leading-4">{t('commNoGateway')}</div>
+                      )}
+                    </div>
+                  ) : (
+                    row.sale?.gateway?.name ?? '—'
+                  )}
+                </td>
+                <td>{row.role?.name}</td>
+                <td>
+                  {isBonus ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Award className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+                      <Badge tone="warn">
+                        {kind === 'monthly_bonus_residual' ? t('commKindBonusResidual') : t('commKindBonus')}
+                      </Badge>
+                    </span>
+                  ) : (
+                    <Badge tone="muted">{t('commKindBase')}</Badge>
+                  )}
+                </td>
+                <td data-percent={row.commission_percent}>{percent(row.commission_percent)} <span className="sr-only">{row.commission_percent}</span></td>
+                <td className={isBonus ? 'font-semibold text-violet-700 dark:text-violet-300' : undefined}>{money(row.commission_amount)}</td>
+                <td>{money(row.base_amount)}</td>
+                <td><Badge tone="ok">{label(row.status)}</Badge></td>
+                <td><DateTimeText value={row.created_at} /></td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
       </div>
