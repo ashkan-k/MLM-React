@@ -509,8 +509,8 @@ export function PointsMonitorPage() {
     },
   })
 
-  const tree = (data?.tree ?? []) as TreeNode[]
-  const flat = (data?.roles_flat ?? []) as FlatRow[]
+  const tree = useMemo(() => (Array.isArray(data?.tree) ? data.tree : []) as TreeNode[], [data?.tree])
+  const flat = useMemo(() => (Array.isArray(data?.roles_flat) ? data.roles_flat : []) as FlatRow[], [data?.roles_flat])
   const summary = data?.summary as {
     scored_nodes?: number
     total_points?: number
@@ -520,11 +520,11 @@ export function PointsMonitorPage() {
     role_rows?: number
   } | undefined
 
-  // ریشه درخت به‌صورت پیش‌فرض باز؛ با کلیک جمع می‌شود
+  // فقط وقتی شناسه ریشه‌ها عوض شد درخت را باز کن — نه در هر رندر (جلوگیری از Maximum update depth)
   const rootKey = useMemo(() => tree.map((n) => n.id).join(','), [tree])
   useEffect(() => {
-    setExpanded(new Set(tree.map((n) => n.id)))
-  }, [rootKey, tree])
+    setExpanded(rootKey === '' ? new Set() : new Set(rootKey.split(',').map(Number)))
+  }, [rootKey])
 
   const toggle = (id: number) => {
     setExpanded((prev) => {
@@ -537,8 +537,6 @@ export function PointsMonitorPage() {
 
   const openDetail = (userId: number, roleSlug: string) => setDetailKey({ userId, roleSlug })
 
-  const filteredFlat = useMemo(() => flat, [flat])
-
   let body: ReactNode
   if (isLoading) {
     body = <p className="text-sm text-surface-500 p-6 m-0">در حال بارگذاری درخت امتیاز...</p>
@@ -549,7 +547,7 @@ export function PointsMonitorPage() {
       <TreeBranch nodes={tree} onOpen={openDetail} expanded={expanded} toggle={toggle} />
     )
   } else {
-    body = filteredFlat.length === 0 ? (
+    body = flat.length === 0 ? (
       <Empty title="ردیفی یافت نشد" />
     ) : (
       <div className="overflow-x-auto rounded-2xl border border-surface-200 dark:border-surface-700">
@@ -564,7 +562,7 @@ export function PointsMonitorPage() {
             </tr>
           </thead>
           <tbody>
-            {filteredFlat.map((row) => (
+            {flat.map((row) => (
               <tr
                 key={`${row.user_id}-${row.role_slug}`}
                 className="border-t border-surface-100 dark:border-surface-800/80 hover:bg-surface-50/70 dark:hover:bg-surface-800/35 transition-colors"

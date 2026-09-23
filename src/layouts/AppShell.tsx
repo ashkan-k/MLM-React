@@ -195,7 +195,10 @@ function SidebarNav({ groups, extra }: { groups: NavGroup[]; extra?: ReactNode }
 
   useEffect(() => {
     const active = visibleGroups.filter((g) => g.items.some((item) => itemActive(item, location.pathname))).map((g) => g.key)
-    setOpenGroups(active)
+    setOpenGroups((prev) => {
+      if (prev.length === active.length && prev.every((k, i) => k === active[i])) return prev
+      return active
+    })
   }, [location.pathname, visibleGroups])
 
   return (
