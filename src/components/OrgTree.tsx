@@ -11,6 +11,7 @@ export type OrgNode = {
   role?: { name: string; slug?: string } | null
   children?: OrgNode[]
   descendant_count?: number
+  has_children?: boolean
 }
 
 type FlatRow = {
@@ -195,6 +196,8 @@ function NodeRow({
   onView,
   locale,
   t,
+  lazy,
+  onLoadChildren,
 }: {
   node: OrgNode
   depth: number
@@ -202,18 +205,38 @@ function NodeRow({
   onView: (n: OrgNode) => void
   locale: 'fa' | 'en'
   t: (key: string) => string
+  lazy?: boolean
+  onLoadChildren?: (nodeId: number) => Promise<OrgNode[]>
 }) {
-  const [open, setOpen] = useState(depth < 2)
+  const [open, setOpen] = useState(depth < 1)
+  const [kids, setKids] = useState<OrgNode[]>(node.children ?? [])
+  const [loading, setLoading] = useState(false)
+  const [loaded, setLoaded] = useState(() => !lazy || (node.children?.length ?? 0) > 0 || node.has_children === false)
   const shown = forceOpen || open
-  const hasChildren = (node.children?.length ?? 0) > 0
+  const hasChildren = Boolean(node.has_children) || kids.length > 0 || (node.children?.length ?? 0) > 0
   const name = node.user?.name ?? '—'
   const nf = locale === 'en' ? 'en-US' : 'fa-IR'
+
+  const toggle = async () => {
+    const next = !open
+    setOpen(next)
+    if (next && lazy && !loaded && onLoadChildren && (node.has_children || hasChildren)) {
+      setLoading(true)
+      try {
+        const fetched = await onLoadChildren(node.id)
+        setKids(fetched)
+        setLoaded(true)
+      } finally {
+        setLoading(false)
+      }
+    }
+  }
 
   return (
     <div className={depth > 0 ? 'ms-6 lg:ms-10 border-s-2 border-surface-200 dark:border-surface-700 ps-4' : ''}>
       <div className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 mb-2 hover:shadow-md transition-shadow">
         {hasChildren ? (
-          <button type="button" className="p-1 rounded hover:bg-surface-100 dark:hover:bg-surface-700" onClick={() => setOpen((v) => !v)}>
+          <button type="button" className="p-1 rounded hover:bg-surface-100 dark:hover:bg-surface-700" onClick={() => void toggle()}>
             {shown ? <ChevronUp className="w-4 h-4 text-surface-400" /> : <ChevronDown className="w-4 h-4 text-surface-400" />}
           </button>
         ) : <div className="w-6" />}
@@ -227,7 +250,7 @@ function NodeRow({
               <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">{t('blocked')}</span>
             )}
           </div>
-          <div className="text-xs text-surface-400">{t('orgLevel')} {depth} • {downline(node).toLocaleString(nf)} {t('orgDownline')}{node.user?.mobile ? ` • ${node.user.mobile}` : ''}</div>
+          <div className="text-xs text-surface-400">{t('orgLevel')} {depth} • {downline({ ...node, children: kids }).toLocaleString(nf)} {t('orgDownline')}{node.user?.mobile ? ` • ${node.user.mobile}` : ''}{loading ? ' …' : ''}</div>
         </div>
         <div className="flex items-center gap-2">
           {node.role?.name && (
@@ -241,8 +264,8 @@ function NodeRow({
           </button>
         </div>
       </div>
-      {hasChildren && shown && node.children!.map((child) => (
-        <NodeRow key={child.id} node={child} depth={depth + 1} forceOpen={forceOpen} onView={onView} locale={locale} t={t} />
+      {hasChildren && shown && kids.map((child) => (
+        <NodeRow key={child.id} node={child} depth={depth + 1} forceOpen={forceOpen} onView={onView} locale={locale} t={t} lazy={lazy} onLoadChildren={onLoadChildren} />
       ))}
     </div>
   )
@@ -253,24 +276,30 @@ export function OrgTree({
   title,
   subtitle,
   testId,
+  lazy = true,
+  onLoadChildren,
 }: {
   nodes: OrgNode[]
   title?: string
   subtitle?: string
   testId?: string
   onExport?: () => void
+  lazy?: boolean
+  onLoadChildren?: (nodeId: number) => Promise<OrgNode[]>
 }) {
   const { t, locale } = useApp()
   const [query, setQuery] = useState('')
   const [detail, setDetail] = useState<OrgNode | null>(null)
   const visible = useMemo(() => filterTree(nodes, query), [nodes, query])
-  const total = useMemo(() => countNodes(nodes), [nodes])
+  const total = useMemo(() => nodes.reduce((s, n) => s + 1 + (n.descendant_count ?? countNodes(n.children ?? [])), 0), [nodes])
   const depth = useMemo(() => depthOf(nodes), [nodes])
   const widest = useMemo(() => maxDirect(nodes), [nodes])
   const rows = useMemo(() => flatten(visible), [visible])
   const nf = locale === 'en' ? 'en-US' : 'fa-IR'
   const heading = title ?? t('orgTitle')
   const sub = subtitle ?? t('orgSubtitle')
+
+  const loadChildren = onLoadChildren
 
   const exportExcel = () => {
     exportSelected(locale === 'en' ? 'network' : 'شبکه', rows.map((r) => (
@@ -340,7 +369,19 @@ export function OrgTree({
         ))}
       </div>
       <div className="bg-white/70 dark:bg-surface-900/50 rounded-xl p-4 border border-surface-200 dark:border-surface-700" data-testid={testId}>
-        {visible.length > 0 ? visible.map((n) => <NodeRow key={n.id} node={n} depth={0} forceOpen={Boolean(query.trim())} onView={setDetail} locale={locale} t={t} />) : <Empty text={t('orgEmpty')} />}
+        {visible.length > 0 ? visible.map((n) => (
+          <NodeRow
+            key={n.id}
+            node={n}
+            depth={0}
+            forceOpen={Boolean(query.trim())}
+            onView={setDetail}
+            locale={locale}
+            t={t}
+            lazy={lazy && !query.trim()}
+            onLoadChildren={loadChildren}
+          />
+        )) : <Empty text={t('orgEmpty')} />}
       </div>
       <Modal open={Boolean(detail)} title={detail?.user?.name ?? t('details')} onClose={() => setDetail(null)}>
         {detail && (

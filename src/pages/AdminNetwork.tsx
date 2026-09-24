@@ -7,8 +7,15 @@ import { api } from '../lib/api'
 
 export function AdminNetwork() {
   const { t } = useApp()
-  const { data: tree } = useQuery({ queryKey: ['tree'], queryFn: async () => (await api.get('/organization/tree')).data })
+  const { data: tree } = useQuery({
+    queryKey: ['tree', 'shallow', 'admin'],
+    queryFn: async () => (await api.get('/organization/tree', { params: { max_depth: 1 } })).data,
+  })
   const nodes = Array.isArray(tree) ? tree as OrgNode[] : []
+  const loadChildren = async (nodeId: number): Promise<OrgNode[]> => {
+    const { data } = await api.get('/organization/tree', { params: { parent_id: nodeId, max_depth: 1 } })
+    return Array.isArray(data) ? data as OrgNode[] : []
+  }
   return (
     <div className="space-y-6">
       <PageHeader
@@ -16,7 +23,7 @@ export function AdminNetwork() {
         subtitle={t('orgSubtitle')}
         action={<Link className="btn btn-primary" to="/superuser/org-managers">{t('navOrgManagers')}</Link>}
       />
-      <OrgTree nodes={nodes} testId="admin-network" />
+      <OrgTree nodes={nodes} testId="admin-network" lazy onLoadChildren={loadChildren} />
     </div>
   )
 }

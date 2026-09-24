@@ -43,12 +43,20 @@ export function AdminReports() {
     queryKey: ['admin-reports', params],
     queryFn: async () => (await api.get('/superuser/reports', { params })).data,
   })
-  const { data: tree } = useQuery({ queryKey: ['tree'], queryFn: async () => (await api.get('/organization/tree')).data })
+  const { data: tree } = useQuery({
+    queryKey: ['tree', 'shallow', 'reports'],
+    queryFn: async () => (await api.get('/organization/tree', { params: { max_depth: 1 } })).data,
+  })
   const treeNodes = useMemo(() => {
     const nodes = Array.isArray(tree) ? tree as OrgNode[] : []
     if (!filters.user_id) return nodes
     return subtreeByUser(nodes, Number(filters.user_id))
   }, [tree, filters.user_id])
+
+  const loadTreeChildren = async (nodeId: number): Promise<OrgNode[]> => {
+    const { data } = await api.get('/organization/tree', { params: { parent_id: nodeId, max_depth: 1 } })
+    return Array.isArray(data) ? data as OrgNode[] : []
+  }
 
   return (
     <div className="space-y-4" data-testid="admin-reports">
@@ -169,6 +177,8 @@ export function AdminReports() {
           nodes={treeNodes}
           title={t('orgTitle')}
           subtitle={t('orgSubtitle')}
+          lazy
+          onLoadChildren={loadTreeChildren}
         />
       </div>
 

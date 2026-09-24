@@ -23,9 +23,25 @@ export function TeamPage() {
   const me = useAuth((s) => s.user)
   const canBlock = me?.is_superuser || me?.active_role?.slug === 'senior_manager'
   const canManageOrg = me?.active_role?.slug === 'senior_manager'
-  const { data: tree } = useQuery({ queryKey: ['tree'], queryFn: async () => (await api.get('/organization/tree')).data })
-  const { data: team } = useQuery({ queryKey: ['team'], queryFn: async () => (await api.get('/organization/team')).data })
+  const [teamPage, setTeamPage] = useState(1)
+  const [teamSearch, setTeamSearch] = useState('')
+  const { data: tree } = useQuery({
+    queryKey: ['tree', 'shallow'],
+    queryFn: async () => (await api.get('/organization/tree', { params: { max_depth: 1 } })).data,
+  })
+  const { data: teamData, isFetching: teamFetching } = useQuery({
+    queryKey: ['team', teamPage, teamSearch],
+    queryFn: async () => (await api.get('/organization/team', {
+      params: { page: teamPage, per_page: 20, search: teamSearch.trim() || undefined },
+    })).data,
+  })
   const nodes = Array.isArray(tree) ? tree as OrgNode[] : []
+  const teamRows = Array.isArray(teamData?.data) ? teamData.data : []
+
+  const loadChildren = async (nodeId: number): Promise<OrgNode[]> => {
+    const { data } = await api.get('/organization/tree', { params: { parent_id: nodeId, max_depth: 1 } })
+    return Array.isArray(data) ? data as OrgNode[] : []
+  }
 
   const toggleBlock = async (user: { id: number; name: string; is_active?: boolean }) => {
     if (user.id === me?.id) {
@@ -62,8 +78,24 @@ export function TeamPage() {
         subtitle={t('orgSubtitle')}
         action={canManageOrg ? <Link className="btn btn-primary" to="../org-managers">{t('navOrgManagers')}</Link> : undefined}
       />
-      <OrgTree nodes={nodes} testId="org-tree" />
-      <TeamTable team={team ?? []} t={t} canBlock={Boolean(canBlock)} onToggleBlock={toggleBlock} />
+      <OrgTree nodes={nodes} testId="org-tree" lazy onLoadChildren={loadChildren} />
+      <TeamTable
+        team={teamRows}
+        t={t}
+        canBlock={Boolean(canBlock)}
+        onToggleBlock={toggleBlock}
+        search={teamSearch}
+        onSearch={(v) => { setTeamSearch(v); setTeamPage(1) }}
+        pager={{
+          page: teamData?.current_page ?? teamPage,
+          last: teamData?.last_page ?? 1,
+          from: teamData?.from,
+          to: teamData?.to,
+          total: teamData?.total ?? teamRows.length,
+          disabled: teamFetching,
+          onPage: setTeamPage,
+        }}
+      />
     </div>
   )
 }
@@ -87,15 +119,38 @@ function TeamTable({
   t,
   canBlock,
   onToggleBlock,
+  search,
+  onSearch,
+  pager,
 }: {
   team: Array<{ id: number; name: string; mobile: string; is_active?: boolean; roles?: string[] }>
   t: (key: string) => string
   canBlock: boolean
   onToggleBlock: (user: { id: number; name: string; is_active?: boolean }) => void
+  search: string
+  onSearch: (value: string) => void
+  pager: {
+    page: number
+    last: number
+    from?: number
+    to?: number
+    total: number
+    disabled?: boolean
+    onPage: (page: number) => void
+  }
 }) {
   return (
     <div className="card overflow-auto">
-      <div className="px-4 pt-4 font-semibold text-surface-800 dark:text-surface-200">{t('teamTitle')}</div>
+      <div className="px-4 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="font-semibold text-surface-800 dark:text-surface-200">{t('teamTitle')}</div>
+        <input
+          className="w-full sm:w-72 ps-3 pe-3 py-2 rounded-lg bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm outline-none focus:ring-2 focus:ring-primary-500/20"
+          placeholder={t('orgSearch')}
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+          data-testid="team-search"
+        />
+      </div>
       <table className="table">
         <thead>
           <tr>
@@ -132,6 +187,15 @@ function TeamTable({
         </tbody>
       </table>
       {team.length === 0 && <Empty text={t('teamEmpty')} />}
+      <TablePager
+        page={pager.page}
+        last={pager.last}
+        from={pager.from}
+        to={pager.to}
+        total={pager.total}
+        disabled={pager.disabled}
+        onPage={pager.onPage}
+      />
     </div>
   )
 }
