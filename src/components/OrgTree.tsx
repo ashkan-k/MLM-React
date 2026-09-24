@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronUp, Download, Eye, Network, TrendingUp, Users } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useApp } from '../contexts/AppContext'
+import { api } from '../lib/api'
 import { exportSelected } from './table'
 import { downloadZip } from '../lib/export'
 import { Empty, Modal } from './ui'
@@ -209,13 +210,21 @@ function NodeRow({
   onLoadChildren?: (nodeId: number) => Promise<OrgNode[]>
 }) {
   const [open, setOpen] = useState(depth < 1)
-  const [kids, setKids] = useState<OrgNode[]>(node.children ?? [])
+  const [lazyKids, setLazyKids] = useState<OrgNode[]>(() => node.children ?? [])
   const [loading, setLoading] = useState(false)
   const [loaded, setLoaded] = useState(() => !lazy || (node.children?.length ?? 0) > 0 || node.has_children === false)
+  // Search mode (!lazy): always render embedded children from props — avoid stale lazy state after remount reuse
+  const kids = lazy ? lazyKids : (node.children ?? [])
   const shown = forceOpen || open
   const hasChildren = Boolean(node.has_children) || kids.length > 0 || (node.children?.length ?? 0) > 0
   const name = node.user?.name ?? '—'
   const nf = locale === 'en' ? 'en-US' : 'fa-IR'
+
+  useEffect(() => {
+    if (!lazy) return
+    setLazyKids(node.children ?? [])
+    setLoaded((node.children?.length ?? 0) > 0 || node.has_children === false)
+  }, [lazy, node.id, node.has_children])
 
   const toggle = async () => {
     const next = !open
@@ -224,7 +233,7 @@ function NodeRow({
       setLoading(true)
       try {
         const fetched = await onLoadChildren(node.id)
-        setKids(fetched)
+        setLazyKids(fetched)
         setLoaded(true)
       } finally {
         setLoading(false)
@@ -289,11 +298,52 @@ export function OrgTree({
 }) {
   const { t, locale } = useApp()
   const [query, setQuery] = useState('')
+  const [debounced, setDebounced] = useState('')
+  const [searchNodes, setSearchNodes] = useState<OrgNode[] | null>(null)
+  const [searchLoading, setSearchLoading] = useState(false)
   const [detail, setDetail] = useState<OrgNode | null>(null)
-  const visible = useMemo(() => filterTree(nodes, query), [nodes, query])
-  const total = useMemo(() => nodes.reduce((s, n) => s + 1 + (n.descendant_count ?? countNodes(n.children ?? [])), 0), [nodes])
-  const depth = useMemo(() => depthOf(nodes), [nodes])
-  const widest = useMemo(() => maxDirect(nodes), [nodes])
+  const nodesRef = useRef(nodes)
+  nodesRef.current = nodes
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => setDebounced(query.trim()), 350)
+    return () => window.clearTimeout(handle)
+  }, [query])
+
+  useEffect(() => {
+    if (!debounced) {
+      setSearchNodes(null)
+      setSearchLoading(false)
+      return
+    }
+    let cancelled = false
+    setSearchLoading(true)
+    setSearchNodes(null)
+    api.get('/organization/tree', { params: { search: debounced, max_depth: 16 } })
+      .then(({ data }) => {
+        if (cancelled) return
+        const remote = Array.isArray(data) ? data as OrgNode[] : []
+        // Server prune is authoritative; local filter only as last resort on already-loaded nodes
+        setSearchNodes(remote.length > 0 ? remote : filterTree(nodesRef.current, debounced))
+      })
+      .catch(() => {
+        if (!cancelled) setSearchNodes(filterTree(nodesRef.current, debounced))
+      })
+      .finally(() => {
+        if (!cancelled) setSearchLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [debounced])
+
+  const searching = Boolean(debounced)
+  const displayNodes = searching ? (searchNodes ?? []) : nodes
+  const visible = displayNodes
+  const total = useMemo(
+    () => displayNodes.reduce((s, n) => s + 1 + (n.descendant_count ?? countNodes(n.children ?? [])), 0),
+    [displayNodes],
+  )
+  const depth = useMemo(() => depthOf(displayNodes), [displayNodes])
+  const widest = useMemo(() => maxDirect(displayNodes), [displayNodes])
   const rows = useMemo(() => flatten(visible), [visible])
   const nf = locale === 'en' ? 'en-US' : 'fa-IR'
   const heading = title ?? t('orgTitle')
@@ -353,6 +403,9 @@ export function OrgTree({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
+      {searchLoading && (
+        <div className="text-xs text-surface-500">{locale === 'en' ? 'Searching network…' : 'در حال جستجوی شبکه…'}</div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: t('orgDepth'), value: depth.toLocaleString(nf), icon: Network },
@@ -371,17 +424,17 @@ export function OrgTree({
       <div className="bg-white/70 dark:bg-surface-900/50 rounded-xl p-4 border border-surface-200 dark:border-surface-700" data-testid={testId}>
         {visible.length > 0 ? visible.map((n) => (
           <NodeRow
-            key={n.id}
+            key={searching ? `search-${n.id}` : n.id}
             node={n}
             depth={0}
-            forceOpen={Boolean(query.trim())}
+            forceOpen={searching}
             onView={setDetail}
             locale={locale}
             t={t}
-            lazy={lazy && !query.trim()}
+            lazy={lazy && !searching}
             onLoadChildren={loadChildren}
           />
-        )) : <Empty text={t('orgEmpty')} />}
+        )) : <Empty text={searchLoading || (searching && searchNodes === null) ? (locale === 'en' ? 'Searching…' : 'در حال جستجو…') : t('orgEmpty')} />}
       </div>
       <Modal open={Boolean(detail)} title={detail?.user?.name ?? t('details')} onClose={() => setDetail(null)}>
         {detail && (
