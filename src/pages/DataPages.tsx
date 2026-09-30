@@ -970,29 +970,44 @@ export function WalletPage() {
     queryKey: ['wtx', page],
     queryFn: async () => (await api.get('/wallet-transactions', { params: { page, per_page: 20 } })).data,
   })
-  const txRows: Array<{ id: number; type: string; amount: string; balance_after: string; created_at: string }> = txs?.data ?? []
+  const txRows: Array<{ id: number; type: string; amount: string; balance_after: string; created_at: string; wallet?: { kind?: string; role?: { name?: string } } }> = txs?.data ?? []
+  const showWalletColumn = user?.active_role?.slug === 'senior_manager'
+  const walletName = (row: (typeof txRows)[number]) => (
+    row.wallet?.kind === 'bonus_residual' ? t('walletResidualTitle') : (row.wallet?.role?.name ?? '—')
+  )
 
   return (
     <div className="space-y-4">
       <PageHeader title={t('walletTitle')} subtitle={t('walletSub')} />
       <div className="grid md:grid-cols-2 gap-4">
-        {(wallets ?? []).map((w: { id: number; balance: string; held_balance: string; currency: string; role?: { name: string } }) => (
-          <div className="card p-5 overflow-hidden" key={w.id} data-testid="role-wallet">
-            <div className="h-1 rounded-full bg-gradient-to-r from-blue-500 to-emerald-500 mb-4" />
-            <div className="text-sm text-surface-500">{w.role?.name}</div>
+        {(wallets ?? []).map((w: { id: number; kind?: string; balance: string; held_balance: string; currency: string; role?: { name: string } }) => {
+          const residual = w.kind === 'bonus_residual'
+          return (
+          <div className="card p-5 overflow-hidden" key={w.id} data-testid={residual ? 'residual-wallet' : 'role-wallet'}>
+            <div className={`h-1 rounded-full mb-4 ${residual ? 'bg-gradient-to-r from-rose-500 to-orange-400' : 'bg-gradient-to-r from-blue-500 to-emerald-500'}`} />
+            <div className="text-sm text-surface-500">{residual ? t('walletResidualTitle') : w.role?.name}</div>
+            {residual && <div className="text-xs text-surface-400 mt-1">{t('walletResidualHint')}</div>}
             <div className="text-2xl font-extrabold my-2 text-surface-800 dark:text-surface-100">{money(w.balance)} <span className="text-sm font-medium">{t('toman')}</span></div>
             <div className="text-sm text-surface-600 dark:text-surface-400">{t('held')}: {money(w.held_balance)} {t('toman')} · {t('withdrawable')}: {money(Number(w.balance) - Number(w.held_balance))} {t('toman')}</div>
           </div>
-        ))}
+          )
+        })}
       </div>
       <div className="card overflow-hidden">
         <div className="px-4 pt-4 font-semibold text-surface-800 dark:text-surface-200">{t('walletLedger')}</div>
         <div className="overflow-auto">
         <table className="table">
-          <thead><tr><th>{t('type')}</th><th>{moneyHeader()}</th><th>{moneyHeader(t('balanceAfter'))}</th><th>{t('date')}</th></tr></thead>
+          <thead><tr>{showWalletColumn && <th>{t('walletLedgerWallet')}</th>}<th>{t('type')}</th><th>{moneyHeader()}</th><th>{moneyHeader(t('balanceAfter'))}</th><th>{t('date')}</th></tr></thead>
           <tbody>
             {txRows.map((row) => (
               <tr key={row.id}>
+                {showWalletColumn && (
+                  <td>
+                    <span className={row.wallet?.kind === 'bonus_residual' ? 'text-rose-600 dark:text-rose-300' : ''}>
+                      {walletName(row)}
+                    </span>
+                  </td>
+                )}
                 <td>{label(row.type)}</td>
                 <td>{money(row.amount)}</td>
                 <td>{money(row.balance_after)}</td>
@@ -1025,9 +1040,9 @@ export function FinancePage() {
       <PageHeader title={t('financeTitle')} subtitle={t('financeSub')} />
       <div className="card p-5" data-testid="aggregate-finance">
         <p className="text-sm text-surface-500 mb-4">{data?.note}</p>
-        {(data?.by_role ?? []).map((w: { id: number; role?: { name: string }; balance: string; held_balance: string }) => (
+        {(data?.by_role ?? []).map((w: { id: number; kind?: string; role?: { name: string }; balance: string; held_balance: string }) => (
           <div key={w.id} className="flex justify-between py-3 border-b border-surface-100 dark:border-surface-700">
-            <span>{w.role?.name}</span>
+            <span>{w.kind === 'bonus_residual' ? t('walletResidualTitle') : w.role?.name}</span>
             <strong>{money(w.balance)} {t('toman')} <span className="text-xs font-normal text-surface-400">{t('held')} {money(w.held_balance)} {t('toman')}</span></strong>
           </div>
         ))}
@@ -1057,13 +1072,21 @@ export function WithdrawalsPage() {
   const [open, setOpen] = useState(false)
   const [amount, setAmount] = useState('1000')
   const [scope, setScope] = useState<'active_role' | 'all_roles'>('active_role')
-  type WalletRow = { id: number; balance: string; held_balance?: string; role?: { id?: number; name: string; slug?: string } }
+  type WalletRow = { id: number; kind?: string; balance: string; held_balance?: string; role?: { id?: number; name: string; slug?: string } }
   const walletRows: WalletRow[] = wallets ?? []
   const allWallets: WalletRow[] = aggregate?.by_role ?? []
-  const multiRole = allWallets.length > 1
+  const roleWallets = allWallets.filter((w) => (w.kind ?? 'role') === 'role')
+  const residualWallets = walletRows.filter((w) => w.kind === 'bonus_residual')
+  const operatingWallets = walletRows.filter((w) => (w.kind ?? 'role') === 'role')
+  const [pickedWalletId, setPickedWalletId] = useState<number | null>(null)
+  const picked = operatingWallets.find((w) => w.id === pickedWalletId)
+    ?? residualWallets.find((w) => w.id === pickedWalletId)
+    ?? operatingWallets[0]
+    ?? walletRows[0]
+  const multiRole = roleWallets.length > 1
   const availableOf = (w: { balance: string; held_balance?: string }) => Number(w.balance) - Number(w.held_balance ?? 0)
-  const activeAvailable = walletRows.reduce((sum, w) => sum + Math.max(0, availableOf(w)), 0)
-  const totalAvailable = allWallets.reduce((sum, w) => sum + Math.max(0, availableOf(w)), 0)
+  const activeAvailable = (picked ? [picked] : operatingWallets).reduce((sum, w) => sum + Math.max(0, availableOf(w)), 0)
+  const totalAvailable = roleWallets.reduce((sum, w) => sum + Math.max(0, availableOf(w)), 0)
   const available = scope === 'all_roles' ? totalAvailable : activeAvailable
   const mutate = useMutation({
     mutationFn: async () => {
@@ -1074,7 +1097,7 @@ export function WithdrawalsPage() {
       return api.post('/withdrawals', {
         scope,
         amount,
-        ...(scope === 'active_role' && walletRows[0]?.id ? { wallet_id: walletRows[0].id } : {}),
+        ...(scope === 'active_role' && picked?.id ? { wallet_id: picked.id } : {}),
         idempotency_key: `ui-${Date.now()}`,
       })
     },
@@ -1144,14 +1167,28 @@ export function WithdrawalsPage() {
               </label>
             </div>
           )}
+          {scope === 'active_role' && walletRows.length > 1 && (
+            <div className="grid gap-2">
+              <div className="text-sm font-medium text-surface-700 dark:text-surface-200">{t('withdrawScopeLabel')}</div>
+              {walletRows.map((w) => (
+                <label key={w.id} className="flex items-start gap-2 rounded-xl border border-surface-200 dark:border-surface-700 p-3 cursor-pointer">
+                  <input type="radio" name="wd-wallet" className="mt-1" checked={picked?.id === w.id} onChange={() => setPickedWalletId(w.id)} />
+                  <span>
+                    <span className="font-medium block">{w.kind === 'bonus_residual' ? t('walletResidualTitle') : (w.role?.name ?? t('withdrawScopeActive'))}</span>
+                    <span className="text-xs text-surface-500">{money(Math.max(0, availableOf(w)))} {t('toman')}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
           <div className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 text-sm space-y-2">
             <div className="flex justify-between gap-2">
               <span className="text-surface-500">{scope === 'all_roles' ? t('withdrawTotalAll') : t('dashWallet')}</span>
               <span className="font-semibold">{money(available)} {t('toman')}</span>
             </div>
-            {scope === 'all_roles' && allWallets.length > 0 && (
+            {scope === 'all_roles' && roleWallets.length > 0 && (
               <div className="space-y-1 pt-1 border-t border-surface-100 dark:border-surface-800">
-                {allWallets.map((w) => (
+                {roleWallets.map((w) => (
                   <div key={w.id} className="flex justify-between gap-2 text-xs text-surface-500">
                     <span>{w.role?.name ?? '—'}</span>
                     <span>{money(Math.max(0, availableOf(w)))}</span>

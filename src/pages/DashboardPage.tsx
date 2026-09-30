@@ -54,6 +54,9 @@ export function DashboardPage() {
       <PageHeader title={`${t('titleDashboard')} ${roleLabel(role?.slug, locale)}`} subtitle={t('dashSubtitle')} />
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title={t('dashWallet')} value={money(data?.wallet?.balance)} hint={t('toman')} testId="wallet-balance" icon={Wallet} color="from-blue-500 to-blue-600" />
+        {data?.residual_wallet && (
+          <StatCard title={t('dashResidual')} value={money(data.residual_wallet.balance)} hint={t('toman')} testId="residual-wallet-balance" icon={Award} color="from-rose-500 to-orange-500" />
+        )}
         <StatCard title={t('dashHeld')} value={money(data?.wallet?.held_balance)} hint={t('dashHeldHint')} icon={Repeat} color="from-amber-500 to-amber-600" />
         <StatCard title={t('dashMonthCommission')} value={money(data?.monthly_commissions)} icon={TrendingUp} color="from-emerald-500 to-emerald-600" />
         <StatCard title={t('dashTeam')} value={data?.team_count ?? 0} icon={Users} color="from-purple-500 to-purple-600" />
