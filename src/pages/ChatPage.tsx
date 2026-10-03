@@ -202,13 +202,12 @@ export function ChatPage() {
       <section className="card min-h-[640px] grid grid-rows-[auto_1fr_auto]">
         <div className="px-4 py-3 border-b border-surface-200 dark:border-surface-700 font-semibold flex flex-wrap items-center gap-2">
           {active ? t('chatTitle') : t('choose')}
-          {debug && liveSocket && (
-            <span data-testid="chat-ws-badge" className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+          {liveSocket ? (
+            <span data-testid="chat-ws-badge" className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
               {t('chatLive')}
             </span>
-          )}
-          {debug && !liveSocket && (
-            <span data-testid="chat-http-badge" className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+          ) : (
+            <span data-testid="chat-http-badge" className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
               {t('chatHttp')}
             </span>
           )}

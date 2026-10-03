@@ -22,12 +22,20 @@ function endpoints() {
   if (import.meta.env.VITE_WS_URL) return [String(import.meta.env.VITE_WS_URL)]
   const host = window.location.hostname
   const port = import.meta.env.VITE_WS_PORT || '6001'
-  const sameOrigin = `ws://${window.location.host}/ws`
-  const direct = [
-    `ws://127.0.0.1:${port}`,
-    host === '127.0.0.1' ? null : `ws://${host}:${port}`,
-    sameOrigin,
-  ]
+  const secure = window.location.protocol === 'https:'
+  const proto = secure ? 'wss' : 'ws'
+  const sameOrigin = `${proto}://${window.location.host}/ws`
+  // On production HTTPS, prefer same-origin /ws (Apache proxy) before raw :6001.
+  const direct = secure
+    ? [
+        sameOrigin,
+        host === '127.0.0.1' || host === 'localhost' ? `ws://127.0.0.1:${port}` : null,
+      ]
+    : [
+        `ws://127.0.0.1:${port}`,
+        host === '127.0.0.1' ? null : `ws://${host}:${port}`,
+        sameOrigin,
+      ]
   return [...new Set(direct.filter((url): url is string => Boolean(url)))]
 }
 
