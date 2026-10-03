@@ -98,6 +98,8 @@ const adminGroups: NavGroup[] = [
     key: 'navMain',
     items: [
       { to: '/superuser/reports', labelKey: 'navReports', icon: FileBarChart },
+      // همیشه در دسترس — وابسته به FINOPAL_PRODUCT_ORIENTED نیست
+      { to: '/superuser/commissions', labelKey: 'navCommissions', icon: TrendingUp },
     ],
   },
   {
@@ -108,7 +110,6 @@ const adminGroups: NavGroup[] = [
       { to: '/superuser/org-managers', labelKey: 'navOrgManagers', icon: Building2 },
       { to: '/superuser/permissions', labelKey: 'navPermissions', icon: Shield },
       { to: '/superuser/gateways', labelKey: 'navGateways', icon: CreditCard },
-      { to: '/superuser/commissions', labelKey: 'navCommissions', icon: TrendingUp },
       { to: '/superuser/points', labelKey: 'navPoints', icon: Target },
     ],
   },
@@ -194,7 +195,7 @@ function SidebarNav({ groups, extra }: { groups: NavGroup[]; extra?: ReactNode }
         items: group.items
           .filter((item) => {
             if (item.to === 'org-managers' && user?.active_role?.slug !== 'senior_manager') return false
-            return canAccessPage(user, item.to.startsWith('/') ? item.to : item.to)
+            return canAccessPage(user, item.to)
           })
           .map((item) => (
             item.to === 'gateways' || item.to === '/superuser/gateways'

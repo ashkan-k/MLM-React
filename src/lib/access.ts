@@ -19,10 +19,27 @@ export const PAGE_PERMISSION: Record<string, string> = {
   notifications: 'page.notifications',
 }
 
+/** Normalize `/superuser/commissions` → `commissions` for permission lookup. */
+export function pageAccessKey(pageKey: string): string {
+  const raw = (pageKey ?? '').trim()
+  if (!raw) return ''
+  if (raw.startsWith('/superuser')) {
+    const rest = raw.replace(/^\/superuser\/?/, '')
+    return rest.split('/').filter(Boolean)[0] ?? ''
+  }
+  if (raw.startsWith('/')) {
+    const parts = raw.split('/').filter(Boolean)
+    return parts[parts.length - 1] ?? ''
+  }
+  return raw
+}
+
 export function canAccessPage(user: AuthUser | null | undefined, pageKey: string): boolean {
   if (!user) return false
-  if (user.is_superuser) return true
-  const slug = PAGE_PERMISSION[pageKey]
+  // پنل مدیر سامانه (از جمله پورسانت) مستقل از FINOPAL_PRODUCT_ORIENTED است
+  if (user.is_superuser || user.active_role?.slug === 'superuser') return true
+  const key = pageAccessKey(pageKey)
+  const slug = PAGE_PERMISSION[key] ?? PAGE_PERMISSION[pageKey]
   if (!slug) return true
   if (user.permissions?.includes(slug)) return true
   const hasPageCatalog = (user.permissions ?? []).some((item) => item.startsWith('page.'))
