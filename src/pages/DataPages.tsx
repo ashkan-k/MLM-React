@@ -123,7 +123,7 @@ function TeamTable({
   onSearch,
   pager,
 }: {
-  team: Array<{ id: number; name: string; mobile: string; is_active?: boolean; roles?: string[] }>
+  team: Array<{ id: number; name: string; mobile: string; national_id?: string | null; birth_date?: string | null; is_active?: boolean; roles?: string[] }>
   t: (key: string) => string
   canBlock: boolean
   onToggleBlock: (user: { id: number; name: string; is_active?: boolean }) => void
@@ -156,6 +156,8 @@ function TeamTable({
           <tr>
             <th>{t('name')}</th>
             <th>{t('mobile')}</th>
+            <th>{t('kycNationalId')}</th>
+            <th>{t('kycBirthDate')}</th>
             <th>{t('roles')}</th>
             <th>{t('status')}</th>
             {canBlock && <th className="text-center">{t('actions')}</th>}
@@ -171,6 +173,8 @@ function TeamTable({
                 </div>
               </td>
               <td>{u.mobile}</td>
+              <td className="font-mono dir-ltr text-left">{u.national_id || '—'}</td>
+              <td>{u.birth_date || '—'}</td>
               <td>{(u.roles ?? []).join('، ') || '—'}</td>
               <td><Badge tone={u.is_active === false ? 'danger' : 'ok'}>{u.is_active === false ? t('blocked') : t('adminActive')}</Badge></td>
               {canBlock && (

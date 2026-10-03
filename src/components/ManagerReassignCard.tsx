@@ -9,6 +9,8 @@ type DirectoryUser = {
   id: number
   name: string
   mobile: string
+  national_id?: string | null
+  birth_date?: string | null
   roles: Array<{ id: number; name: string; slug: string }>
 }
 
@@ -141,8 +143,8 @@ export function ManagerReassignCard() {
               testId="reassign-target"
               options={targets.map((u) => ({
                 value: u.id,
-                label: `${u.name} — ${u.mobile}`,
-                keywords: u.roles.map((r) => r.name).join(' '),
+                label: `${u.name} — ${u.mobile}${u.national_id ? ` — ${u.national_id}` : ''}`,
+                keywords: [u.national_id, u.birth_date, ...u.roles.map((r) => r.name)].filter(Boolean).join(' '),
               }))}
             />
           </label>
@@ -154,8 +156,8 @@ export function ManagerReassignCard() {
               testId="reassign-manager"
               options={managers.map((u) => ({
                 value: u.id,
-                label: `${u.name} — ${u.mobile}`,
-                keywords: u.roles.map((r) => r.name).join(' '),
+                label: `${u.name} — ${u.mobile}${u.national_id ? ` — ${u.national_id}` : ''}`,
+                keywords: [u.national_id, u.birth_date, ...u.roles.map((r) => r.name)].filter(Boolean).join(' '),
               }))}
             />
           </label>
@@ -185,8 +187,8 @@ export function ManagerReassignCard() {
               testId="appoint-user"
               options={appointCandidates.map((u) => ({
                 value: u.id,
-                label: `${u.name} — ${u.mobile}`,
-                keywords: u.roles.map((r) => r.name).join(' '),
+                label: `${u.name} — ${u.mobile}${u.national_id ? ` — ${u.national_id}` : ''}`,
+                keywords: [u.national_id, u.birth_date, ...u.roles.map((r) => r.name)].filter(Boolean).join(' '),
               }))}
             />
           </label>
@@ -198,8 +200,8 @@ export function ManagerReassignCard() {
               testId="appoint-parent"
               options={parents.map((u) => ({
                 value: u.id,
-                label: `${u.name} — ${u.mobile}`,
-                keywords: u.roles.map((r) => r.name).join(' '),
+                label: `${u.name} — ${u.mobile}${u.national_id ? ` — ${u.national_id}` : ''}`,
+                keywords: [u.national_id, u.birth_date, ...u.roles.map((r) => r.name)].filter(Boolean).join(' '),
               }))}
             />
           </label>

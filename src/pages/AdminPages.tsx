@@ -14,7 +14,18 @@ import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../stores/auth'
 
 type RoleRow = { id: number; name: string; slug: string; is_organizational?: boolean; permissions?: Array<{ id: number; pivot?: { allowed?: boolean | number | string } }> }
-type UserRow = { id: number; name: string; mobile: string; email?: string | null; avatar_url?: string | null; is_active: boolean; created_at?: string; roles?: Array<{ name: string; slug: string }> }
+type UserRow = {
+  id: number
+  name: string
+  mobile: string
+  email?: string | null
+  national_id?: string | null
+  birth_date?: string | null
+  avatar_url?: string | null
+  is_active: boolean
+  created_at?: string
+  roles?: Array<{ name: string; slug: string }>
+}
 type CourseLevel = {
   id?: number
   title: string
@@ -264,7 +275,7 @@ export function AdminUsers() {
             <button type="button" className="p-2 rounded-lg border border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-500" aria-label="فیلتر">
               <Filter className="w-4 h-4" />
             </button>
-            <button type="button" className="p-2 rounded-lg border border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-500" aria-label="خروجی" onClick={() => exportSelected('کاربران', rows.map((u) => ({ شناسه: u.id, نام: u.name, موبایل: u.mobile, نقش: (u.roles ?? []).map((r) => r.name).join('، '), وضعیت: u.is_active ? 'فعال' : 'غیرفعال' })))}>
+            <button type="button" className="p-2 rounded-lg border border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-500" aria-label="خروجی" onClick={() => exportSelected('کاربران', rows.map((u) => ({ شناسه: u.id, نام: u.name, موبایل: u.mobile, 'کد ملی': u.national_id || '', 'تاریخ تولد': u.birth_date || '', نقش: (u.roles ?? []).map((r) => r.name).join('، '), وضعیت: u.is_active ? 'فعال' : 'غیرفعال' })))}>
               <Download className="w-4 h-4" />
             </button>
           </div>
@@ -284,6 +295,8 @@ export function AdminUsers() {
                 <th>شناسه</th>
                 <th>نام</th>
                 <th>موبایل</th>
+                <th>{t('kycNationalId')}</th>
+                <th>{t('kycBirthDate')}</th>
                 <th>نقش‌ها</th>
                 <th>وضعیت</th>
                 <th>تاریخ ایجاد</th>
@@ -307,6 +320,8 @@ export function AdminUsers() {
                     </div>
                   </td>
                   <td>{u.mobile}</td>
+                  <td className="font-mono dir-ltr text-left">{u.national_id || '—'}</td>
+                  <td>{u.birth_date || '—'}</td>
                   <td>{u.roles?.map((r) => r.name).join('، ')}</td>
                   <td><Badge tone={u.is_active ? 'ok' : 'danger'}>{u.is_active ? t('adminActive') : t('blocked')}</Badge></td>
                   <td><DateTimeText value={u.created_at} /></td>
@@ -390,6 +405,18 @@ export function AdminUsers() {
             </div>
             <div className="flex items-center gap-3 text-sm"><Mail className="w-4 h-4 text-surface-400" /><span>{detail.email || '—'}</span></div>
             <div className="flex items-center gap-3 text-sm"><Phone className="w-4 h-4 text-surface-400" /><span>{detail.mobile}</span></div>
+            {detail.national_id && (
+              <div className="flex items-center gap-3 text-sm">
+                <span className="text-surface-400 w-4 text-center text-xs">ID</span>
+                <span>{t('kycNationalId')}: <bdi className="font-mono" dir="ltr">{detail.national_id}</bdi></span>
+              </div>
+            )}
+            {detail.birth_date && (
+              <div className="flex items-center gap-3 text-sm">
+                <span className="text-surface-400 w-4 text-center text-xs">DOB</span>
+                <span>{t('kycBirthDate')}: {detail.birth_date}</span>
+              </div>
+            )}
             <div className="flex items-center gap-3 text-sm"><Shield className="w-4 h-4 text-surface-400" /><span>نقش‌ها: {detail.roles?.map((r) => r.name).join('، ') || '—'}</span></div>
             <div className="flex items-center gap-3 text-sm"><Users className="w-4 h-4 text-surface-400" /><span>شناسه {detail.id}</span></div>
           </div>
