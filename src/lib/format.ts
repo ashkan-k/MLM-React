@@ -52,6 +52,56 @@ export function dateTime(value?: string | null) {
   return formatJalali(date, 'yyyy/MM/dd HH:mm')
 }
 
+/** فقط روز/ماه/سال — بدون ساعت (ISO را هم پشتیبانی می‌کند) */
+export function dateOnly(value?: string | null) {
+  if (!value) return '—'
+  const m = String(value).match(/^(\d{4}-\d{2}-\d{2})/)
+  if (m) return m[1]
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+  const y = date.getUTCFullYear()
+  const mo = String(date.getUTCMonth() + 1).padStart(2, '0')
+  const d = String(date.getUTCDate()).padStart(2, '0')
+  return `${y}-${mo}-${d}`
+}
+
+const productLabelFa: Record<string, string> = {
+  gateway_profit: 'سود درگاه پرداخت',
+  gateway: 'سود درگاه پرداخت',
+  ticketing: 'سیستم تیکتینگ فینوپال',
+  monthly_bonus: 'سود درگاه پرداخت',
+  monthly_bonus_residual: 'سود درگاه پرداخت',
+  organizational: 'سود درگاه پرداخت',
+  custom: 'سود درگاه پرداخت',
+}
+
+const productLabelEn: Record<string, string> = {
+  gateway_profit: 'Payment gateway profit',
+  gateway: 'Payment gateway profit',
+  ticketing: 'Finopal ticketing',
+  monthly_bonus: 'Payment gateway profit',
+  monthly_bonus_residual: 'Payment gateway profit',
+  organizational: 'Payment gateway profit',
+  custom: 'Payment gateway profit',
+}
+
+export function productLabel(type?: string | null, fallback?: string | null) {
+  if (fallback && fallback !== 'محصول سفارشی' && fallback.toLowerCase() !== 'custom product') {
+    return fallback
+  }
+  const key = (type ?? 'gateway_profit').trim().toLowerCase().replace(/[-\s]+/g, '_')
+  const map = currentLocale() === 'en' ? productLabelEn : productLabelFa
+  return map[key] ?? map.gateway_profit
+}
+
+export function productTone(type?: string | null): 'ok' | 'warn' | 'info' | 'muted' | 'danger' {
+  const key = (type ?? '').trim().toLowerCase().replace(/[-\s]+/g, '_')
+  if (key === 'gateway_profit' || key === 'gateway') return 'info'
+  if (key === 'ticketing') return 'ok'
+  if (key === 'monthly_bonus' || key === 'organizational') return 'warn'
+  return 'muted'
+}
+
 /** YYYY-MM یا تاریخ کامل → نام ماه شمسی + سال (مثلاً شهریور ۱۴۰۵) */
 export function jalaliMonth(value?: string | null) {
   if (!value) return '—'

@@ -37,6 +37,7 @@ import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
 import { canAccessPage } from '../lib/access'
 import { roleLabel } from '../lib/i18n'
+import { productNavKey, useProductOriented } from '../lib/productMode'
 import { dashboardPath } from '../lib/roles'
 import { useAuth } from '../stores/auth'
 
@@ -180,6 +181,7 @@ function itemActive(item: LinkItem, pathname: string) {
 function SidebarNav({ groups, extra }: { groups: NavGroup[]; extra?: ReactNode }) {
   const { sidebarCollapsed, toggleSidebarCollapsed, sidebarOpen, setSidebarOpen, direction, t } = useApp()
   const user = useAuth((s) => s.user)
+  const productOriented = useProductOriented()
   const location = useLocation()
   const [openGroups, setOpenGroups] = useState<string[]>([])
   const ChevronIcon = direction === 'rtl' ? (sidebarCollapsed ? ChevronLeft : ChevronRight) : (sidebarCollapsed ? ChevronRight : ChevronLeft)
@@ -187,13 +189,19 @@ function SidebarNav({ groups, extra }: { groups: NavGroup[]; extra?: ReactNode }
     () => groups
       .map((group) => ({
         ...group,
-        items: group.items.filter((item) => {
-          if (item.to === 'org-managers' && user?.active_role?.slug !== 'senior_manager') return false
-          return canAccessPage(user, item.to.startsWith('/') ? item.to : item.to)
-        }),
+        items: group.items
+          .filter((item) => {
+            if (item.to === 'org-managers' && user?.active_role?.slug !== 'senior_manager') return false
+            return canAccessPage(user, item.to.startsWith('/') ? item.to : item.to)
+          })
+          .map((item) => (
+            item.to === 'gateways' || item.to === '/superuser/gateways'
+              ? { ...item, labelKey: productNavKey(productOriented) }
+              : item
+          )),
       }))
       .filter((group) => group.items.length > 0),
-    [groups, user],
+    [groups, user, productOriented],
   )
 
   useEffect(() => {
@@ -357,11 +365,13 @@ function ShellTopbar({ title, panel }: { title: string; panel: 'role' | 'admin' 
   )
 }
 
-function currentTitle(pathname: string, t: (key: string) => string, fallback: string) {
+function currentTitle(pathname: string, t: (key: string) => string, fallback: string, productOriented: boolean) {
   if (/^\/dashboard\/[^/]+$/.test(pathname)) return t('titleDashboard')
+  if (pathname.endsWith('/gateways') || pathname === '/superuser/gateways') return t(productNavKey(productOriented))
   if (titleKeys[pathname]) return t(titleKeys[pathname])
   if (pathname.match(/^\/superuser\/audits\/\d+$/)) return t('titleAuditDetail')
   const last = pathname.split('/').filter(Boolean).pop() ?? ''
+  if (last === 'gateways') return t(productNavKey(productOriented))
   if (titleKeys[last]) return t(titleKeys[last])
   return fallback
 }
@@ -370,6 +380,7 @@ export function AppShell() {
   const { user } = useAuth()
   const { t } = useApp()
   const location = useLocation()
+  const productOriented = useProductOriented()
   const extra = user?.is_superuser ? (
     <NavLink to="/superuser" className="nav-link w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-primary-700 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20">
       <Building2 className="w-4 h-4" /> <span>{t('navSuperuser')}</span>
@@ -380,7 +391,7 @@ export function AppShell() {
     <div className="flex h-screen overflow-hidden bg-surface-50 dark:bg-surface-950">
       <SidebarNav groups={roleGroups} extra={extra} />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <ShellTopbar panel="role" title={currentTitle(location.pathname, t, `${t('titleDashboard')} ${roleLabel(user?.active_role?.slug)}`)} />
+        <ShellTopbar panel="role" title={currentTitle(location.pathname, t, `${t('titleDashboard')} ${roleLabel(user?.active_role?.slug)}`, productOriented)} />
         <main className="flex-1 overflow-y-auto p-4 lg:p-6 animate-fadeIn"><Outlet /></main>
       </div>
     </div>
@@ -391,6 +402,7 @@ export function SuperuserShell() {
   const { user } = useAuth()
   const { t } = useApp()
   const location = useLocation()
+  const productOriented = useProductOriented()
   const back = dashboardPath(user?.roles.find((r) => r.slug !== 'superuser')?.slug ?? 'representative')
 
   return (
@@ -400,7 +412,7 @@ export function SuperuserShell() {
         extra={<NavLink to={back} className="nav-link w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800">{t('navBackRole')}</NavLink>}
       />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <ShellTopbar panel="admin" title={currentTitle(location.pathname, t, t('titleAdmin'))} />
+        <ShellTopbar panel="admin" title={currentTitle(location.pathname, t, t('titleAdmin'), productOriented)} />
         <main className="flex-1 overflow-y-auto p-4 lg:p-6 animate-fadeIn"><Outlet /></main>
       </div>
     </div>

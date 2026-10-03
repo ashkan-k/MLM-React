@@ -28,6 +28,7 @@ export type AuthUser = {
       referral_enabled?: boolean
       gateway_sale_enabled?: boolean
     }
+    product_oriented?: boolean
   }
 }
 

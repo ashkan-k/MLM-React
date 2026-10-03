@@ -1,15 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { BookOpen, Download, Filter, Mail, Phone, Repeat, Search, Shield, TrendingUp, UserPlus, Users, Wallet } from 'lucide-react'
+import { BookOpen, CalendarDays, Download, Filter, IdCard, Mail, Phone, Repeat, Search, Shield, TrendingUp, UserPlus, Users, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ExportBar } from '../components/ExportBar'
 import { JalaliDatePicker } from '../components/JalaliDatePicker'
 import { BulkBar, BulkButton, CheckBox, DeleteAction, EditAction, BlockAction, UnblockAction, RowActions, TablePager, ViewAction, exportSelected, useSelection } from '../components/table'
-import { Badge, DateTimeText, Empty, FieldHint, Modal, PageHeader, StatCard } from '../components/ui'
+import { Badge, DateOnlyText, DateTimeText, Empty, FieldHint, Modal, PageHeader, StatCard } from '../components/ui'
 import { api } from '../lib/api'
 import { confirmAction } from '../lib/confirm'
-import { auditLabel, dateTimeExport, entityName, label, money, permissionLabel, percent, settingLabel } from '../lib/format'
+import { auditLabel, dateOnly, dateTimeExport, entityName, label, money, permissionLabel, percent, settingLabel } from '../lib/format'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../stores/auth'
 
@@ -275,7 +275,7 @@ export function AdminUsers() {
             <button type="button" className="p-2 rounded-lg border border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-500" aria-label="فیلتر">
               <Filter className="w-4 h-4" />
             </button>
-            <button type="button" className="p-2 rounded-lg border border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-500" aria-label="خروجی" onClick={() => exportSelected('کاربران', rows.map((u) => ({ شناسه: u.id, نام: u.name, موبایل: u.mobile, 'کد ملی': u.national_id || '', 'تاریخ تولد': u.birth_date || '', نقش: (u.roles ?? []).map((r) => r.name).join('، '), وضعیت: u.is_active ? 'فعال' : 'غیرفعال' })))}>
+            <button type="button" className="p-2 rounded-lg border border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-500" aria-label="خروجی" onClick={() => exportSelected('کاربران', rows.map((u) => ({ شناسه: u.id, نام: u.name, موبایل: u.mobile, 'کد ملی': u.national_id || '', 'تاریخ تولد': dateOnly(u.birth_date) === '—' ? '' : dateOnly(u.birth_date), نقش: (u.roles ?? []).map((r) => r.name).join('، '), وضعیت: u.is_active ? 'فعال' : 'غیرفعال' })))}>
               <Download className="w-4 h-4" />
             </button>
           </div>
@@ -321,7 +321,7 @@ export function AdminUsers() {
                   </td>
                   <td>{u.mobile}</td>
                   <td className="font-mono dir-ltr text-left">{u.national_id || '—'}</td>
-                  <td>{u.birth_date || '—'}</td>
+                  <td><DateOnlyText value={u.birth_date} /></td>
                   <td>{u.roles?.map((r) => r.name).join('، ')}</td>
                   <td><Badge tone={u.is_active ? 'ok' : 'danger'}>{u.is_active ? t('adminActive') : t('blocked')}</Badge></td>
                   <td><DateTimeText value={u.created_at} /></td>
@@ -407,14 +407,14 @@ export function AdminUsers() {
             <div className="flex items-center gap-3 text-sm"><Phone className="w-4 h-4 text-surface-400" /><span>{detail.mobile}</span></div>
             {detail.national_id && (
               <div className="flex items-center gap-3 text-sm">
-                <span className="text-surface-400 w-4 text-center text-xs">ID</span>
+                <IdCard className="w-4 h-4 text-surface-400 shrink-0" />
                 <span>{t('kycNationalId')}: <bdi className="font-mono" dir="ltr">{detail.national_id}</bdi></span>
               </div>
             )}
             {detail.birth_date && (
               <div className="flex items-center gap-3 text-sm">
-                <span className="text-surface-400 w-4 text-center text-xs">DOB</span>
-                <span>{t('kycBirthDate')}: {detail.birth_date}</span>
+                <CalendarDays className="w-4 h-4 text-surface-400 shrink-0" />
+                <span>{t('kycBirthDate')}: <DateOnlyText value={detail.birth_date} /></span>
               </div>
             )}
             <div className="flex items-center gap-3 text-sm"><Shield className="w-4 h-4 text-surface-400" /><span>نقش‌ها: {detail.roles?.map((r) => r.name).join('، ') || '—'}</span></div>

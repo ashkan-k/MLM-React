@@ -3,12 +3,13 @@ import { Award, Banknote, TrendingUp, Users, Wallet } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { TablePager } from '../components/table'
-import { Badge, DateTimeText, Empty, MonthText, PageHeader, ProgressBar, ScorePair, StatCard } from '../components/ui'
+import { Badge, DateTimeText, Empty, MonthText, PageHeader, ProductBadge, ProgressBar, ScorePair, StatCard } from '../components/ui'
 import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
 import { confirmAction } from '../lib/confirm'
 import { localeTag, money, percent, statusLabel } from '../lib/format'
 import { roleLabel } from '../lib/i18n'
+import { useProductOriented } from '../lib/productMode'
 import { useAuth } from '../stores/auth'
 
 type BonusCurrent = {
@@ -59,6 +60,7 @@ type MonitorRow = {
 export function MonthlyBonusPage() {
   const { t, locale } = useApp()
   const qc = useQueryClient()
+  const productOriented = useProductOriented()
   const roleSlug = useAuth((s) => s.user?.active_role?.slug)
   const isSenior = roleSlug === 'senior_manager'
   const [page, setPage] = useState(1)
@@ -114,7 +116,11 @@ export function MonthlyBonusPage() {
 
     return (
       <div className="space-y-4" data-testid="monthly-bonus-page">
-        <PageHeader title={t('bonusMonitorTitle')} subtitle={t('bonusMonitorSub')} />
+        <PageHeader
+          title={t('bonusMonitorTitle')}
+          subtitle={t('bonusMonitorSub')}
+          action={productOriented ? <ProductBadge type="gateway_profit" /> : undefined}
+        />
 
         <div className="grid sm:grid-cols-3 gap-3">
           <StatCard title={t('bonusMonitorDownline')} value={(summary?.downline_users ?? 0).toLocaleString(localeTag())} icon={Users} color="from-blue-500 to-blue-600" />
@@ -282,7 +288,11 @@ export function MonthlyBonusPage() {
 
   return (
     <div className="space-y-4" data-testid="monthly-bonus-page">
-      <PageHeader title={t('bonusTitle')} subtitle={t('bonusSub')} />
+      <PageHeader
+        title={t('bonusTitle')}
+        subtitle={t('bonusSub')}
+        action={productOriented ? <ProductBadge type="gateway_profit" /> : undefined}
+      />
 
       <div className="card p-5 space-y-4" data-testid="monthly-bonus-current">
         <div className="flex flex-wrap items-center justify-between gap-2">

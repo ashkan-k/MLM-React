@@ -7,14 +7,22 @@ import { MoneyInput } from '../components/MoneyInput'
 import { OrgTree, type OrgNode } from '../components/OrgTree'
 import { SearchSelect } from '../components/SearchSelect'
 import { ApproveAction, BlockAction, BulkBar, BulkButton, CheckBox, IconAction, RowActions, TablePager, UnblockAction, ViewAction, exportSelected, useSelection } from '../components/table'
-import { Badge, DateTimeText, Empty, Modal, MonthText, PageHeader, ProgressBar, ScorePair, StatCard } from '../components/ui'
+import { Badge, DateOnlyText, DateTimeText, Empty, Modal, MonthText, PageHeader, ProductBadge, ProgressBar, ScorePair, StatCard } from '../components/ui'
 import { GatewayCreateForm } from '../components/GatewayCreateForm'
 import { ManagerReassignCard } from '../components/ManagerReassignCard'
 import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
 import { confirmAction, promptAction } from '../lib/confirm'
 import { notificationBody, notificationHref, notificationTitle, type AppNotification } from '../lib/notify'
-import { criterionLabel, label, localeTag, money, moneyHeader, percent } from '../lib/format'
+import { criterionLabel, dateOnly, label, localeTag, money, moneyHeader, percent, productLabel } from '../lib/format'
+import {
+  commissionsSubKey,
+  myProfitKey,
+  saleColKey,
+  salesSubKey,
+  salesTitleKey,
+  useProductOriented,
+} from '../lib/productMode'
 import { useAuth } from '../stores/auth'
 
 export function TeamPage() {
@@ -174,7 +182,7 @@ function TeamTable({
               </td>
               <td>{u.mobile}</td>
               <td className="font-mono dir-ltr text-left">{u.national_id || '—'}</td>
-              <td>{u.birth_date || '—'}</td>
+              <td><DateOnlyText value={u.birth_date} /></td>
               <td>{(u.roles ?? []).join('، ') || '—'}</td>
               <td><Badge tone={u.is_active === false ? 'danger' : 'ok'}>{u.is_active === false ? t('blocked') : t('adminActive')}</Badge></td>
               {canBlock && (
@@ -221,6 +229,11 @@ type GatewaySaleRow = {
   my_commission_total?: string
   status: string
   sold_at: string
+  product_type?: string
+  product_code?: string | null
+  product_label?: string | null
+  sale_kind?: 'gateway' | 'product'
+  title?: string | null
   shaparak_reference?: string | null
   rejection_note?: string | null
   gateway?: {
@@ -277,16 +290,18 @@ function GatewayTable({
   footer?: ReactNode
 }) {
   const { t } = useApp()
+  const productOriented = useProductOriented()
   return (
     <div className="card overflow-hidden" data-testid="gateway-table">
       <div className="overflow-auto">
       <table className="table">
         <thead>
           <tr>
-            <th>{t('gateway')}</th>
+            {productOriented && <th>{t('productCol')}</th>}
+            <th>{t(saleColKey(productOriented))}</th>
             <th>{t('customer')}</th>
             <th>{t('reps')}</th>
-            <th>{moneyHeader(t('gwMyProfit'))}</th>
+            <th>{moneyHeader(t(myProfitKey(productOriented)))}</th>
             <th>{t('status')}</th>
             <th>{t('soldAt')}</th>
             <th>{t('details')}</th>
@@ -294,10 +309,16 @@ function GatewayTable({
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row.id}>
+            <tr key={`${row.sale_kind ?? 'gateway'}-${row.id}`}>
+              {productOriented && (
+                <td>
+                  <ProductBadge type={row.product_type ?? 'gateway_profit'} label={row.product_label} />
+                  {row.product_code && <div className="text-[11px] text-surface-400 mt-1 font-mono dir-ltr text-left">{row.product_code}</div>}
+                </td>
+              )}
               <td>
-                <div className="font-semibold">{row.gateway?.name ?? t('gateway')}</div>
-                <div className="text-xs text-surface-400">{row.gateway?.external_id}</div>
+                <div className="font-semibold">{row.gateway?.name ?? row.title ?? t('gateway')}</div>
+                <div className="text-xs text-surface-400">{row.gateway?.external_id ?? (productOriented ? (row.sale_kind ?? '') : '')}</div>
               </td>
               <td>{row.customer?.name ?? '—'}</td>
               <td>{row.representatives?.map((r) => `${r.user?.name} (${percent(r.share_percent)})`).join('، ') || '—'}</td>
@@ -306,8 +327,10 @@ function GatewayTable({
               <td><DateTimeText value={row.sold_at} /></td>
               <td>
                 <RowActions>
-                  <ViewAction onClick={() => onOpen(row)} label={t('gwReview')} />
-                  {canInspect && isAwaitingInspect(row.status) && (
+                  {row.sale_kind !== 'product' && (
+                    <ViewAction onClick={() => onOpen(row)} label={t('gwReview')} />
+                  )}
+                  {canInspect && row.sale_kind !== 'product' && isAwaitingInspect(row.status) && (
                     <>
                       <ApproveAction label={t('gwInspect')} onClick={() => onInspect(row, 'approved')} />
                       <IconAction label={t('gwRejectInspect')} tone="delete" icon={X} onClick={() => onInspect(row, 'rejected')} />
@@ -359,6 +382,7 @@ function GatewayReviewModal({
   onUpdated: (row: GatewaySaleRow) => void
 }) {
   const { t } = useApp()
+  const productOriented = useProductOriented()
   const { data: directory = [] } = useQuery({
     queryKey: ['directory'],
     queryFn: async () => (await api.get('/users/directory')).data as Array<{
@@ -443,6 +467,9 @@ function GatewayReviewModal({
     <Modal wide open title={sale.gateway?.name ?? t('gateway')} subtitle={t('gwReview')} onClose={onClose}>
       <div className="space-y-5" data-testid="gateway-review">
         <div className="flex flex-wrap gap-2 items-center">
+          {productOriented && (
+            <ProductBadge type={sale.product_type ?? 'gateway_profit'} label={sale.product_label} />
+          )}
           <Badge tone={gatewayTone(sale.status)}>{label(sale.status)}</Badge>
           {sale.gateway?.merchant_code && <Badge tone="info">{t('gwMerchantCode')}: {sale.gateway.merchant_code}</Badge>}
         </div>
@@ -453,7 +480,7 @@ function GatewayReviewModal({
           <KycItem label={t('kycMobile')} value={c?.mobile} />
           <KycItem label={t('kycEmail')} value={c?.email} />
           <KycItem label={t('kycFather')} value={c?.father_name} />
-          <KycItem label={t('kycBirthDate')} value={c?.birth_date} />
+          <KycItem label={t('kycBirthDate')} value={c?.birth_date ? dateOnly(c.birth_date) : undefined} />
           <KycItem label={t('kycBirthCert')} value={c?.birth_certificate_no} />
           <KycItem label={t('kycBirthPlace')} value={c?.birth_place} />
           <KycItem label={t('kycGender')} value={gender} />
@@ -658,6 +685,7 @@ export function GatewaysPage() {
   const { t } = useApp()
   const qc = useQueryClient()
   const me = useAuth((s) => s.user)
+  const productOriented = useProductOriented()
   const [searchParams, setSearchParams] = useSearchParams()
   const sharedToken = (searchParams.get('shared') ?? '').trim()
   const roleSlug = me?.active_role?.slug
@@ -666,6 +694,11 @@ export function GatewaysPage() {
   const { data, isLoading, isFetching } = useQuery({
     queryKey: ['sales', roleSlug, page],
     queryFn: async () => (await api.get('/gateway-sales', { params: { page, per_page: 20 } })).data,
+  })
+  const { data: productData } = useQuery({
+    queryKey: ['product-sales', roleSlug, page],
+    queryFn: async () => (await api.get('/product-sales', { params: { page, per_page: 20 } })).data,
+    enabled: productOriented,
   })
   const [openCreate, setOpenCreate] = useState(false)
   const [openSale, setOpenSale] = useState<GatewaySaleRow | null>(null)
@@ -683,10 +716,28 @@ export function GatewaysPage() {
     }
   }
 
-  const rows: GatewaySaleRow[] = data?.data ?? []
+  const gatewayRows: GatewaySaleRow[] = (data?.data ?? []).map((row: GatewaySaleRow) => ({
+    ...row,
+    sale_kind: row.sale_kind ?? 'gateway',
+    product_type: row.product_type ?? 'gateway_profit',
+    product_label: row.product_label ?? productLabel('gateway_profit'),
+  }))
+  const productRows: GatewaySaleRow[] = productOriented
+    ? (productData?.data ?? []).map((row: GatewaySaleRow) => ({
+      ...row,
+      sale_kind: 'product' as const,
+      product_type: row.product_type ?? 'ticketing',
+      product_label: row.product_label ?? productLabel(row.product_type),
+    }))
+    : []
+  const rows: GatewaySaleRow[] = [...gatewayRows, ...productRows].sort((a, b) => {
+    const ta = a.sold_at ? new Date(a.sold_at).getTime() : 0
+    const tb = b.sold_at ? new Date(b.sold_at).getTime() : 0
+    return tb - ta
+  })
   const successCount = rows.filter((r) => r.status === 'successful').length
   const myProfitTotal = rows.reduce((sum, row) => sum + Number(row.my_commission_total ?? 0), 0)
-  const inspectCount = rows.filter((r) => isAwaitingInspect(r.status)).length
+  const inspectCount = rows.filter((r) => r.sale_kind !== 'product' && isAwaitingInspect(r.status)).length
   const canInspect = Boolean(me?.is_superuser || me?.active_role?.slug === 'senior_manager')
   const canEditParties = canInspect
   const orgManagersHref = me?.is_superuser
@@ -697,6 +748,7 @@ export function GatewaysPage() {
 
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['sales'] })
+    qc.invalidateQueries({ queryKey: ['product-sales'] })
     qc.invalidateQueries({ queryKey: ['commissions'] })
     qc.invalidateQueries({ queryKey: ['wallets'] })
     qc.invalidateQueries({ queryKey: ['notifications'] })
@@ -736,8 +788,8 @@ export function GatewaysPage() {
   return (
     <div className="space-y-4">
       <PageHeader
-        title={t('gwTitle')}
-        subtitle={t('gwSub')}
+        title={t(salesTitleKey(productOriented))}
+        subtitle={t(salesSubKey(productOriented))}
         action={(
           <div className="flex flex-wrap gap-2">
             {orgManagersHref && <Link className="btn btn-ghost" to={orgManagersHref}>{t('navOrgManagers')}</Link>}
@@ -812,18 +864,25 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
   status: string
   created_at: string
   idempotency_key?: string | null
-  metadata?: { type?: string; month?: string } | null
+  metadata?: { type?: string; month?: string; product_type?: string } | null
+  product_type?: string | null
+  product_code?: string | null
+  product_label?: string | null
+  source_title?: string | null
   role?: { name: string }
   sale?: { gateway?: { name: string } }
+  product_sale?: { title?: string | null; product_type?: string; product_code?: string | null } | null
 }>; isLoading: boolean; footer?: ReactNode }) {
   const { t } = useApp()
+  const productOriented = useProductOriented()
   return (
     <div className="card overflow-hidden" data-testid="commission-table">
       <div className="overflow-auto">
       <table className="table">
         <thead>
           <tr>
-            <th>{t('gateway')}</th>
+            {productOriented && <th>{t('productCol')}</th>}
+            <th>{productOriented ? t('commSource') : t('gateway')}</th>
             <th>{t('role')}</th>
             <th>{t('commKind')}</th>
             <th>{t('percent')}</th>
@@ -838,12 +897,30 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
             const kind = commissionKind(row)
             const isBonus = kind !== 'base'
             const month = row.metadata?.month
+            const pType = row.product_type
+              ?? row.product_sale?.product_type
+              ?? row.metadata?.product_type
+              ?? 'gateway_profit'
+            const source = row.source_title
+              ?? row.sale?.gateway?.name
+              ?? row.product_sale?.title
+              ?? null
             return (
               <tr
                 key={row.id}
                 className={isBonus ? 'bg-violet-50/60 dark:bg-violet-950/25' : undefined}
                 data-commission-kind={kind}
               >
+                {productOriented && (
+                  <td>
+                    <ProductBadge type={pType} label={row.product_label ?? productLabel(pType)} />
+                    {(row.product_code || row.product_sale?.product_code) && (
+                      <div className="text-[11px] text-surface-400 mt-1 font-mono dir-ltr text-left">
+                        {row.product_code || row.product_sale?.product_code}
+                      </div>
+                    )}
+                  </td>
+                )}
                 <td>
                   {isBonus ? (
                     <div className="space-y-0.5">
@@ -859,7 +936,7 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
                       )}
                     </div>
                   ) : (
-                    row.sale?.gateway?.name ?? '—'
+                    source || '—'
                   )}
                 </td>
                 <td>{row.role?.name}</td>
@@ -894,6 +971,7 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
 
 export function CommissionsPage() {
   const { t } = useApp()
+  const productOriented = useProductOriented()
   const roleSlug = useAuth((s) => s.user?.active_role?.slug)
   const [gatewayId, setGatewayId] = useState('')
   const [page, setPage] = useState(1)
@@ -925,9 +1003,9 @@ export function CommissionsPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title={t('commTitle')} subtitle={t('commSub')} />
+      <PageHeader title={t('commTitle')} subtitle={t(commissionsSubKey(productOriented))} />
       <div className="card p-4">
-        <label className="field max-w-md m-0">{t('commFilterGateway')}
+        <label className="field max-w-md m-0">{productOriented ? t('commSource') : t('commFilterGateway')}
           <select
             className="input"
             data-testid="commission-gateway-filter"
