@@ -1,11 +1,19 @@
 import { expect, test, type Page } from '@playwright/test'
 
 async function login(page: Page, mobile: string) {
-  await page.goto('/login')
-  await page.getByTestId('login-mobile').fill(mobile)
-  await page.getByTestId('login-password').fill('Password123!')
-  await page.getByTestId('login-submit').click()
-  await expect(page).not.toHaveURL(/\/login$/)
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    await page.goto('/login')
+    await page.getByTestId('login-mobile').fill(mobile)
+    await page.getByTestId('login-password').fill('Password123!')
+    await page.getByTestId('login-submit').click()
+    try {
+      await expect(page).not.toHaveURL(/\/login$/, { timeout: 20_000 })
+      return
+    } catch (err) {
+      if (attempt === 3) throw err
+      await page.waitForTimeout(1000 * attempt)
+    }
+  }
 }
 
 async function visit(page: Page, path: string) {

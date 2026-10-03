@@ -1368,7 +1368,8 @@ export function ReferralsPage() {
   const qc = useQueryClient()
   const user = useAuth((s) => s.user)
   const roleSlug = user?.active_role?.slug
-  const showReferralCode = roleSlug === 'representative' || roleSlug === 'representative_referrer'
+  // همه نقش‌های سازمانی کد معرف دارند (ثبت‌نام درختی از لینک مدیر ارشد/توسعه/فروش هم ممکن است)
+  const showReferralCode = Boolean(roleSlug) && roleSlug !== 'superuser'
   const referralShareOn = user?.features?.shared_links?.referral_enabled !== false
   const gatewayShareOn = user?.features?.shared_links?.gateway_sale_enabled !== false
   const anyShareOn = referralShareOn || gatewayShareOn

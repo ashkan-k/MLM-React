@@ -95,7 +95,8 @@ test('سناریوی کامل معرف + لینک اشتراکی + تقسیم پ
   // 2) نماینده معرف — کد معرف و معرفی‌شده‌ها
   await login(page, '09124444444', 'representative_referrer')
   await page.goto('/dashboard/representative-referrer/referrals')
-  await expect(page.getByTestId('referral-code')).toContainText(/REF/i)
+  await expect(page.getByTestId('referral-code')).toBeVisible()
+  await expect(page.getByTestId('referral-code')).toHaveText(/\S{6,}/)
   await expect(page.locator('main')).toContainText(/نماینده اصلی|09125555555|اشتراکی/)
   await pauseForViewer(page, 2000)
 

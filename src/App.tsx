@@ -89,6 +89,7 @@ export default function App() {
           <Route path="org-managers" element={<AdminOrgManagers />} />
           <Route path="permissions" element={<AdminPermissions />} />
           <Route path="gateways" element={<GatewaysPage />} />
+          <Route path="commissions" element={<CommissionsPage />} />
           <Route path="points" element={<PointsMonitorPage />} />
           <Route path="rules" element={<AdminRules />} />
           <Route path="courses" element={<AdminCourses />} />
