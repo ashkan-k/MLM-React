@@ -13,6 +13,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageSquare,
   MessagesSquare,
   Moon,
   Network,
@@ -123,6 +124,7 @@ const adminGroups: NavGroup[] = [
       { to: '/superuser/chat', labelKey: 'navChat', icon: MessagesSquare },
       { to: '/superuser/settings', labelKey: 'navSettings', icon: Settings },
       { to: '/superuser/audits', labelKey: 'navAudits', icon: ScrollText },
+      { to: '/superuser/sms', labelKey: 'navSmsDebug', icon: MessageSquare },
       { to: '/superuser/frasoft', labelKey: 'navFrasoft', icon: Repeat },
     ],
   },
@@ -161,6 +163,7 @@ const titleKeys: Record<string, string> = {
   '/superuser/notifications': 'navNotifications',
   '/superuser/settings': 'navSettings',
   '/superuser/audits': 'navAudits',
+  '/superuser/sms': 'navSmsDebug',
   '/superuser/frasoft': 'navFrasoft',
 }
 

@@ -16,6 +16,7 @@ import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { SharedLinkPage } from './pages/SharedLinkPage'
 import { AdminOrgManagers } from './pages/AdminOrgManagers'
+import { AdminSmsDebugPage } from './pages/AdminSmsDebugPage'
 import { useAuth } from './stores/auth'
 
 function Guard({ superuserOnly = false }: { superuserOnly?: boolean }) {
@@ -98,6 +99,7 @@ export default function App() {
           <Route path="chat" element={<ChatPage />} />
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="frasoft" element={<AdminFraSoft />} />
+          <Route path="sms" element={<AdminSmsDebugPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />
