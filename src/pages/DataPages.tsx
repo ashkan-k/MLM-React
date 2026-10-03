@@ -234,8 +234,12 @@ type GatewaySaleRow = {
   product_label?: string | null
   sale_kind?: 'gateway' | 'product'
   title?: string | null
+  amount?: string | number | null
+  external_ref?: string | null
   shaparak_reference?: string | null
   rejection_note?: string | null
+  referrers?: Array<{ user_id?: number; user?: { id?: number; name: string }; share_percent?: string; commission_percent?: string }>
+  transactions?: Array<{ id: number; amount: string; profit: string; status: string; authority?: string | null; paid_at?: string | null; product_type?: string | null }>
   gateway?: {
     id?: number
     name: string
@@ -327,9 +331,7 @@ function GatewayTable({
               <td><DateTimeText value={row.sold_at} /></td>
               <td>
                 <RowActions>
-                  {row.sale_kind !== 'product' && (
-                    <ViewAction onClick={() => onOpen(row)} label={t('gwReview')} />
-                  )}
+                  <ViewAction onClick={() => onOpen(row)} label={row.sale_kind === 'product' ? t('productSaleReview') : t('gwReview')} />
                   {canInspect && row.sale_kind !== 'product' && isAwaitingInspect(row.status) && (
                     <>
                       <ApproveAction label={t('gwInspect')} onClick={() => onInspect(row, 'approved')} />
@@ -681,6 +683,81 @@ function GatewayReviewModal({
   )
 }
 
+function ProductSaleReviewModal({ sale, onClose }: { sale: GatewaySaleRow; onClose: () => void }) {
+  const { t } = useApp()
+  const txs = sale.transactions ?? sale.gateway?.transactions ?? []
+  return (
+    <Modal wide open title={sale.title || sale.product_label || t('productSaleReview')} subtitle={t('productSaleReview')} onClose={onClose}>
+      <div className="space-y-5" data-testid="product-sale-review">
+        <div className="flex flex-wrap gap-2 items-center">
+          <ProductBadge type={sale.product_type ?? 'ticketing'} label={sale.product_label ?? productLabel(sale.product_type)} />
+          <Badge tone={gatewayTone(sale.status)}>{label(sale.status)}</Badge>
+          {sale.product_code && <Badge tone="info">{sale.product_code}</Badge>}
+        </div>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
+          <KycItem label={t('productSaleAmount')} value={money(sale.amount ?? 0)} />
+          <KycItem label={t('productSaleExternal')} value={sale.external_ref} />
+          <KycItem label={t('soldAt')} value={sale.sold_at ? undefined : '—'} />
+        </div>
+        {sale.sold_at && (
+          <div className="text-sm text-surface-500">
+            {t('soldAt')}: <DateTimeText value={sale.sold_at} />
+          </div>
+        )}
+        <div className="rounded-xl border border-surface-200 dark:border-surface-700 p-4 space-y-3">
+          <div className="font-semibold">{t('gwPartiesTitle')}</div>
+          <div className="grid sm:grid-cols-2 gap-3 text-sm">
+            <div>
+              <div className="text-xs text-surface-500 mb-1">{t('productSaleOwners')}</div>
+              <div>{sale.representatives?.map((r) => `${r.user?.name} (${percent(r.share_percent)})`).join('، ') || '—'}</div>
+            </div>
+            <div>
+              <div className="text-xs text-surface-500 mb-1">{t('productSaleReferrers')}</div>
+              <div>{sale.referrers?.map((r) => `${r.user?.name}${r.share_percent ? ` (${percent(r.share_percent)})` : ''}`).join('، ') || '—'}</div>
+            </div>
+            <div className="sm:col-span-2">
+              <div className="text-xs text-surface-500 mb-1">{t('gwManagers')}</div>
+              <div>{sale.managers?.map((m) => `${m.role?.name ?? '—'}: ${m.user?.name ?? '—'}`).join('، ') || '—'}</div>
+            </div>
+          </div>
+        </div>
+        {(sale.commissions?.length ?? 0) > 0 ? (
+          <div>
+            <div className="font-semibold mb-2">{t('gwCommissionsPosted')}</div>
+            <div className="grid sm:grid-cols-2 gap-2 text-sm">
+              {(sale.commissions ?? []).map((row) => (
+                <div key={row.id} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 flex justify-between gap-2">
+                  <span>{row.role?.name}</span>
+                  <span>{percent(row.commission_percent)} — {money(row.commission_amount)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="text-sm text-amber-700 dark:text-amber-400 m-0">{t('gwNoCommissionYet')}</p>
+        )}
+        {txs.length > 0 && (
+          <div>
+            <div className="font-semibold mb-2">{t('gwTransactions')}</div>
+            <div className="grid sm:grid-cols-2 gap-2 text-sm">
+              {txs.map((row) => (
+                <div key={row.id} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 space-y-1">
+                  <div className="flex justify-between gap-2">
+                    <span>{label(row.status)}</span>
+                    <span>{money(row.profit)}</span>
+                  </div>
+                  <div className="text-xs text-surface-400">{t('gwTxAmount')}: {money(row.amount)}</div>
+                  {row.authority && <div className="text-xs text-surface-400 dir-ltr text-left">{row.authority}</div>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </Modal>
+  )
+}
+
 export function GatewaysPage() {
   const { t } = useApp()
   const qc = useQueryClient()
@@ -803,7 +880,10 @@ export function GatewaysPage() {
           onDone={closeCreate}
         />
       </Modal>
-      {openSale && (
+      {openSale && openSale.sale_kind === 'product' && (
+        <ProductSaleReviewModal sale={openSale} onClose={() => setOpenSale(null)} />
+      )}
+      {openSale && openSale.sale_kind !== 'product' && (
         <GatewayReviewModal
           sale={openSale}
           onClose={() => setOpenSale(null)}

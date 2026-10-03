@@ -70,8 +70,8 @@ const productLabelFa: Record<string, string> = {
   gateway: 'سود درگاه پرداخت',
   ticketing: 'سیستم تیکتینگ فینوپال',
   subscription: 'اشتراک فاینوپال',
-  monthly_bonus: 'سود درگاه پرداخت',
-  monthly_bonus_residual: 'سود درگاه پرداخت',
+  monthly_bonus: 'پاداش ماهانه',
+  monthly_bonus_residual: 'مابقی پاداش',
   organizational: 'سود درگاه پرداخت',
   custom: 'سود درگاه پرداخت',
 }
@@ -81,8 +81,8 @@ const productLabelEn: Record<string, string> = {
   gateway: 'Payment gateway profit',
   ticketing: 'Finopal ticketing',
   subscription: 'Finopal subscription',
-  monthly_bonus: 'Payment gateway profit',
-  monthly_bonus_residual: 'Payment gateway profit',
+  monthly_bonus: 'Monthly bonus',
+  monthly_bonus_residual: 'Residual bonus',
   organizational: 'Payment gateway profit',
   custom: 'Payment gateway profit',
 }
