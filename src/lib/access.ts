@@ -4,6 +4,7 @@ export const PAGE_PERMISSION: Record<string, string> = {
   '': 'page.dashboard',
   team: 'page.team',
   gateways: 'page.gateways',
+  transactions: 'page.transactions',
   commissions: 'page.commissions',
   'monthly-bonus': 'page.monthly_bonus',
   points: 'page.points',
@@ -17,6 +18,7 @@ export const PAGE_PERMISSION: Record<string, string> = {
   courses: 'page.courses_manage',
   chat: 'page.chat',
   notifications: 'page.notifications',
+  reports: 'page.reports',
 }
 
 /** Normalize `/superuser/commissions` → `commissions` for permission lookup. */
@@ -44,7 +46,7 @@ export function canAccessPage(user: AuthUser | null | undefined, pageKey: string
   if (user.permissions?.includes(slug)) return true
   const hasPageCatalog = (user.permissions ?? []).some((item) => item.startsWith('page.'))
   if (hasPageCatalog) return false
-  if (slug === 'page.transfers' || slug === 'page.courses_manage' || slug === 'page.points') {
+  if (slug === 'page.transfers' || slug === 'page.courses_manage' || slug === 'page.points' || slug === 'page.reports') {
     return user.active_role?.slug === 'senior_manager'
   }
   return true

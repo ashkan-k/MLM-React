@@ -1,3 +1,4 @@
+import { format as formatJalali } from 'date-fns-jalali'
 import { X, type LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Area, AreaChart, Bar, BarChart as ReBarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
@@ -166,9 +167,27 @@ function useChartTheme() {
   }
 }
 
-export function BarChart({ data, testId }: { data: ChartPoint[]; testId?: string }) {
+function chartAxisLabel(raw: string) {
+  const m = String(raw).match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return raw
+  const date = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])))
+  if (Number.isNaN(date.getTime())) return raw
+  return currentLocale() === 'en' ? `${m[2]}/${m[3]}` : formatJalali(date, 'MM/dd')
+}
+
+function chartSeriesName(valueLabel?: string) {
+  if (valueLabel) return valueLabel
+  return currentLocale() === 'en' ? 'Amount' : 'مقدار'
+}
+
+function formatChartValue(value: number | string) {
+  return Number(value ?? 0).toLocaleString(localeTag())
+}
+
+export function BarChart({ data, testId, valueLabel }: { data: ChartPoint[]; testId?: string; valueLabel?: string }) {
   const theme = useChartTheme()
-  const rows = data.map((d) => ({ name: d.label, value: Number(d.value) || 0 }))
+  const series = chartSeriesName(valueLabel)
+  const rows = data.map((d) => ({ name: chartAxisLabel(d.label), value: Number(d.value) || 0 }))
   return (
     <div className="h-64" data-testid={testId ?? 'bar-chart'}>
       {data.length === 0 ? <Empty text="داده‌ای برای نمودار نیست." /> : (
@@ -176,9 +195,13 @@ export function BarChart({ data, testId }: { data: ChartPoint[]; testId?: string
           <ReBarChart data={rows}>
             <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
             <XAxis dataKey="name" tick={{ fontSize: 11, fill: theme.tick }} />
-            <YAxis tick={{ fontSize: 11, fill: theme.tick }} />
-            <Tooltip contentStyle={theme.tooltip} />
-            <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            <YAxis tick={{ fontSize: 11, fill: theme.tick }} width={56} />
+            <Tooltip
+              contentStyle={theme.tooltip}
+              formatter={(value) => [formatChartValue(Number(value ?? 0)), series]}
+              labelFormatter={(label) => String(label)}
+            />
+            <Bar dataKey="value" name={series} fill="#3b82f6" radius={[4, 4, 0, 0]} />
           </ReBarChart>
         </ResponsiveContainer>
       )}
@@ -186,9 +209,13 @@ export function BarChart({ data, testId }: { data: ChartPoint[]; testId?: string
   )
 }
 
-export function LineChart({ data, testId }: { data: ChartPoint[]; testId?: string }) {
+export function LineChart({ data, testId, valueLabel }: { data: ChartPoint[]; testId?: string; valueLabel?: string }) {
   const theme = useChartTheme()
-  const rows = data.map((d) => ({ name: d.label.length > 8 ? d.label.slice(-5) : d.label, value: Number(d.value) || 0 }))
+  const series = chartSeriesName(valueLabel)
+  const rows = data.map((d) => {
+    const full = chartAxisLabel(d.label)
+    return { name: full.length > 10 ? full.slice(-5) : full, value: Number(d.value) || 0 }
+  })
   return (
     <div className="h-64" data-testid={testId ?? 'line-chart'}>
       {data.length === 0 ? <Empty text="داده‌ای برای نمودار نیست." /> : (
@@ -202,9 +229,13 @@ export function LineChart({ data, testId }: { data: ChartPoint[]; testId?: strin
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke={theme.grid} />
             <XAxis dataKey="name" tick={{ fontSize: 11, fill: theme.tick }} />
-            <YAxis tick={{ fontSize: 11, fill: theme.tick }} />
-            <Tooltip contentStyle={theme.tooltip} />
-            <Area type="monotone" dataKey="value" stroke="#3b82f6" fill="url(#finopalArea)" strokeWidth={2} />
+            <YAxis tick={{ fontSize: 11, fill: theme.tick }} width={56} />
+            <Tooltip
+              contentStyle={theme.tooltip}
+              formatter={(value) => [formatChartValue(Number(value ?? 0)), series]}
+              labelFormatter={(label) => String(label)}
+            />
+            <Area type="monotone" dataKey="value" name={series} stroke="#3b82f6" fill="url(#finopalArea)" strokeWidth={2} />
           </AreaChart>
         </ResponsiveContainer>
       )}

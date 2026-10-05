@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Award, Copy, CreditCard, ExternalLink, Network, Repeat, TrendingUp, Users, Wallet, X } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import { JalaliDatePicker } from '../components/JalaliDatePicker'
 import { MoneyInput } from '../components/MoneyInput'
 import { OrgTree, type OrgNode } from '../components/OrgTree'
 import { SearchSelect } from '../components/SearchSelect'
@@ -768,13 +769,23 @@ export function GatewaysPage() {
   const roleSlug = me?.active_role?.slug
   const gatewayShareEnabled = me?.features?.shared_links?.gateway_sale_enabled !== false
   const [page, setPage] = useState(1)
+  const [draft, setDraft] = useState({ search: '', status: '', from: '', to: '' })
+  const [filters, setFilters] = useState(draft)
+  const saleParams = useMemo(() => ({
+    page,
+    per_page: 20,
+    search: filters.search.trim() || undefined,
+    status: filters.status || undefined,
+    from: filters.from || undefined,
+    to: filters.to || undefined,
+  }), [page, filters])
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['sales', roleSlug, page],
-    queryFn: async () => (await api.get('/gateway-sales', { params: { page, per_page: 20 } })).data,
+    queryKey: ['sales', roleSlug, saleParams],
+    queryFn: async () => (await api.get('/gateway-sales', { params: saleParams })).data,
   })
   const { data: productData } = useQuery({
-    queryKey: ['product-sales', roleSlug, page],
-    queryFn: async () => (await api.get('/product-sales', { params: { page, per_page: 20 } })).data,
+    queryKey: ['product-sales', roleSlug, saleParams],
+    queryFn: async () => (await api.get('/product-sales', { params: saleParams })).data,
     enabled: productOriented,
   })
   const [openCreate, setOpenCreate] = useState(false)
@@ -902,6 +913,41 @@ export function GatewaysPage() {
         <StatCard title={moneyHeader(t('gwMyProfit'))} value={money(myProfitTotal)} icon={Wallet} color="from-teal-500 to-emerald-600" />
         <StatCard title={t('gwQueueInspect')} value={inspectCount.toLocaleString(localeTag())} icon={CreditCard} color="from-amber-500 to-amber-600" />
       </div>
+      <form
+        className="card p-4 grid md:grid-cols-5 gap-3 items-end"
+        data-testid="gateway-filters"
+        onSubmit={(e) => {
+          e.preventDefault()
+          setPage(1)
+          setFilters({ ...draft })
+        }}
+      >
+        <label className="field md:col-span-2">{t('search')}
+          <input
+            className="input"
+            value={draft.search}
+            onChange={(e) => setDraft({ ...draft, search: e.target.value })}
+            placeholder={t('gwSearchPlaceholder')}
+            data-testid="gateway-search"
+          />
+        </label>
+        <label className="field">{t('status')}
+          <select className="input" value={draft.status} onChange={(e) => setDraft({ ...draft, status: e.target.value })} data-testid="gateway-status">
+            <option value="">{t('allStatuses')}</option>
+            <option value="successful">{label('successful')}</option>
+            <option value="pending_inspection">{label('pending_inspection')}</option>
+            <option value="pending_shaparak">{label('pending_shaparak')}</option>
+            <option value="rejected">{label('rejected')}</option>
+          </select>
+        </label>
+        <label className="field">{t('dateFrom')}
+          <JalaliDatePicker value={draft.from} onChange={(from) => setDraft({ ...draft, from })} />
+        </label>
+        <label className="field">{t('dateTo')}
+          <JalaliDatePicker value={draft.to} onChange={(to) => setDraft({ ...draft, to })} />
+        </label>
+        <button type="submit" className="btn btn-primary md:col-span-5 lg:col-span-1" data-testid="gateway-filter-apply">{t('applyFilters')}</button>
+      </form>
       <GatewayTable
         rows={rows}
         isLoading={isLoading}

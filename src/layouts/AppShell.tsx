@@ -46,6 +46,7 @@ type NavGroup = { key: string; items: LinkItem[]; standalone?: boolean }
 
 const roleGroups: NavGroup[] = [
   { key: 'navDashboard', standalone: true, items: [{ to: '', labelKey: 'navDashboard', icon: LayoutDashboard, end: true }] },
+  { key: 'navReportsStandalone', standalone: true, items: [{ to: 'reports', labelKey: 'navReports', icon: FileBarChart }] },
   { key: 'navOrg', items: [
     { to: 'team', labelKey: 'navTeam', icon: GitBranch },
     { to: 'org-managers', labelKey: 'navOrgManagers', icon: Users },
@@ -54,6 +55,7 @@ const roleGroups: NavGroup[] = [
     key: 'navSales',
     items: [
       { to: 'gateways', labelKey: 'navGateways', icon: CreditCard },
+      { to: 'transactions', labelKey: 'navTransactions', icon: Repeat },
       { to: 'commissions', labelKey: 'navCommissions', icon: TrendingUp },
       { to: 'monthly-bonus', labelKey: 'navMonthlyBonus', icon: Award },
       { to: 'points', labelKey: 'navPoints', icon: Target },
@@ -98,6 +100,7 @@ const adminGroups: NavGroup[] = [
     key: 'navMain',
     items: [
       { to: '/superuser/reports', labelKey: 'navReports', icon: FileBarChart },
+      { to: '/superuser/transactions', labelKey: 'navTransactions', icon: Repeat },
       // همیشه در دسترس — وابسته به FINOPAL_PRODUCT_ORIENTED نیست
       { to: '/superuser/commissions', labelKey: 'navCommissions', icon: TrendingUp },
     ],
@@ -138,6 +141,7 @@ const titleKeys: Record<string, string> = {
   team: 'navTeam',
   'org-managers': 'navOrgManagers',
   gateways: 'navGateways',
+  transactions: 'navTransactions',
   commissions: 'navCommissions',
   'monthly-bonus': 'navMonthlyBonus',
   points: 'navPoints',
@@ -151,8 +155,10 @@ const titleKeys: Record<string, string> = {
   chat: 'navChat',
   notifications: 'navNotifications',
   transfers: 'navTransfers',
+  reports: 'navReports',
   '/superuser': 'navStats',
   '/superuser/reports': 'navReports',
+  '/superuser/transactions': 'navTransactions',
   '/superuser/users': 'navUsersPage',
   '/superuser/network': 'navNetwork',
   '/superuser/org-managers': 'navOrgManagers',

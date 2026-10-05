@@ -18,25 +18,26 @@ type Shared = {
 
 let shared: Shared | null = null
 
+/** Public WS endpoints. Production must use same-origin /ws (Apache → Node :6001). */
 function endpoints() {
   if (import.meta.env.VITE_WS_URL) return [String(import.meta.env.VITE_WS_URL)]
+
   const host = window.location.hostname
+  const isLocal = host === '127.0.0.1' || host === 'localhost'
   const port = import.meta.env.VITE_WS_PORT || '6001'
-  const secure = window.location.protocol === 'https:'
-  const proto = secure ? 'wss' : 'ws'
-  const sameOrigin = `${proto}://${window.location.host}/ws`
-  // On production HTTPS, prefer same-origin /ws (Apache proxy) before raw :6001.
-  const direct = secure
-    ? [
-        sameOrigin,
-        host === '127.0.0.1' || host === 'localhost' ? `ws://127.0.0.1:${port}` : null,
-      ]
-    : [
-        `ws://127.0.0.1:${port}`,
-        host === '127.0.0.1' ? null : `ws://${host}:${port}`,
-        sameOrigin,
-      ]
-  return [...new Set(direct.filter((url): url is string => Boolean(url)))]
+
+  if (isLocal) {
+    return [`ws://127.0.0.1:${port}`, `ws://${host}/ws`]
+  }
+
+  // Remote hosts: never dial :6001 from the browser (firewall / shared hosting).
+  // Prefer HTTPS so wss:// works with the Apache upgrade proxy.
+  if (window.location.protocol !== 'https:') {
+    const httpsHost = `${window.location.host}`
+    return [`wss://${httpsHost}/ws`, `ws://${httpsHost}/ws`]
+  }
+
+  return [`wss://${window.location.host}/ws`]
 }
 
 function emitAll(event: string, payload: unknown) {
@@ -46,7 +47,9 @@ function emitAll(event: string, payload: unknown) {
 function openSocket() {
   if (!shared) return
   const urls = endpoints()
-  const url = `${urls[shared.retries % urls.length]}?user_id=${shared.userId}`
+  const base = urls[shared.retries % urls.length]
+  const join = base.includes('?') ? '&' : '?'
+  const url = `${base}${join}user_id=${shared.userId}`
   try {
     const socket = new WebSocket(url)
     shared.socket = socket
@@ -57,12 +60,12 @@ function openSocket() {
       shared.queue = []
       emitAll('socket.open', {})
     }
-    socket.onerror = () => emitAll('socket.error', {})
+    socket.onerror = () => emitAll('socket.error', { url })
     socket.onclose = () => {
-      emitAll('socket.close', {})
+      emitAll('socket.close', { url })
       if (!shared || shared.handlers.size === 0) return
       shared.retries += 1
-      window.setTimeout(openSocket, Math.min(5000, 400 * shared.retries))
+      window.setTimeout(openSocket, Math.min(8000, 500 * shared.retries))
     }
     socket.onmessage = (event) => {
       try {
@@ -73,7 +76,10 @@ function openSocket() {
       }
     }
   } catch {
-    emitAll('socket.error', {})
+    emitAll('socket.error', { url })
+    if (!shared || shared.handlers.size === 0) return
+    shared.retries += 1
+    window.setTimeout(openSocket, Math.min(8000, 500 * shared.retries))
   }
 }
 

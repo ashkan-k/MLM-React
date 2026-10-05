@@ -10,6 +10,7 @@ import { AdminReports } from './pages/AdminReports'
 import { ChatPage } from './pages/ChatPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { CommissionsPage, FinancePage, GatewaysPage, NotificationsPage, OrgManagersPage, PromotionsPage, ReferralsPage, TeamPage, TrainingPage, TransfersPage, WalletPage, WithdrawalsPage } from './pages/DataPages'
+import { TransactionsPage } from './pages/TransactionsPage'
 import { MonthlyBonusPage } from './pages/MonthlyBonusPage'
 import { PointsMonitorPage } from './pages/PointsMonitorPage'
 import { LoginPage } from './pages/LoginPage'
@@ -49,11 +50,13 @@ const roleChildren = (
     <Route path="team" element={<PageGate page="team"><TeamPage /></PageGate>} />
     <Route path="org-managers" element={<PageGate page="team"><OrgManagersPage /></PageGate>} />
     <Route path="gateways" element={<PageGate page="gateways"><GatewaysPage /></PageGate>} />
+    <Route path="transactions" element={<PageGate page="transactions"><TransactionsPage /></PageGate>} />
     <Route path="commissions" element={<PageGate page="commissions"><CommissionsPage /></PageGate>} />
     <Route path="monthly-bonus" element={<PageGate page="monthly-bonus"><MonthlyBonusPage /></PageGate>} />
     <Route path="points" element={<PageGate page="points"><PointsMonitorPage /></PageGate>} />
     <Route path="wallet" element={<PageGate page="wallet"><WalletPage /></PageGate>} />
     <Route path="finance" element={<PageGate page="finance"><FinancePage /></PageGate>} />
+    <Route path="reports" element={<PageGate page="reports"><AdminReports scope="senior" /></PageGate>} />
     <Route path="withdrawals" element={<PageGate page="withdrawals"><WithdrawalsPage /></PageGate>} />
     <Route path="referrals" element={<PageGate page="referrals"><ReferralsPage /></PageGate>} />
     <Route path="promotions" element={<PageGate page="promotions"><PromotionsPage /></PageGate>} />
@@ -89,6 +92,7 @@ export default function App() {
           <Route path="org-managers" element={<AdminOrgManagers />} />
           <Route path="permissions" element={<AdminPermissions />} />
           <Route path="gateways" element={<GatewaysPage />} />
+          <Route path="transactions" element={<TransactionsPage />} />
           <Route path="commissions" element={<CommissionsPage />} />
           <Route path="points" element={<PointsMonitorPage />} />
           <Route path="rules" element={<AdminRules />} />

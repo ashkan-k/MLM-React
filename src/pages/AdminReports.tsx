@@ -21,10 +21,26 @@ function subtreeByUser(nodes: OrgNode[], userId: number): OrgNode[] {
   return []
 }
 
-export function AdminReports() {
+type ReportsScope = 'superuser' | 'senior'
+
+export function AdminReports({ scope = 'superuser' }: { scope?: ReportsScope }) {
   const { t } = useApp()
-  const { data: roles } = useQuery({ queryKey: ['roles'], queryFn: async () => (await api.get('/superuser/roles')).data })
-  const { data: users } = useQuery({ queryKey: ['admin-users-all'], queryFn: async () => (await api.get('/superuser/users', { params: { per_page: 200 } })).data })
+  const isSenior = scope === 'senior'
+
+  const { data: roles } = useQuery({
+    queryKey: ['roles', scope],
+    queryFn: async () => (await api.get(isSenior ? '/manage/roles' : '/superuser/roles')).data,
+  })
+  const { data: users } = useQuery({
+    queryKey: ['report-users', scope],
+    queryFn: async () => {
+      if (isSenior) {
+        const { data } = await api.get('/users/directory')
+        return { data: Array.isArray(data) ? data : [] }
+      }
+      return (await api.get('/superuser/users', { params: { per_page: 200 } })).data
+    },
+  })
   const [filters, setFilters] = useState({
     from: new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10),
     to: new Date().toISOString().slice(0, 10),
@@ -40,11 +56,11 @@ export function AdminReports() {
     include_descendants: filters.include_descendants,
   }), [filters])
   const { data, isFetching } = useQuery({
-    queryKey: ['admin-reports', params],
-    queryFn: async () => (await api.get('/superuser/reports', { params })).data,
+    queryKey: ['admin-reports', scope, params],
+    queryFn: async () => (await api.get(isSenior ? '/reports' : '/superuser/reports', { params })).data,
   })
   const { data: tree } = useQuery({
-    queryKey: ['tree', 'shallow', 'reports'],
+    queryKey: ['tree', 'shallow', 'reports', scope],
     queryFn: async () => (await api.get('/organization/tree', { params: { max_depth: 1 } })).data,
   })
   const treeNodes = useMemo(() => {
@@ -58,14 +74,16 @@ export function AdminReports() {
     return Array.isArray(data) ? data as OrgNode[] : []
   }
 
+  const userOptions = (users?.data ?? users ?? []) as Array<{ id: number; name: string; mobile?: string }>
+
   return (
-    <div className="space-y-4" data-testid="admin-reports">
+    <div className="space-y-4" data-testid={isSenior ? 'senior-reports' : 'admin-reports'}>
       <PageHeader
-        title={t('reportsTitle')}
-        subtitle={t('reportsSub')}
+        title={isSenior ? t('seniorReportsTitle') : t('reportsTitle')}
+        subtitle={isSenior ? t('seniorReportsSub') : t('reportsSub')}
         action={
           <ExportBar
-            filename="گزارشات-سامانه"
+            filename={isSenior ? 'گزارشات-مدیر-ارشد' : 'گزارشات-سامانه'}
             sheets={[
               { title: 'عملیات', rows: (data?.operations ?? []).map((r: NamedValue & { amount?: number }) => ({ عملیات: r.label, تعداد: r.count ?? 0, 'مبلغ (تومان)': r.amount ?? r.value ?? 0 })) },
               { title: 'کاربران', rows: (data?.organization ?? []).map((r: OrgRow) => ({ شناسه: r.id, نام: r.name, موبایل: r.mobile, نقش‌ها: r.roles.join('، '), زیرمجموعه: r.descendant_count })) },
@@ -97,8 +115,8 @@ export function AdminReports() {
             testId="report-user"
             value={filters.user_id}
             onChange={(user_id) => setFilters({ ...filters, user_id })}
-            placeholder={t('allUsers')}
-            options={(users?.data ?? []).map((u: { id: number; name: string; mobile?: string }) => ({ value: u.id, label: `${u.name}${u.mobile ? ` · ${u.mobile}` : ''}` }))}
+            placeholder={isSenior ? t('myNetwork') : t('allUsers')}
+            options={userOptions.map((u) => ({ value: u.id, label: `${u.name}${u.mobile ? ` · ${u.mobile}` : ''}` }))}
           />
         </label>
         <label className="flex items-center gap-2 text-sm pb-2">
@@ -112,34 +130,37 @@ export function AdminReports() {
           <StatCard key={s.key} title={s.label} value={s.money ? money(s.value) : Number(s.value).toLocaleString(localeTag())} />
         ))}
       </div>
-      {isFetching && <div className="text-sm text-surface-400">در حال به‌روزرسانی گزارش...</div>}
+      {isFetching && <div className="text-sm text-surface-400">{t('reportsUpdating')}</div>}
 
       <div className="grid lg:grid-cols-2 gap-3">
         <div className="card p-5">
-          <div className="font-bold mb-3">روند فروش (خطی)</div>
-          <LineChart data={data?.sales_over_time ?? []} testId="sales-line-chart" />
+          <div className="font-bold mb-3">{t('chartSalesTrend')}</div>
+          <LineChart data={data?.sales_over_time ?? []} testId="sales-line-chart" valueLabel={t('chartAmount')} />
         </div>
         <div className="card p-5">
-          <div className="font-bold mb-3">پورسانت به تفکیک نقش (میله‌ای)</div>
-          <BarChart data={data?.commissions_by_role ?? []} testId="role-bar-chart" />
+          <div className="font-bold mb-3">{t('chartCommissionsByRole')}</div>
+          <BarChart data={data?.commissions_by_role ?? []} testId="role-bar-chart" valueLabel={t('chartAmount')} />
         </div>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-3">
         <div className="card p-5">
-          <div className="font-bold mb-3">عملیات دوره</div>
-          <BarChart data={(data?.operations ?? []).map((o: { label: string; count: number }) => ({ label: o.label, value: o.count }))} />
+          <div className="font-bold mb-3">{t('chartOperations')}</div>
+          <BarChart
+            data={(data?.operations ?? []).map((o: { label: string; count: number }) => ({ label: o.label, value: o.count }))}
+            valueLabel={t('chartCount')}
+          />
         </div>
         <div className="card p-5">
-          <div className="font-bold mb-3">کاربران هر نقش</div>
-          <BarChart data={data?.users_by_role ?? []} />
+          <div className="font-bold mb-3">{t('chartUsersByRole')}</div>
+          <BarChart data={data?.users_by_role ?? []} valueLabel={t('chartCount')} />
         </div>
       </div>
 
       <div className="card overflow-auto">
-        <div className="px-4 pt-4 font-bold">پورسانت کاربران</div>
+        <div className="px-4 pt-4 font-bold">{t('tableUserCommissions')}</div>
         <table className="table">
-          <thead><tr><th>کاربر</th><th>موبایل</th><th>تعداد</th><th>مبلغ (تومان)</th></tr></thead>
+          <thead><tr><th>{t('user')}</th><th>{t('mobile')}</th><th>{t('count')}</th><th>{t('amountToman')}</th></tr></thead>
           <tbody>
             {(data?.commissions_by_user ?? []).map((row: NamedValue) => (
               <tr key={row.id ?? row.label}>
@@ -151,13 +172,13 @@ export function AdminReports() {
             ))}
           </tbody>
         </table>
-        {(data?.commissions_by_user ?? []).length === 0 && <Empty text="پورسانتی در این بازه نیست." />}
+        {(data?.commissions_by_user ?? []).length === 0 && <Empty text={t('noCommissionsInRange')} />}
       </div>
 
       <div className="card overflow-auto">
-        <div className="px-4 pt-4 font-bold">آخرین پورسانت‌ها</div>
+        <div className="px-4 pt-4 font-bold">{t('tableRecentCommissions')}</div>
         <table className="table">
-          <thead><tr><th>کاربر</th><th>نقش</th><th>درصد</th><th>مبلغ (تومان)</th><th>تاریخ</th></tr></thead>
+          <thead><tr><th>{t('user')}</th><th>{t('role')}</th><th>{t('percent')}</th><th>{t('amountToman')}</th><th>{t('date')}</th></tr></thead>
           <tbody>
             {(data?.recent_commissions ?? []).map((row: { id: number; user: string; role: string; percent: number; amount: number; created_at: string }) => (
               <tr key={row.id}>
@@ -183,9 +204,9 @@ export function AdminReports() {
       </div>
 
       <div className="card overflow-auto">
-        <div className="px-4 pt-4 font-bold">برداشت‌ها به تفکیک وضعیت</div>
+        <div className="px-4 pt-4 font-bold">{t('tableWithdrawalsByStatus')}</div>
         <table className="table">
-          <thead><tr><th>وضعیت</th><th>تعداد</th><th>مبلغ (تومان)</th></tr></thead>
+          <thead><tr><th>{t('status')}</th><th>{t('count')}</th><th>{t('amountToman')}</th></tr></thead>
           <tbody>
             {(data?.withdrawals_by_status ?? []).map((row: { label: string; count: number; value: number }) => (
               <tr key={row.label}>
