@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
+import { AuthorityActions, AuthorityCell } from '../components/AuthorityCell'
 import { JalaliDatePicker } from '../components/JalaliDatePicker'
 import { TablePager } from '../components/table'
 import { Badge, DateTimeText, Empty, PageHeader, ProductBadge } from '../components/ui'
@@ -127,6 +128,7 @@ export function TransactionsPage() {
                 <th>{t('txAuthority')}</th>
                 <th>{t('txRef')}</th>
                 <th>{t('date')}</th>
+                <th className="text-center whitespace-nowrap">{t('actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -152,9 +154,10 @@ export function TransactionsPage() {
                   <td>{money(row.amount)}</td>
                   <td className="font-semibold text-emerald-700 dark:text-emerald-400">{money(row.profit)}</td>
                   <td><Badge tone={row.status === 'failed' ? 'danger' : row.status === 'verified' || row.status === 'paid' ? 'ok' : 'warn'}>{label(row.status)}</Badge></td>
-                  <td className="text-xs font-mono dir-ltr text-left">{row.authority || '—'}</td>
+                  <td><AuthorityCell authority={row.authority} /></td>
                   <td className="text-xs font-mono dir-ltr text-left">{row.ref_id || row.order_id || '—'}</td>
                   <td><DateTimeText value={row.paid_at ?? row.processed_at ?? row.created_at} /></td>
+                  <td className="text-center"><AuthorityActions authority={row.authority} /></td>
                 </tr>
               ))}
             </tbody>

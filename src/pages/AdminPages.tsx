@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { isAxiosError } from 'axios'
 import { BookOpen, CalendarDays, Download, Filter, IdCard, Mail, Phone, Repeat, Search, Shield, TrendingUp, UserPlus, Users, Wallet } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ExportBar } from '../components/ExportBar'
@@ -26,17 +27,26 @@ type UserRow = {
   created_at?: string
   roles?: Array<{ name: string; slug: string }>
 }
-type CourseLevel = {
+type CourseChapter = {
   id?: number
+  /** Client-only stable key for pending file map (survives re-order / delete). */
+  client_key: string
   title: string
   sort_order: number
-  passing_score: number
   content_type?: string
   content_body?: string
   content_url?: string
   attachment_name?: string
   attachment_url?: string
+  pending_file_name?: string | null
   file?: File | null
+}
+type CourseLevel = {
+  id?: number
+  title: string
+  sort_order: number
+  passing_score: number
+  chapters?: CourseChapter[]
 }
 type CourseRow = { id: number; title: string; description?: string; is_required_for_promotion: boolean; is_active?: boolean; levels?: CourseLevel[]; roles?: Array<{ id: number; name: string }> }
 type SettingField = { key: string; label: string; hint?: string; type: string }
@@ -45,7 +55,18 @@ type SettingSchema = Record<string, { label: string; hint?: string; fields?: Set
 type PermRow = { id: number; slug: string; name: string }
 
 const emptyUser = { name: '', mobile: '', email: '', password: 'Password123!', password_confirmation: 'Password123!', is_active: true, role_slugs: ['representative'] }
-const emptyLevel = (): CourseLevel => ({ title: 'سطح ۱', sort_order: 1, passing_score: 70, content_type: 'text', content_body: '', content_url: '', file: null })
+const newClientKey = () => `ch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+const emptyChapter = (n = 1): CourseChapter => ({
+  client_key: newClientKey(),
+  title: `فصل ${n}`,
+  sort_order: n,
+  content_type: 'text',
+  content_body: '',
+  content_url: '',
+  pending_file_name: null,
+  file: null,
+})
+const emptyLevel = (): CourseLevel => ({ title: 'سطح ۱', sort_order: 1, passing_score: 70, chapters: [emptyChapter(1)] })
 const emptyCourse = { title: '', description: '', is_required_for_promotion: true, role_ids: [] as number[], levels: [emptyLevel()] }
 const CONTENT_TYPES = [
   { value: 'text', label: 'متن' },
@@ -627,77 +648,158 @@ export function AdminRules() {
   )
 }
 
+const MAX_CHAPTER_FILE_MB = 100
+
 export function AdminCourses() {
   const { t } = useApp()
   const qc = useQueryClient()
   const { data: roles } = useQuery({ queryKey: ['manage-roles'], queryFn: async () => (await api.get('/manage/roles')).data })
   const { data } = useQuery({ queryKey: ['admin-courses'], queryFn: async () => (await api.get('/manage/courses')).data })
   const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [editing, setEditing] = useState<CourseRow | null>(null)
   const [form, setForm] = useState(emptyCourse)
+  /** Keep File objects outside React state so re-renders / query refetch cannot drop them. */
+  const chapterFilesRef = useRef<Record<string, File>>({})
 
   const setLevel = (index: number, patch: Partial<CourseLevel>) => {
     setForm((prev) => ({ ...prev, levels: prev.levels.map((level, i) => i === index ? { ...level, ...patch } : level) }))
   }
 
+  const setChapter = (levelIndex: number, chapterIndex: number, patch: Partial<CourseChapter>) => {
+    setForm((prev) => ({
+      ...prev,
+      levels: prev.levels.map((level, i) => {
+        if (i !== levelIndex) return level
+        const chapters = (level.chapters ?? []).map((ch, j) => (j === chapterIndex ? { ...ch, ...patch } : ch))
+        return { ...level, chapters }
+      }),
+    }))
+  }
+
   const openCreate = () => {
     setEditing(null)
+    chapterFilesRef.current = {}
     setForm({ ...emptyCourse, levels: [emptyLevel()] })
     setOpen(true)
   }
   const openEdit = (course: CourseRow) => {
     setEditing(course)
+    chapterFilesRef.current = {}
     setForm({
       title: course.title,
       description: course.description ?? '',
       is_required_for_promotion: course.is_required_for_promotion,
       role_ids: course.roles?.map((r) => r.id) ?? [],
-      levels: (course.levels ?? []).map((l, i) => ({
-        id: l.id,
-        title: l.title,
-        sort_order: l.sort_order ?? i + 1,
-        passing_score: Number(l.passing_score),
-        content_type: l.content_type ?? 'text',
-        content_body: l.content_body ?? '',
-        content_url: l.content_url ?? '',
-        attachment_name: l.attachment_name,
-        attachment_url: l.attachment_url,
-        file: null,
-      })),
+      levels: (course.levels ?? []).map((l, i) => {
+        const chapters = (l.chapters ?? []).length
+          ? (l.chapters ?? []).map((ch, ci) => ({
+            id: ch.id,
+            client_key: newClientKey(),
+            title: ch.title,
+            sort_order: ch.sort_order ?? ci + 1,
+            content_type: ch.content_type ?? 'text',
+            content_body: ch.content_body ?? '',
+            content_url: ch.content_url ?? '',
+            attachment_name: ch.attachment_name,
+            attachment_url: ch.attachment_url,
+            pending_file_name: null,
+            file: null,
+          }))
+          : [emptyChapter(1)]
+        return {
+          id: l.id,
+          title: l.title,
+          sort_order: l.sort_order ?? i + 1,
+          passing_score: Number(l.passing_score),
+          chapters,
+        }
+      }),
     })
     setOpen(true)
   }
 
   const save = async () => {
-    const payload = {
-      title: form.title,
-      description: form.description,
-      is_required_for_promotion: form.is_required_for_promotion,
-      role_ids: form.role_ids,
-      levels: form.levels.map((l, i) => ({
-        id: l.id,
-        title: l.title,
-        sort_order: i + 1,
-        passing_score: l.passing_score,
-        content_type: l.content_type ?? 'text',
-        content_body: l.content_body ?? '',
-        content_url: l.content_url ?? '',
-      })),
+    if (saving) return
+    setSaving(true)
+    try {
+      const payload = {
+        title: form.title,
+        description: form.description,
+        is_required_for_promotion: form.is_required_for_promotion,
+        role_ids: form.role_ids,
+        levels: form.levels.map((l, i) => ({
+          id: l.id,
+          title: l.title,
+          sort_order: i + 1,
+          passing_score: l.passing_score,
+          chapters: (l.chapters ?? []).map((ch, ci) => ({
+            id: ch.id,
+            title: ch.title || `فصل ${ci + 1}`,
+            sort_order: ci + 1,
+            content_type: ch.content_type ?? 'text',
+            content_body: ch.content_body ?? '',
+            content_url: ch.content_url ?? '',
+          })),
+        })),
+      }
+      const saved = editing
+        ? (await api.put(`/manage/courses/${editing.id}`, payload, { timeout: 120000 })).data
+        : (await api.post('/manage/courses', payload, { timeout: 120000 })).data
+
+      const uploads: Promise<unknown>[] = []
+      for (const [levelIndex, level] of form.levels.entries()) {
+        const savedLevel = saved?.levels?.[levelIndex]
+          ?? saved?.levels?.find((sl: { id?: number }) => sl.id && level.id && sl.id === level.id)
+        if (!savedLevel) continue
+        for (const [chapterIndex, chapter] of (level.chapters ?? []).entries()) {
+          const file = chapterFilesRef.current[chapter.client_key] ?? chapter.file
+          if (!file) continue
+          const savedChapter = (chapter.id
+            ? savedLevel.chapters?.find((c: { id?: number }) => c.id === chapter.id)
+            : null) ?? savedLevel.chapters?.[chapterIndex]
+          const chapterId = savedChapter?.id
+          if (!chapterId) {
+            toast.error(`فصل «${chapter.title}» ذخیره شد ولی شناسه فایل پیدا نشد.`)
+            continue
+          }
+          const fd = new FormData()
+          // Explicit filename keeps the .mp4 extension for server-side `extensions` validation.
+          fd.append('file', file, file.name || 'upload.bin')
+          uploads.push(
+            api.post(`/manage/course-chapters/${chapterId}/file`, fd, {
+              timeout: 300000,
+              maxBodyLength: Infinity,
+              maxContentLength: Infinity,
+            }),
+          )
+        }
+      }
+      if (uploads.length) {
+        toast.message(`در حال آپلود ${uploads.length.toLocaleString('fa-IR')} فایل…`)
+        await Promise.all(uploads)
+      }
+
+      chapterFilesRef.current = {}
+      toast.success(editing ? 'دوره ویرایش شد' : 'دوره ساخته شد')
+      setOpen(false)
+      qc.invalidateQueries({ queryKey: ['admin-courses'] })
+    } catch (err) {
+      if (isAxiosError(err)) {
+        if (err.code === 'ERR_CANCELED' || err.message === 'Request aborted') {
+          toast.error('درخواست قطع شد. فایل را دوباره انتخاب کنید و ذخیره را بزنید. اگر ویدیو بزرگ است، حجم را زیر ۱۰۰ مگابایت نگه دارید.')
+        } else {
+          const msg = (err.response?.data as { message?: string; errors?: Record<string, string[]> })?.message
+            ?? Object.values((err.response?.data as { errors?: Record<string, string[]> })?.errors ?? {}).flat()[0]
+            ?? err.message
+          toast.error(msg || 'ذخیره دوره ناموفق بود')
+        }
+      } else {
+        toast.error('ذخیره دوره ناموفق بود')
+      }
+    } finally {
+      setSaving(false)
     }
-    const saved = editing
-      ? (await api.put(`/manage/courses/${editing.id}`, payload)).data
-      : (await api.post('/manage/courses', payload)).data
-    for (const [index, level] of form.levels.entries()) {
-      if (!level.file) continue
-      const id = saved?.levels?.[index]?.id
-      if (!id) continue
-      const fd = new FormData()
-      fd.append('file', level.file)
-      await api.post(`/manage/course-levels/${id}/file`, fd)
-    }
-    toast.success(editing ? 'دوره ویرایش شد' : 'دوره ساخته شد')
-    setOpen(false)
-    qc.invalidateQueries({ queryKey: ['admin-courses'] })
   }
 
   const remove = async (course: CourseRow) => {
@@ -746,7 +848,7 @@ export function AdminCourses() {
                   <div className="text-sm text-surface-500">{c.description || 'بدون شرح'}</div>
                 </td>
                 <td><div className="flex gap-2 flex-wrap">{c.roles?.map((r) => <Badge key={r.name}>{r.name}</Badge>)}</div></td>
-                <td className="text-sm">{c.levels?.map((l) => `${l.title} (${CONTENT_TYPES.find((x) => x.value === (l.content_type ?? 'text'))?.label ?? 'متن'} · قبولی ${l.passing_score})`).join('، ') || '—'}</td>
+                <td className="text-sm">{c.levels?.map((l) => `${l.title} (${(l.chapters?.length ?? 0).toLocaleString('fa-IR')} فصل · قبولی ${l.passing_score})`).join('، ') || '—'}</td>
                 <td>
                   <RowActions>
                     <EditAction onClick={() => openEdit(c)} />
@@ -759,8 +861,8 @@ export function AdminCourses() {
         </table>
         {courses.length === 0 && <Empty text="دوره‌ای ثبت نشده است." />}
       </div>
-      <Modal wide open={open} title={editing ? 'ویرایش دوره' : 'ایجاد دوره'} subtitle="برای هر سطح نوع محتوا، متن، لینک ویدیو یا فایل مشخص کنید." onClose={() => setOpen(false)}>
-        <form className="grid gap-3" data-testid="course-form" onSubmit={async (e) => { e.preventDefault(); await save() }}>
+      <Modal wide open={open} title={editing ? 'ویرایش دوره' : 'ایجاد دوره'} subtitle="دوره → سطح → فصل. برای هر سطح چند فصل با متن، لینک یا فایل تعریف کنید." onClose={() => { if (!saving) setOpen(false) }} preventClose={saving}>
+        <form className="grid gap-3" data-testid="course-form" onSubmit={async (e) => { e.preventDefault(); e.stopPropagation(); await save() }}>
           <label className="field">عنوان دوره
             <input className="input" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
           </label>
@@ -784,48 +886,104 @@ export function AdminCourses() {
           </div>
           <div className="grid gap-3">
             <div className="font-bold">سطح‌های دوره</div>
+            <FieldHint>کاربر تا تکمیل هر سطح/فصل نمی‌تواند به مورد بعدی برود.</FieldHint>
             {form.levels.map((level, i) => (
-              <div key={i} className="card p-3 grid gap-3">
-                <div className="grid md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
+              <div key={i} className="card p-3 grid gap-3" data-testid={`course-level-${i}`}>
+                <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
                   <label className="field">عنوان سطح
                     <input className="input" value={level.title} onChange={(e) => setLevel(i, { title: e.target.value })} />
-                  </label>
-                  <label className="field">نوع محتوا
-                    <select className="input" value={level.content_type ?? 'text'} onChange={(e) => setLevel(i, { content_type: e.target.value })}>
-                      {CONTENT_TYPES.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
-                    </select>
                   </label>
                   <label className="field">نمره قبولی (از ۱۰۰)
                     <input className="input" type="number" min={0} max={100} value={level.passing_score} onChange={(e) => setLevel(i, { passing_score: Number(e.target.value) })} />
                   </label>
                   <button type="button" className="btn btn-ghost whitespace-nowrap" onClick={() => setForm({ ...form, levels: form.levels.filter((_, idx) => idx !== i) })}>حذف سطح</button>
                 </div>
-                <label className="field">متن آموزشی
-                  <textarea className="input min-h-24" value={level.content_body ?? ''} onChange={(e) => setLevel(i, { content_body: e.target.value })} />
-                </label>
-                <label className="field">لینک ویدیو یا فایل آنلاین
-                  <input className="input" dir="ltr" placeholder="https://..." value={level.content_url ?? ''} onChange={(e) => setLevel(i, { content_url: e.target.value })} />
-                </label>
-                <div className="grid gap-2">
-                  <label className="field">آپلود فایل جدید (PDF، ویدیو، تصویر، ...)
-                    <input className="input" type="file" onChange={(e) => setLevel(i, { file: e.target.files?.[0] ?? null })} />
-                  </label>
-                  {level.attachment_url && (
-                    <a
-                      className="text-sm text-primary-600 font-semibold w-fit"
-                      href={level.attachment_url}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      فایل فعلی: {level.attachment_name || 'دانلود / باز کردن'}
-                    </a>
-                  )}
+                <div className="grid gap-3 border-t border-surface-200 dark:border-surface-700 pt-3">
+                  <div className="font-semibold text-sm">فصل‌های این سطح</div>
+                  {(level.chapters ?? []).map((chapter, ci) => (
+                    <div key={chapter.client_key} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 grid gap-3 bg-surface-50/50 dark:bg-surface-800/40" data-testid={`course-chapter-${i}-${ci}`}>
+                      <div className="grid md:grid-cols-[1fr_1fr_auto] gap-3 items-end">
+                        <label className="field">عنوان فصل
+                          <input className="input" value={chapter.title} onChange={(e) => setChapter(i, ci, { title: e.target.value })} />
+                        </label>
+                        <label className="field">نوع محتوا
+                          <select className="input" value={chapter.content_type ?? 'text'} onChange={(e) => setChapter(i, ci, { content_type: e.target.value })}>
+                            {CONTENT_TYPES.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+                          </select>
+                        </label>
+                        <button
+                          type="button"
+                          className="btn btn-ghost whitespace-nowrap"
+                          disabled={(level.chapters ?? []).length <= 1}
+                          onClick={() => {
+                            delete chapterFilesRef.current[chapter.client_key]
+                            setLevel(i, { chapters: (level.chapters ?? []).filter((_, idx) => idx !== ci) })
+                          }}
+                        >
+                          حذف فصل
+                        </button>
+                      </div>
+                      <label className="field">متن آموزشی
+                        <textarea className="input min-h-24" value={chapter.content_body ?? ''} onChange={(e) => setChapter(i, ci, { content_body: e.target.value })} />
+                      </label>
+                      <label className="field">لینک ویدیو یا فایل آنلاین
+                        <input className="input" dir="ltr" placeholder="https://..." value={chapter.content_url ?? ''} onChange={(e) => setChapter(i, ci, { content_url: e.target.value })} />
+                      </label>
+                      <div className="grid gap-2">
+                        <label className="field">آپلود فایل جدید (PDF، ویدیو، تصویر، … — حداکثر {MAX_CHAPTER_FILE_MB} مگابایت)
+                          <input
+                            className="input"
+                            type="file"
+                            accept="video/*,audio/*,image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip,.mp4,.webm,.mp3"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0] ?? null
+                              if (file && file.size > MAX_CHAPTER_FILE_MB * 1024 * 1024) {
+                                toast.error(`حجم فایل باید حداکثر ${MAX_CHAPTER_FILE_MB} مگابایت باشد.`)
+                                e.target.value = ''
+                                delete chapterFilesRef.current[chapter.client_key]
+                                setChapter(i, ci, { pending_file_name: null })
+                                return
+                              }
+                              if (file) chapterFilesRef.current[chapter.client_key] = file
+                              else delete chapterFilesRef.current[chapter.client_key]
+                              setChapter(i, ci, {
+                                pending_file_name: file?.name ?? null,
+                                content_type: file?.type?.startsWith('video/') ? 'video' : (chapter.content_type ?? 'text'),
+                              })
+                            }}
+                          />
+                        </label>
+                        {chapter.pending_file_name ? (
+                          <div className="text-sm text-emerald-700 dark:text-emerald-400">
+                            فایل انتخاب‌شده: <span className="font-semibold">{chapter.pending_file_name}</span>
+                          </div>
+                        ) : chapter.attachment_url ? (
+                          <a className="text-sm text-primary-600 font-semibold w-fit" href={chapter.attachment_url} target="_blank" rel="noreferrer">
+                            فایل فعلی: {chapter.attachment_name || 'دانلود / باز کردن'}
+                          </a>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    className="btn btn-ghost w-fit"
+                    data-testid={`add-chapter-${i}`}
+                    onClick={() => {
+                      const n = (level.chapters ?? []).length + 1
+                      setLevel(i, { chapters: [...(level.chapters ?? []), emptyChapter(n)] })
+                    }}
+                  >
+                    افزودن فصل جدید
+                  </button>
                 </div>
               </div>
             ))}
             <button type="button" className="btn btn-ghost w-fit" onClick={() => setForm({ ...form, levels: [...form.levels, { ...emptyLevel(), title: `سطح ${form.levels.length + 1}`, sort_order: form.levels.length + 1 }] })}>افزودن سطح جدید</button>
           </div>
-          <button className="btn btn-primary" type="submit">{editing ? 'ذخیره تغییرات' : 'ثبت دوره'}</button>
+          <button className="btn btn-primary" type="submit" disabled={saving}>
+            {saving ? 'در حال ذخیره…' : (editing ? 'ذخیره تغییرات' : 'ثبت دوره')}
+          </button>
         </form>
       </Modal>
     </div>

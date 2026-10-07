@@ -129,6 +129,7 @@ export function Modal({
   onClose,
   children,
   wide,
+  preventClose,
 }: {
   open: boolean
   title: string
@@ -136,17 +137,29 @@ export function Modal({
   onClose: () => void
   children: ReactNode
   wide?: boolean
+  /** When true, backdrop / X cannot dismiss (e.g. while saving / uploading). */
+  preventClose?: boolean
 }) {
   if (!open) return null
+  const requestClose = () => {
+    if (preventClose) return
+    onClose()
+  }
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" role="dialog" aria-modal="true" onClick={onClose}>
-      <div className={`bg-white dark:bg-surface-800 rounded-2xl w-full ${wide ? 'max-w-4xl' : 'max-w-lg'} shadow-xl animate-fadeIn max-h-[92svh] overflow-auto`} onClick={(e) => e.stopPropagation()}>
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4"
+      role="dialog"
+      aria-modal="true"
+      // mouseDown (not click): avoids closing when OS file-picker returns a ghost click on the backdrop
+      onMouseDown={(e) => { if (e.target === e.currentTarget) requestClose() }}
+    >
+      <div className={`bg-white dark:bg-surface-800 rounded-2xl w-full ${wide ? 'max-w-4xl' : 'max-w-lg'} shadow-xl animate-fadeIn max-h-[92svh] overflow-auto`} onMouseDown={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between p-5 border-b border-surface-200 dark:border-surface-700">
           <div>
             <h3 className="font-semibold text-surface-800 dark:text-surface-200 m-0">{title}</h3>
             {subtitle && <p className="text-sm text-surface-500 mt-1 mb-0">{subtitle}</p>}
           </div>
-          <button type="button" className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400" onClick={onClose} aria-label="بستن">
+          <button type="button" className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 disabled:opacity-40" onClick={requestClose} disabled={preventClose} aria-label="بستن">
             <X className="w-4 h-4" />
           </button>
         </div>

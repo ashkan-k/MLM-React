@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Award, Copy, CreditCard, ExternalLink, Network, Repeat, TrendingUp, Users, Wallet, X } from 'lucide-react'
+import { Award, Copy, CreditCard, Download, ExternalLink, Lock, Network, Repeat, TrendingUp, Users, Wallet, X, ZoomIn } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { dashboardPath } from '../lib/roles'
 import { toast } from 'sonner'
+import { AuthorityActions, AuthorityCell } from '../components/AuthorityCell'
 import { JalaliDatePicker } from '../components/JalaliDatePicker'
 import { MoneyInput } from '../components/MoneyInput'
 import { OrgTree, type OrgNode } from '../components/OrgTree'
@@ -1034,6 +1035,7 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
             <th>{moneyHeader(t('baseAmount'))}</th>
             <th>{t('status')}</th>
             <th>{t('date')}</th>
+            <th className="text-center whitespace-nowrap">{t('actions')}</th>
           </tr>
         </thead>
         <tbody>
@@ -1095,22 +1097,8 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
                     ? <Badge tone="info">{row.role.name}</Badge>
                     : '—'}
                 </td>
-                <td className="text-xs font-mono dir-ltr text-left">
-                  {txHref ? (
-                    <a
-                      href={txHref}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 text-primary-600 dark:text-primary-400 hover:underline"
-                      title={t('commOpenTransaction')}
-                    >
-                      <span>{authority}</span>
-                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                    </a>
-                  ) : (
-                    <span className="text-surface-400">—</span>
-                  )}
-                  {txRef && <div className="text-surface-400 mt-0.5">{txRef}</div>}
+                <td>
+                  <AuthorityCell authority={authority} secondary={txRef} />
                 </td>
                 <td>
                   {isBonus ? (
@@ -1129,6 +1117,9 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
                 <td>{money(row.base_amount)}</td>
                 <td><Badge tone="ok">{label(row.status)}</Badge></td>
                 <td><DateTimeText value={row.created_at} /></td>
+                <td className="text-center">
+                  <AuthorityActions authority={authority} txHref={txHref} />
+                </td>
               </tr>
             )
           })}
@@ -1968,6 +1959,132 @@ export function PromotionsPage() {
   )
 }
 
+type TrainingChapter = {
+  id: number | null
+  title: string
+  content_type?: string
+  content_body?: string
+  content_url?: string
+  attachment_name?: string
+  attachment_url?: string
+  locked?: boolean
+  progress?: { status: string; completed_at?: string } | null
+}
+type TrainingLevel = {
+  id: number
+  title: string
+  locked?: boolean
+  chapters?: TrainingChapter[]
+  progress?: { status: string; completed_at?: string } | null
+}
+type TrainingCourse = {
+  id: number
+  title: string
+  description?: string
+  is_required_for_promotion: boolean
+  locked?: boolean
+  roles?: Array<{ name: string }>
+  levels: TrainingLevel[]
+}
+
+function mediaKind(url?: string | null, contentType?: string | null): 'video' | 'image' | 'file' | null {
+  if (!url) return null
+  const u = url.toLowerCase()
+  const ct = (contentType ?? '').toLowerCase()
+  // Prefer real URL extension over stored content_type (can be stale).
+  if (/\.(mp4|webm|mov|m4v)(\?|$)/i.test(u) || u.includes('youtube') || u.includes('aparat')) return 'video'
+  if (/\.(png|jpe?g|gif|webp|bmp|svg)(\?|$)/i.test(u)) return 'image'
+  if (ct === 'video') return 'video'
+  if (ct === 'image') return 'image'
+  return 'file'
+}
+
+function TrainingMedia({ item }: { item: Pick<TrainingChapter, 'title' | 'content_type' | 'content_body' | 'content_url' | 'attachment_name' | 'attachment_url'> }) {
+  const { t } = useApp()
+  const [preview, setPreview] = useState<string | null>(null)
+  const linkKind = mediaKind(item.content_url, item.content_type)
+  const fileKind = mediaKind(item.attachment_url, item.content_type)
+  const embedUrl = item.content_url && (item.content_url.includes('youtube') || item.content_url.includes('aparat') || item.content_type === 'video')
+
+  return (
+    <>
+      {item.content_body && <p className="text-sm text-surface-600 dark:text-surface-300 whitespace-pre-wrap m-0 leading-7">{item.content_body}</p>}
+
+      {item.content_url && embedUrl && linkKind === 'video' ? (
+        <div className="w-full aspect-video rounded-xl overflow-hidden bg-black">
+          <iframe title={item.title} src={item.content_url} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+        </div>
+      ) : item.content_url && linkKind === 'video' ? (
+        <video className="w-full rounded-xl bg-black" src={item.content_url} controls playsInline preload="metadata" />
+      ) : item.content_url && linkKind === 'image' ? (
+        <button type="button" className="relative group block w-full text-start" onClick={() => setPreview(item.content_url!)} title={t('trainZoomHint')}>
+          <img className="w-full max-h-[28rem] object-contain rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900" src={item.content_url} alt={item.title} />
+          <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-lg bg-black/60 text-white text-xs px-2 py-1 opacity-90 group-hover:opacity-100">
+            <ZoomIn className="w-3.5 h-3.5" /> {t('trainZoomHint')}
+          </span>
+        </button>
+      ) : item.content_url ? (
+        <a className="btn btn-ghost w-fit gap-2" href={item.content_url} target="_blank" rel="noreferrer" download>
+          <Download className="w-4 h-4" /> {t('trainDownload')}
+        </a>
+      ) : null}
+
+      {item.attachment_url && fileKind === 'video' && (
+        <video className="w-full rounded-xl bg-black" src={item.attachment_url} controls playsInline preload="metadata" />
+      )}
+      {item.attachment_url && fileKind === 'image' && (
+        <button type="button" className="relative group block w-full text-start" onClick={() => setPreview(item.attachment_url!)} title={t('trainZoomHint')}>
+          <img
+            className="w-full max-h-[28rem] object-contain rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900 cursor-zoom-in"
+            src={item.attachment_url}
+            alt={item.attachment_name || item.title}
+          />
+          <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-lg bg-black/60 text-white text-xs px-2 py-1 opacity-90 group-hover:opacity-100">
+            <ZoomIn className="w-3.5 h-3.5" /> {t('trainZoomHint')}
+          </span>
+        </button>
+      )}
+      {item.attachment_url && fileKind === 'file' && (
+        <a
+          className="btn btn-primary w-fit gap-2"
+          href={item.attachment_url}
+          target="_blank"
+          rel="noreferrer"
+          download={item.attachment_name || true}
+        >
+          <Download className="w-4 h-4" />
+          {t('trainDownload')}{item.attachment_name ? `: ${item.attachment_name}` : ''}
+        </a>
+      )}
+
+      {preview && (
+        <div
+          className="fixed inset-0 z-[80] bg-black/85 flex items-center justify-center p-4"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => setPreview(null)}
+          onKeyDown={(e) => { if (e.key === 'Escape') setPreview(null) }}
+        >
+          <button
+            type="button"
+            className="absolute top-4 left-4 p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white"
+            onClick={() => setPreview(null)}
+            aria-label={t('trainClosePreview')}
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <img
+            src={preview}
+            alt={item.attachment_name || item.title}
+            className="max-w-full max-h-[92vh] object-contain rounded-lg shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+    </>
+  )
+}
+
 export function TrainingPage() {
   const { t } = useApp()
   const qc = useQueryClient()
@@ -1979,18 +2096,22 @@ export function TrainingPage() {
     enabled: canMonitor,
     queryFn: async () => (await api.get('/courses/team-progress')).data,
   })
-  const submit = useMutation({
-    mutationFn: async ({ course, level }: { course: number; level: number }) =>
-      api.post(`/courses/${course}/levels/${level}/submit`, {}),
-    onSuccess: () => { toast.success(t('trainSubmit')); qc.invalidateQueries({ queryKey: ['courses'] }); qc.invalidateQueries({ queryKey: ['course-team'] }) },
-  })
-  const completeCourse = async (course: { id: number; levels: Array<{ id: number; progress?: { status: string } | null }> }) => {
-    for (const level of course.levels) {
-      if (level.progress?.status !== 'completed') {
-        await submit.mutateAsync({ course: course.id, level: level.id })
+  const completeChapter = useMutation({
+    mutationFn: async ({ course, level, chapter }: { course: number; level: number; chapter: number | null }) => {
+      if (chapter == null) {
+        return api.post(`/courses/${course}/levels/${level}/submit`, {})
       }
-    }
-  }
+      return api.post(`/courses/${course}/levels/${level}/chapters/${chapter}/complete`, {})
+    },
+    onSuccess: () => {
+      toast.success(t('trainChapterDone'))
+      qc.invalidateQueries({ queryKey: ['courses'] })
+      qc.invalidateQueries({ queryKey: ['course-team'] })
+    },
+    onError: (err: { response?: { data?: { message?: string } } }) => {
+      toast.error(err?.response?.data?.message || t('trainLocked'))
+    },
+  })
 
   return (
     <div className="space-y-4" data-testid="training-list">
@@ -1999,70 +2120,101 @@ export function TrainingPage() {
         <div className="font-semibold mb-2">{t('trainHowTitle')}</div>
         <p className="text-sm text-surface-600 dark:text-surface-400 m-0 leading-7">{t('trainHowBody')}</p>
       </div>
-      {(data ?? []).map((c: {
-        id: number
-        title: string
-        description?: string
-        is_required_for_promotion: boolean
-        roles?: Array<{ name: string }>
-        levels: Array<{
-          id: number
-          title: string
-          content_type?: string
-          content_body?: string
-          content_url?: string
-          attachment_name?: string
-          attachment_url?: string
-          progress?: { status: string; completed_at?: string } | null
-        }>
-      }) => {
+      {(data as TrainingCourse[] | undefined ?? []).map((c) => {
         const done = c.levels.filter((l) => l.progress?.status === 'completed').length
         return (
-          <div key={c.id} className="card p-5">
+          <div key={c.id} className={`card p-5 ${c.locked ? 'opacity-80' : ''}`} data-testid={`training-course-${c.id}`}>
             <div className="flex justify-between gap-3">
               <div>
-                <div className="font-extrabold text-lg text-surface-800 dark:text-surface-100">{c.title}</div>
+                <div className="font-extrabold text-lg text-surface-800 dark:text-surface-100 flex items-center gap-2">
+                  {c.locked && <Lock className="w-4 h-4 text-surface-400" />}
+                  {c.title}
+                </div>
                 <div className="text-sm text-surface-500">{c.description || t('noDesc')}</div>
                 <div className="mt-2 flex gap-2 flex-wrap">
                   {c.roles?.map((r) => <Badge key={r.name}>{r.name}</Badge>)}
                   {c.is_required_for_promotion && <Badge tone="warn">{t('trainRequired')}</Badge>}
+                  {c.locked && <Badge tone="muted">{t('trainLocked')}</Badge>}
                 </div>
               </div>
               <div className="text-end">
                 <div className="text-sm text-surface-500 whitespace-nowrap">{done.toLocaleString(localeTag())} / {c.levels.length.toLocaleString(localeTag())} {t('trainLevel')}</div>
-                {done < c.levels.length && <button className="btn btn-ghost mt-2" onClick={() => completeCourse(c)}>{t('trainCompleteCourse')}</button>}
               </div>
             </div>
             <div className="mt-3"><ProgressBar value={done} max={c.levels.length || 1} /></div>
             <div className="mt-4 grid gap-3">
-              {c.levels.map((l, index) => (
-                <div key={l.id} className="border border-surface-200 dark:border-surface-700 rounded-xl p-3 grid gap-3">
-                  <div className="flex flex-wrap justify-between gap-3 items-center">
-                    <div>
-                      <div className="font-bold">{t('trainLevel')} {index + 1}: {l.title}</div>
-                      <div className="text-sm mt-1">{l.progress?.status === 'completed' ? <Badge tone="ok">{t('trainViewed')}</Badge> : <Badge tone="muted">{t('trainNotStarted')}</Badge>}</div>
+              {c.levels.map((l, index) => {
+                const chapters = l.chapters ?? []
+                const chaptersDone = chapters.filter((ch) => ch.progress?.status === 'completed').length
+                return (
+                  <div key={l.id} className={`border border-surface-200 dark:border-surface-700 rounded-xl p-3 grid gap-3 ${l.locked ? 'bg-surface-50/60 dark:bg-surface-800/30' : ''}`}>
+                    <div className="flex flex-wrap justify-between gap-3 items-center">
+                      <div>
+                        <div className="font-bold flex items-center gap-2">
+                          {l.locked && <Lock className="w-3.5 h-3.5 text-surface-400" />}
+                          {t('trainLevel')} {index + 1}: {l.title}
+                        </div>
+                        <div className="text-sm mt-1 flex flex-wrap gap-2">
+                          {l.progress?.status === 'completed'
+                            ? <Badge tone="ok">{t('trainViewed')}</Badge>
+                            : l.locked
+                              ? <Badge tone="muted">{t('trainLocked')}</Badge>
+                              : <Badge tone="muted">{t('trainNotStarted')}</Badge>}
+                          {chapters.length > 0 && (
+                            <span className="text-xs text-surface-500">
+                              {chaptersDone.toLocaleString(localeTag())}/{chapters.length.toLocaleString(localeTag())} {t('trainChapter')}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    {l.progress?.status !== 'completed' && (
-                      <button className="btn btn-primary" onClick={() => submit.mutate({ course: c.id, level: l.id })}>{t('trainTake')}</button>
+                    {!l.locked && (
+                      <div className="grid gap-3">
+                        {chapters.map((ch, ci) => {
+                          const doneCh = ch.progress?.status === 'completed'
+                          return (
+                            <div
+                              key={ch.id ?? `legacy-${ci}`}
+                              className={`rounded-xl border border-surface-200 dark:border-surface-700 p-3 grid gap-3 ${ch.locked ? 'opacity-70' : 'bg-white/60 dark:bg-surface-900/30'}`}
+                              data-testid={`training-chapter-${l.id}-${ci}`}
+                            >
+                              <div className="flex flex-wrap justify-between gap-3 items-center">
+                                <div>
+                                  <div className="font-semibold text-sm flex items-center gap-2">
+                                    {ch.locked && <Lock className="w-3.5 h-3.5 text-surface-400" />}
+                                    {t('trainChapter')} {ci + 1}: {ch.title}
+                                  </div>
+                                  <div className="mt-1">
+                                    {doneCh
+                                      ? <Badge tone="ok">{t('trainViewed')}</Badge>
+                                      : ch.locked
+                                        ? <Badge tone="muted">{t('trainLocked')}</Badge>
+                                        : <Badge tone="muted">{t('trainNotStarted')}</Badge>}
+                                  </div>
+                                </div>
+                                {!doneCh && (
+                                  <button
+                                    className="btn btn-primary"
+                                    disabled={Boolean(ch.locked) || completeChapter.isPending}
+                                    onClick={() => completeChapter.mutate({ course: c.id, level: l.id, chapter: ch.id })}
+                                  >
+                                    {t('trainTakeChapter')}
+                                  </button>
+                                )}
+                              </div>
+                              {!ch.locked && <TrainingMedia item={ch} />}
+                              {ch.locked && (
+                                <p className="text-xs text-surface-500 m-0">{t('trainLockedHint')}</p>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
                     )}
+                    {l.locked && <p className="text-xs text-surface-500 m-0">{t('trainLockedHint')}</p>}
                   </div>
-                  {l.content_body && <p className="text-sm text-surface-600 dark:text-surface-300 whitespace-pre-wrap m-0 leading-7">{l.content_body}</p>}
-                  {l.content_url && (l.content_type === 'video' || l.content_url.includes('youtube') || l.content_url.includes('aparat')) ? (
-                    <div className="aspect-video rounded-xl overflow-hidden bg-black">
-                      <iframe title={l.title} src={l.content_url} className="w-full h-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-                    </div>
-                  ) : l.content_url ? (
-                    <a className="text-sm text-primary-600" href={l.content_url} target="_blank" rel="noreferrer">{l.content_url}</a>
-                  ) : null}
-                  {l.attachment_url && (
-                    l.attachment_url.match(/\.(mp4|webm)$/i)
-                      ? <video className="w-full max-h-80 rounded-xl" src={l.attachment_url} controls />
-                      : l.attachment_url.match(/\.(png|jpe?g|gif|webp)$/i)
-                        ? <img className="max-h-80 rounded-xl" src={l.attachment_url} alt={l.attachment_name ?? ''} />
-                        : <a className="text-sm text-primary-600" href={l.attachment_url} target="_blank" rel="noreferrer">{l.attachment_name || l.attachment_url}</a>
-                  )}
-                </div>
-              ))}
+                )
+              })}
             </div>
           </div>
         )
@@ -2071,7 +2223,7 @@ export function TrainingPage() {
         <div className="space-y-3" data-testid="training-monitor">
           <div className="px-1 font-semibold text-surface-800 dark:text-surface-100">{t('trainMonitor')}</div>
           <div className="grid gap-3">
-            {(teamProgress ?? []).map((u: { id: number; name: string; mobile: string; courses: Array<{ id?: number; title: string; done: number; total: number; levels: Array<{ id?: number; title: string; status?: string }> }> }) => {
+            {(teamProgress ?? []).map((u: { id: number; name: string; mobile: string; courses: Array<{ id?: number; title: string; done: number; total: number; levels: Array<{ id?: number; title: string; status?: string; chapters_done?: number; chapters_total?: number }> }> }) => {
               const done = u.courses.reduce((sum, c) => sum + c.done, 0)
               const total = u.courses.reduce((sum, c) => sum + c.total, 0)
               return (
@@ -2093,7 +2245,10 @@ export function TrainingPage() {
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {c.levels.map((l) => (
-                            <Badge key={l.id ?? l.title} tone={l.status === 'completed' ? 'ok' : 'muted'}>{l.title}</Badge>
+                            <Badge key={l.id ?? l.title} tone={l.status === 'completed' ? 'ok' : 'muted'}>
+                              {l.title}
+                              {(l.chapters_total ?? 0) > 0 ? ` (${l.chapters_done ?? 0}/${l.chapters_total})` : ''}
+                            </Badge>
                           ))}
                         </div>
                       </div>

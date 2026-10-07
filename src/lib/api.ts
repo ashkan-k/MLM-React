@@ -9,6 +9,10 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  // Let the browser set multipart boundary; a forced Content-Type without boundary breaks uploads.
+  if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+    config.headers.delete?.('Content-Type')
+  }
   return config
 })
 
