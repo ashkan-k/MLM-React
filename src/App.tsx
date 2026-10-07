@@ -5,6 +5,7 @@ import { canAccessPage } from './lib/access'
 import { dashboardPath } from './lib/roles'
 import { AdminAuditDetail } from './pages/AdminAuditDetail'
 import { AdminAudits, AdminCourses, AdminFraSoft, AdminHome, AdminOrgCriteria, AdminPermissions, AdminRules, AdminSettings, AdminUsers } from './pages/AdminPages'
+import { CourseFormPage } from './pages/CourseFormPage'
 import { AdminNetwork } from './pages/AdminNetwork'
 import { AdminReports } from './pages/AdminReports'
 import { ChatPage } from './pages/ChatPage'
@@ -61,6 +62,8 @@ const roleChildren = (
     <Route path="referrals" element={<PageGate page="referrals"><ReferralsPage /></PageGate>} />
     <Route path="promotions" element={<PageGate page="promotions"><PromotionsPage /></PageGate>} />
     <Route path="training" element={<PageGate page="training"><TrainingPage /></PageGate>} />
+    <Route path="courses/new" element={<PageGate page="courses"><CourseFormPage /></PageGate>} />
+    <Route path="courses/:courseId/edit" element={<PageGate page="courses"><CourseFormPage /></PageGate>} />
     <Route path="courses" element={<PageGate page="courses"><AdminCourses /></PageGate>} />
     <Route path="chat" element={<PageGate page="chat"><ChatPage /></PageGate>} />
     <Route path="notifications" element={<PageGate page="notifications"><NotificationsPage /></PageGate>} />
@@ -96,6 +99,8 @@ export default function App() {
           <Route path="commissions" element={<CommissionsPage />} />
           <Route path="points" element={<PointsMonitorPage />} />
           <Route path="rules" element={<AdminRules />} />
+          <Route path="courses/new" element={<CourseFormPage />} />
+          <Route path="courses/:courseId/edit" element={<CourseFormPage />} />
           <Route path="courses" element={<AdminCourses />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="org-criteria" element={<AdminOrgCriteria />} />

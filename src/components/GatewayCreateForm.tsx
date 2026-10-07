@@ -2,6 +2,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { api } from '../lib/api'
+import { gwNewKey, useProductOriented } from '../lib/productMode'
+import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../stores/auth'
 import { JalaliDatePicker } from './JalaliDatePicker'
 import { SearchSelect } from './SearchSelect'
@@ -173,6 +175,8 @@ function apiErrorMessage(error: unknown): string {
 }
 
 export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () => void; initialSharedToken?: string }) {
+  const { t } = useApp()
+  const productOriented = useProductOriented()
   const qc = useQueryClient()
   const me = useAuth((s) => s.user)
   const gatewayShareEnabled = me?.features?.shared_links?.gateway_sale_enabled !== false
@@ -296,7 +300,13 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
       fd.append('source', 'finopal')
       fd.append('ownership_type', form.ownership)
       if (form.ownership === 'shared' && form.shared_link_id) fd.append('shared_link_id', form.shared_link_id)
-      else fd.append('representative_user_id', form.representative_user_id || String(me?.id ?? ''))
+      else {
+        // Non-superusers always register under their own account.
+        const ownerId = me?.is_superuser
+          ? (form.representative_user_id || String(me?.id ?? ''))
+          : String(me?.id ?? '')
+        fd.append('representative_user_id', ownerId)
+      }
       const customer: Record<string, string> = {
         name: form.customer_name,
         mobile: form.mobile,
@@ -493,7 +503,9 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
         )}
       </section>
 
-      <button className="btn btn-primary" type="submit" disabled={busy}>{busy ? 'در حال ثبت...' : 'ثبت درگاه'}</button>
+      <button className="btn btn-primary" type="submit" disabled={busy}>
+        {busy ? 'در حال ثبت...' : t(gwNewKey(productOriented))}
+      </button>
     </form>
   )
 }

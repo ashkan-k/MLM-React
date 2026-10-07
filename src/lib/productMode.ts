@@ -28,3 +28,7 @@ export function saleColKey(oriented: boolean) {
 export function myProfitKey(oriented: boolean) {
   return oriented ? 'mySaleProfit' : 'gwMyProfit'
 }
+
+export function gwNewKey(oriented: boolean) {
+  return oriented ? 'saleNew' : 'gwNew'
+}

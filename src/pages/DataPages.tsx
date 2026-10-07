@@ -5,6 +5,7 @@ import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { dashboardPath } from '../lib/roles'
 import { toast } from 'sonner'
 import { AuthorityActions, AuthorityCell } from '../components/AuthorityCell'
+import { RichHtml } from '../components/RichTextEditor'
 import { JalaliDatePicker } from '../components/JalaliDatePicker'
 import { MoneyInput } from '../components/MoneyInput'
 import { OrgTree, type OrgNode } from '../components/OrgTree'
@@ -20,6 +21,7 @@ import { notificationBody, notificationHref, notificationTitle, type AppNotifica
 import { criterionLabel, dateOnly, label, localeTag, money, moneyHeader, percent, productLabel } from '../lib/format'
 import {
   commissionsSubKey,
+  gwNewKey,
   myProfitKey,
   saleColKey,
   salesSubKey,
@@ -889,11 +891,11 @@ export function GatewaysPage() {
         action={(
           <div className="flex flex-wrap gap-2">
             {orgManagersHref && <Link className="btn btn-ghost" to={orgManagersHref}>{t('navOrgManagers')}</Link>}
-            <button className="btn btn-primary" onClick={() => setOpenCreate(true)}>{t('gwNew')}</button>
+            <button className="btn btn-primary" onClick={() => setOpenCreate(true)}>{t(gwNewKey(productOriented))}</button>
           </div>
         )}
       />
-      <Modal wide open={openCreate} title={t('gwNew')} subtitle={t('gwSub')} onClose={closeCreate}>
+      <Modal wide open={openCreate} title={t(gwNewKey(productOriented))} subtitle={t(salesSubKey(productOriented))} onClose={closeCreate}>
         <GatewayCreateForm
           initialSharedToken={gatewayShareEnabled ? sharedToken || undefined : undefined}
           onDone={closeCreate}
@@ -2008,7 +2010,7 @@ function TrainingMedia({ item }: { item: Pick<TrainingChapter, 'title' | 'conten
 
   return (
     <>
-      {item.content_body && <p className="text-sm text-surface-600 dark:text-surface-300 whitespace-pre-wrap m-0 leading-7">{item.content_body}</p>}
+      {item.content_body && <RichHtml html={item.content_body} />}
 
       {item.content_url && embedUrl && linkKind === 'video' ? (
         <div className="w-full aspect-video rounded-xl overflow-hidden bg-black">
@@ -2130,7 +2132,9 @@ export function TrainingPage() {
                   {c.locked && <Lock className="w-4 h-4 text-surface-400" />}
                   {c.title}
                 </div>
-                <div className="text-sm text-surface-500">{c.description || t('noDesc')}</div>
+                <div className="text-sm text-surface-500 mt-1">
+                  {c.description ? <RichHtml html={c.description} /> : t('noDesc')}
+                </div>
                 <div className="mt-2 flex gap-2 flex-wrap">
                   {c.roles?.map((r) => <Badge key={r.name}>{r.name}</Badge>)}
                   {c.is_required_for_promotion && <Badge tone="warn">{t('trainRequired')}</Badge>}
