@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { useMemo, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { JalaliDatePicker } from '../components/JalaliDatePicker'
 import { TablePager } from '../components/table'
 import { Badge, DateTimeText, Empty, PageHeader, ProductBadge } from '../components/ui'
@@ -35,9 +36,11 @@ export function TransactionsPage() {
   const me = useAuth((s) => s.user)
   const productOriented = useProductOriented()
   const roleSlug = me?.active_role?.slug
+  const [searchParams] = useSearchParams()
+  const initialSearch = (searchParams.get('search') ?? searchParams.get('authority') ?? '').trim()
   const [page, setPage] = useState(1)
   const [draft, setDraft] = useState({
-    search: '',
+    search: initialSearch,
     status: '',
     product_type: '',
     from: '',

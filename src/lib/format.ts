@@ -142,8 +142,8 @@ export function formatExportValue(value: unknown): string {
 }
 
 export const statusLabel: Record<string, string> = {
-  pending_inspection: 'در انتظار تایید مدیر ارشد',
-  pending_shaparak: 'در انتظار تایید مدیر ارشد',
+  pending_inspection: 'در انتظار بررسی مدارک (مدیر ارشد)',
+  pending_shaparak: 'در انتظار تایید شاپرک',
   submitted: 'ارسال مدارک',
   inspected: 'تایید مدارک',
   shaparak_confirmed: 'تایید درگاه',
@@ -191,8 +191,8 @@ export const statusLabel: Record<string, string> = {
 }
 
 const statusLabelEn: Record<string, string> = {
-  pending_inspection: 'Pending senior-manager approval',
-  pending_shaparak: 'Pending senior-manager approval',
+  pending_inspection: 'Pending document review (senior manager)',
+  pending_shaparak: 'Pending Shaparak confirmation',
   submitted: 'Documents submitted',
   inspected: 'Documents inspected',
   shaparak_confirmed: 'Gateway confirmed',

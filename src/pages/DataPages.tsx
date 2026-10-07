@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Award, Copy, CreditCard, ExternalLink, Network, Repeat, TrendingUp, Users, Wallet, X } from 'lucide-react'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
+import { dashboardPath } from '../lib/roles'
 import { toast } from 'sonner'
 import { JalaliDatePicker } from '../components/JalaliDatePicker'
 import { MoneyInput } from '../components/MoneyInput'
@@ -634,9 +635,12 @@ function GatewayReviewModal({
             <div className="font-semibold mb-2">{t('gwCommissionsPosted')}</div>
             <div className="grid sm:grid-cols-2 gap-2 text-sm">
               {(sale.commissions ?? []).map((row) => (
-                <div key={row.id} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 flex justify-between gap-2">
-                  <span>{row.role?.name}</span>
-                  <span>{percent(row.commission_percent)} — {money(row.commission_amount)}</span>
+                <div key={row.id} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 flex justify-between gap-3">
+                  <span className="font-medium">{row.role?.name}</span>
+                  <span className="text-end">
+                    <span className="block font-semibold text-emerald-700 dark:text-emerald-400">{moneyHeader(t('gwCommissionAmount'))}: {money(row.commission_amount)}</span>
+                    <span className="block text-xs text-surface-500 mt-0.5">{t('gwCommissionRate')}: {percent(row.commission_percent)}</span>
+                  </span>
                 </div>
               ))}
             </div>
@@ -652,7 +656,7 @@ function GatewayReviewModal({
                 <div key={row.id} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 space-y-1">
                   <div className="flex justify-between gap-2">
                     <span>{label(row.status)}</span>
-                    <span>{money(row.profit)}</span>
+                    <span>{moneyHeader(t('txProfit'))}: {money(row.profit)}</span>
                   </div>
                   <div className="text-xs text-surface-400">{t('gwTxAmount')}: {money(row.amount)}</div>
                   {row.authority && <div className="text-xs text-surface-400">{row.authority}</div>}
@@ -727,9 +731,12 @@ function ProductSaleReviewModal({ sale, onClose }: { sale: GatewaySaleRow; onClo
             <div className="font-semibold mb-2">{t('gwCommissionsPosted')}</div>
             <div className="grid sm:grid-cols-2 gap-2 text-sm">
               {(sale.commissions ?? []).map((row) => (
-                <div key={row.id} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 flex justify-between gap-2">
-                  <span>{row.role?.name}</span>
-                  <span>{percent(row.commission_percent)} — {money(row.commission_amount)}</span>
+                <div key={row.id} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 flex justify-between gap-3">
+                  <span className="font-medium">{row.role?.name}</span>
+                  <span className="text-end">
+                    <span className="block font-semibold text-emerald-700 dark:text-emerald-400">{moneyHeader(t('gwCommissionAmount'))}: {money(row.commission_amount)}</span>
+                    <span className="block text-xs text-surface-500 mt-0.5">{t('gwCommissionRate')}: {percent(row.commission_percent)}</span>
+                  </span>
                 </div>
               ))}
             </div>
@@ -995,12 +1002,22 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
   product_code?: string | null
   product_label?: string | null
   source_title?: string | null
-  role?: { name: string }
+  transaction_authority?: string | null
+  transaction_ref?: string | null
+  transaction_id?: number | null
+  transaction?: { id?: number; authority?: string | null; ref_id?: string | null } | null
+  role?: { name: string; slug?: string }
   sale?: { gateway?: { name: string } }
   product_sale?: { title?: string | null; product_type?: string; product_code?: string | null } | null
 }>; isLoading: boolean; footer?: ReactNode }) {
   const { t } = useApp()
   const productOriented = useProductOriented()
+  const me = useAuth((s) => s.user)
+  const roleSlug = me?.active_role?.slug
+  const transactionsBase = me?.is_superuser || roleSlug === 'superuser'
+    ? '/superuser/transactions'
+    : `${dashboardPath(roleSlug)}/transactions`
+
   return (
     <div className="card overflow-hidden" data-testid="commission-table">
       <div className="overflow-auto">
@@ -1009,7 +1026,8 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
           <tr>
             {productOriented && <th>{t('productCol')}</th>}
             <th>{productOriented ? t('commSource') : t('gateway')}</th>
-            <th>{t('role')}</th>
+            <th>{t('commPaidRole')}</th>
+            <th>{t('txAuthority')}</th>
             <th>{t('commKind')}</th>
             <th>{t('percent')}</th>
             <th>{moneyHeader(t('commAmount'))}</th>
@@ -1031,6 +1049,13 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
               ?? row.sale?.gateway?.name
               ?? row.product_sale?.title
               ?? null
+            const authority = row.transaction_authority
+              ?? row.transaction?.authority
+              ?? null
+            const txRef = row.transaction_ref ?? row.transaction?.ref_id ?? null
+            const txHref = authority
+              ? `${transactionsBase}?search=${encodeURIComponent(authority)}`
+              : null
             return (
               <tr
                 key={row.id}
@@ -1065,7 +1090,28 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
                     source || '—'
                   )}
                 </td>
-                <td>{row.role?.name}</td>
+                <td>
+                  {row.role?.name
+                    ? <Badge tone="info">{row.role.name}</Badge>
+                    : '—'}
+                </td>
+                <td className="text-xs font-mono dir-ltr text-left">
+                  {txHref ? (
+                    <a
+                      href={txHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 text-primary-600 dark:text-primary-400 hover:underline"
+                      title={t('commOpenTransaction')}
+                    >
+                      <span>{authority}</span>
+                      <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                    </a>
+                  ) : (
+                    <span className="text-surface-400">—</span>
+                  )}
+                  {txRef && <div className="text-surface-400 mt-0.5">{txRef}</div>}
+                </td>
                 <td>
                   {isBonus ? (
                     <span className="inline-flex items-center gap-1.5">
@@ -1100,15 +1146,23 @@ export function CommissionsPage() {
   const productOriented = useProductOriented()
   const roleSlug = useAuth((s) => s.user?.active_role?.slug)
   const [gatewayId, setGatewayId] = useState('')
+  const [draft, setDraft] = useState({ authority: '', ref_id: '' })
+  const [filters, setFilters] = useState(draft)
   const [page, setPage] = useState(1)
   const { data: salesData } = useQuery({
     queryKey: ['sales', roleSlug, 'commission-filter'],
     queryFn: async () => (await api.get('/gateway-sales', { params: { per_page: 100 } })).data,
   })
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['commissions', roleSlug, gatewayId, page],
+    queryKey: ['commissions', roleSlug, gatewayId, filters, page],
     queryFn: async () => (await api.get('/commissions', {
-      params: { page, per_page: 20, ...(gatewayId ? { gateway_id: gatewayId } : {}) },
+      params: {
+        page,
+        per_page: 20,
+        ...(gatewayId ? { gateway_id: gatewayId } : {}),
+        ...(filters.authority.trim() ? { authority: filters.authority.trim() } : {}),
+        ...(filters.ref_id.trim() ? { ref_id: filters.ref_id.trim() } : {}),
+      },
     })).data,
   })
   const rows = data?.data ?? []
@@ -1130,8 +1184,16 @@ export function CommissionsPage() {
   return (
     <div className="space-y-4">
       <PageHeader title={t('commTitle')} subtitle={t(commissionsSubKey(productOriented))} />
-      <div className="card p-4">
-        <label className="field max-w-md m-0">{productOriented ? t('commSource') : t('commFilterGateway')}
+      <form
+        className="card p-4 grid md:grid-cols-4 gap-3 items-end"
+        data-testid="commission-filters"
+        onSubmit={(e) => {
+          e.preventDefault()
+          setPage(1)
+          setFilters({ ...draft })
+        }}
+      >
+        <label className="field m-0">{productOriented ? t('commSource') : t('commFilterGateway')}
           <select
             className="input"
             data-testid="commission-gateway-filter"
@@ -1144,7 +1206,26 @@ export function CommissionsPage() {
             ))}
           </select>
         </label>
-      </div>
+        <label className="field m-0">{t('txAuthority')}
+          <input
+            className="input font-mono dir-ltr text-left"
+            value={draft.authority}
+            onChange={(e) => setDraft({ ...draft, authority: e.target.value })}
+            placeholder={t('commSearchAuthority')}
+            data-testid="commission-authority-search"
+          />
+        </label>
+        <label className="field m-0">{t('txRef')}
+          <input
+            className="input font-mono dir-ltr text-left"
+            value={draft.ref_id}
+            onChange={(e) => setDraft({ ...draft, ref_id: e.target.value })}
+            placeholder={t('commSearchRef')}
+            data-testid="commission-ref-search"
+          />
+        </label>
+        <button type="submit" className="btn btn-primary" data-testid="commission-filter-apply">{t('applyFilters')}</button>
+      </form>
       <div className="grid sm:grid-cols-3 gap-4">
         <StatCard title={t('commCount')} value={(data?.total ?? rows.length).toLocaleString(localeTag())} icon={TrendingUp} color="from-blue-500 to-blue-600" />
         <StatCard title={moneyHeader(t('sumCommission'))} value={money(total)} icon={Wallet} color="from-emerald-500 to-emerald-600" />
