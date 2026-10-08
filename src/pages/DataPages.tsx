@@ -1751,6 +1751,24 @@ export function ReferralsPage() {
   )
 }
 
+const BOOLEAN_CRITERIA = new Set(['senior_assessment', 'team_satisfaction'])
+
+function isBooleanCriterion(code: string) {
+  return BOOLEAN_CRITERIA.has(code)
+}
+
+function CriterionFlag({ code, passed, status }: { code: string; passed: boolean; status?: string }) {
+  const { t } = useApp()
+  if (code === 'senior_assessment') {
+    if (status === 'approved' || passed) return <Badge tone="ok">{t('promoReviewDone')}</Badge>
+    if (status === 'rejected') return <Badge tone="danger">{t('promoReviewRejected')}</Badge>
+    return <Badge tone="muted">{t('promoReviewPending')}</Badge>
+  }
+  return passed
+    ? <Badge tone="ok">{t('promoFlagYes')}</Badge>
+    : <Badge tone="muted">{t('promoFlagNo')}</Badge>
+}
+
 function PromotionList({
   items,
   canDecide,
@@ -1825,12 +1843,18 @@ function PromotionList({
             <div>
               <div className="font-semibold mb-2">{t('promoCriteria', { role: file.request?.target_role?.name ?? '' })}</div>
               <div className="space-y-2">
-                {(file.criteria ?? []).map((c: { id: number; criterion_code: string; actual_value: string; required_value: string; passed: boolean }) => (
+                {(file.criteria ?? []).map((c: { id: number; criterion_code: string; actual_value: string; required_value: string; passed: boolean; kind?: string }) => (
                   <div key={c.id} className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/70 dark:bg-surface-900/40 p-3 flex items-start justify-between gap-3">
                     <span className="min-w-0 break-words leading-6">{criterionLabel[c.criterion_code] ?? c.criterion_code}</span>
                     <span className="shrink-0 flex items-center gap-2">
-                      <span><ScorePair actual={Number(c.actual_value)} required={Number(c.required_value)} compact /></span>
-                      {c.passed ? <Badge tone="ok">{t('promoPass')}</Badge> : <Badge tone="warn">{t('promoFail')}</Badge>}
+                      {c.kind === 'boolean' || isBooleanCriterion(c.criterion_code)
+                        ? <CriterionFlag code={c.criterion_code} passed={c.passed} status={file.request?.status} />
+                        : (
+                          <>
+                            <ScorePair actual={Number(c.actual_value)} required={Number(c.required_value)} compact />
+                            {c.passed ? <Badge tone="ok">{t('promoPass')}</Badge> : <Badge tone="warn">{t('promoFail')}</Badge>}
+                          </>
+                        )}
                     </span>
                   </div>
                 ))}
@@ -1941,14 +1965,18 @@ export function PromotionsPage() {
             <div className="font-semibold mb-3 text-surface-800 dark:text-surface-200">{t('promoCriteria', { role: targetName })}</div>
             {(eligibility ?? []).map((c: { code: string; actual: number; required: number; passed: boolean }) => (
               <div key={c.code} className="py-3 border-b border-surface-100 dark:border-surface-700 last:border-0">
-                <div className="flex justify-between mb-2">
+                <div className="flex justify-between mb-2 gap-3">
                   <span>{criterionLabel[c.code] ?? c.code}</span>
-                  <span className="inline-flex items-center gap-2">
-                    <ScorePair actual={Number(c.actual)} required={Number(c.required)} compact />
-                    {c.passed ? <Badge tone="ok">{t('promoPass')}</Badge> : <Badge tone="warn">{t('promoFail')}</Badge>}
-                  </span>
+                  {isBooleanCriterion(c.code)
+                    ? <CriterionFlag code={c.code} passed={c.passed} />
+                    : (
+                      <span className="inline-flex items-center gap-2">
+                        <ScorePair actual={Number(c.actual)} required={Number(c.required)} compact />
+                        {c.passed ? <Badge tone="ok">{t('promoPass')}</Badge> : <Badge tone="warn">{t('promoFail')}</Badge>}
+                      </span>
+                    )}
                 </div>
-                <ProgressBar value={Number(c.actual)} max={Number(c.required) || 1} />
+                {!isBooleanCriterion(c.code) && <ProgressBar value={Number(c.actual)} max={Number(c.required) || 1} />}
               </div>
             ))}
             <button className="btn btn-primary mt-4" onClick={() => request.mutate()}>{t('promoManual')}</button>
