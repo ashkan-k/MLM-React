@@ -23,6 +23,7 @@ export function SearchSelect({
   placeholder,
   required,
   testId,
+  disabled,
 }: {
   value: string | number
   onChange: (value: string) => void
@@ -30,6 +31,7 @@ export function SearchSelect({
   placeholder?: string
   required?: boolean
   testId?: string
+  disabled?: boolean
 }) {
   const { t } = useApp()
   const [open, setOpen] = useState(false)
@@ -59,8 +61,9 @@ export function SearchSelect({
     <div className="relative" ref={box} data-testid={testId}>
       <button
         type="button"
-        className="input w-full text-start flex justify-between gap-2"
-        onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
+        className={`input w-full text-start flex justify-between gap-2${disabled ? ' opacity-60' : ''}`}
+        onClick={() => { if (!disabled) setOpen((v) => !v) }}
       >
         <span className={selected ? 'text-surface-800 dark:text-surface-100' : 'text-surface-400'}>
           {selected?.label || placeholder || t('searchPlaceholder')}

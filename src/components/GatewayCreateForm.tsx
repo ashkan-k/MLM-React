@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { api } from '../lib/api'
 import { gwNewKey, useProductOriented } from '../lib/productMode'
@@ -12,43 +12,55 @@ import { FieldLabel } from './ui'
 type Docs = {
   national_id_front?: File | null
   national_id_back?: File | null
-  birth_certificate?: File | null
   selfie?: File | null
   gazette?: File | null
-  license?: File | null
+  official_letter?: File | null
+  company_statute?: File | null
 }
 
-type GeoState = { id: number; title: string; slug?: string }
-type GeoCity = { id: number; state_id: number; title: string; sub_title?: string | null; slug?: string | null }
+type VipOption = { id: number; title: string }
+type VipEnum = { value: string; label: string }
 
 const emptyForm = {
   ownership: 'solo',
   name: '',
   shared_link_id: '',
   representative_user_id: '',
-  person_type: 'individual',
-  customer_name: '',
+  person_type: 'real',
+  first_name: '',
+  last_name: '',
+  first_name_en: '',
+  last_name_en: '',
   mobile: '',
   email: '',
   national_id: '',
   father_name: '',
+  father_name_en: '',
   birth_date: '',
   birth_certificate_no: '',
-  birth_place: '',
-  gender: '',
+  gender: '0',
+  postal_code: '',
+  state_id: '',
+  city_id: '',
   province: '',
   city: '',
   address: '',
-  postal_code: '',
+  address_title: 'محل کسب',
+  phone: '',
+  address_locked: '',
   sheba: '',
-  bank_name: '',
-  account_number: '',
-  account_holder: '',
+  backup_sheba: '',
   shop_name: '',
-  shop_category: '',
+  shop_name_en: '',
+  category_id: '',
   website: '',
+  callback_url: '',
+  server_ip: '',
+  tax: '',
   company_name: '',
+  company_name_en: '',
   registration_no: '',
+  register_date: '',
   economic_code: '',
   legal_national_id: '',
 }
@@ -182,7 +194,14 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
   const gatewayShareEnabled = me?.features?.shared_links?.gateway_sale_enabled !== false
   const { data: links } = useQuery({ queryKey: ['links'], queryFn: async () => (await api.get('/shared-links')).data })
   const { data: reps } = useQuery({ queryKey: ['reps'], queryFn: async () => (await api.get('/representatives')).data })
-  const { data: geo } = useQuery({ queryKey: ['geo-locations'], queryFn: async () => (await api.get('/geo/locations')).data })
+  const { data: vipRef, isError: vipRefError } = useQuery({
+    queryKey: ['vip-ref'],
+    queryFn: async () => (await api.get('/finopal-vip/reference')).data as {
+      states: VipOption[]
+      categories: VipOption[]
+      enums: { gender?: VipEnum[]; entityType?: VipEnum[] }
+    },
+  })
   const [form, setForm] = useState(emptyForm)
   const [docs, setDocs] = useState<Docs>({})
   const [busy, setBusy] = useState(false)
@@ -194,17 +213,26 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
       const next = { ...prev }
       const map: Partial<Record<keyof typeof emptyForm, string>> = {
         name: 'name',
-        customer_name: 'customer.name',
+        first_name: 'customer.first_name',
+        last_name: 'customer.last_name',
+        first_name_en: 'customer.first_name_en',
+        last_name_en: 'customer.last_name_en',
         mobile: 'customer.mobile',
         national_id: 'customer.national_id',
         sheba: 'customer.sheba',
+        backup_sheba: 'customer.backup_sheba',
         email: 'customer.email',
         province: 'customer.province',
         city: 'customer.city',
         address: 'customer.address',
         postal_code: 'customer.postal_code',
         shop_name: 'customer.shop_name',
-        shop_category: 'customer.shop_category',
+        shop_name_en: 'customer.shop_name_en',
+        website: 'customer.website',
+        callback_url: 'customer.callback_url',
+        server_ip: 'customer.server_ip',
+        tax: 'customer.tax',
+        category_id: 'customer.category_id',
         company_name: 'customer.company_name',
         registration_no: 'customer.registration_no',
         economic_code: 'customer.economic_code',
@@ -231,55 +259,77 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
     }
   }, [initialSharedToken, links, gatewayShareEnabled])
 
-  const states: GeoState[] = geo?.states ?? []
-  const cities: GeoCity[] = geo?.cities ?? []
-  const selectedState = states.find((s) => s.title === form.province)
-  const cityOptions = useMemo(
-    () => cities.filter((c) => !selectedState || c.state_id === selectedState.id).map((c) => ({
-      value: c.title,
-      label: c.sub_title && c.sub_title !== c.title ? `${c.title} (${c.sub_title})` : c.title,
-      keywords: `${c.slug ?? ''} ${c.sub_title ?? ''}`,
-    })),
-    [cities, selectedState],
-  )
-  const birthPlaceOptions = useMemo(
-    () => cities.map((c) => {
-      const state = states.find((s) => s.id === c.state_id)
-      const label = state ? `${c.title} — ${state.title}` : c.title
-      return {
-        value: label,
-        label,
-        keywords: `${c.slug ?? ''} ${c.sub_title ?? ''} ${state?.title ?? ''} ${state?.slug ?? ''} ${c.title}`,
-      }
-    }),
-    [cities, states],
-  )
+  const states: VipOption[] = vipRef?.states ?? []
+  const categories: VipOption[] = vipRef?.categories ?? []
+  const genderOptions: VipEnum[] = vipRef?.enums?.gender?.length ? vipRef.enums.gender : [
+    { value: '0', label: 'مرد' },
+    { value: '1', label: 'زن' },
+  ]
+  const entityOptions: VipEnum[] = vipRef?.enums?.entityType?.length ? vipRef.enums.entityType : [
+    { value: 'real', label: 'حقیقی' },
+    { value: 'legal', label: 'حقوقی' },
+  ]
+  const { data: cityRows } = useQuery({
+    queryKey: ['vip-cities', form.state_id],
+    enabled: Boolean(form.state_id),
+    queryFn: async () => (await api.get('/finopal-vip/cities', { params: { state_id: form.state_id } })).data as VipOption[],
+  })
+  const cities: VipOption[] = cityRows ?? []
+  const addressLocked = form.address_locked === '1'
+
+  const inquirePostal = async () => {
+    if (!/^\d{10}$/.test(form.postal_code)) {
+      toast.error('کد پستی باید دقیقاً ۱۰ رقم باشد.')
+      return
+    }
+    setBusy(true)
+    try {
+      const { data } = await api.post('/finopal-vip/postal-inquiry', { postal_code: form.postal_code })
+      setForm((prev) => ({
+        ...prev,
+        province: data.province ?? '',
+        city: data.city ?? '',
+        address: data.address ?? '',
+        state_id: String(data.state_id ?? ''),
+        city_id: String(data.city_id ?? ''),
+        address_locked: '1',
+      }))
+      toast.success('آدرس از روی کد پستی پر شد.')
+    } catch (error) {
+      setForm((prev) => ({ ...prev, address_locked: '' }))
+      toast.error(apiErrorMessage(error) || 'استعلام کد پستی انجام نشد. استان و شهر را دستی انتخاب کنید.')
+    } finally {
+      setBusy(false)
+    }
+  }
 
   const validateClient = (): string | null => {
     if (!form.name.trim()) return 'نام درگاه الزامی است.'
     if (form.ownership === 'shared' && !form.shared_link_id) return 'لینک اشتراکی فعال را انتخاب کنید.'
-    if (!form.customer_name.trim()) return 'نام متقاضی الزامی است.'
+    if (!form.first_name.trim() || !form.last_name.trim()) return 'نام و نام خانوادگی الزامی است.'
+    if (!/^[A-Za-z][A-Za-z -]{1,40}$/.test(form.first_name_en) || !/^[A-Za-z][A-Za-z -]{1,40}$/.test(form.last_name_en)) return 'نام انگلیسی فقط با حروف لاتین.'
     if (!/^\d{10}$/.test(form.national_id)) return 'کد ملی باید ۱۰ رقم باشد.'
-    if (!form.mobile.trim()) return 'موبایل الزامی است.'
-    if (!form.sheba.trim()) return 'شبا الزامی است.'
-    if (!isValidSheba(form.sheba)) return 'شبا باید ۲۴ رقم باشد (با یا بدون پیشوند IR).'
-    if (!docs.national_id_front) return 'تصویر روی کارت ملی الزامی است.'
-    if (!docs.national_id_back) return 'تصویر پشت کارت ملی الزامی است.'
-    if (!docs.birth_certificate) return 'تصویر شناسنامه الزامی است.'
-    if (!docs.selfie) return 'سلفی احراز هویت الزامی است.'
+    if (!/^09\d{9}$/.test(form.mobile)) return 'موبایل باید با ۰۹ شروع شود و ۱۱ رقم باشد.'
+    if (!form.email.trim()) return 'ایمیل فروشگاه الزامی است.'
+    if (!form.father_name.trim() || !/^[A-Za-z][A-Za-z -]{1,40}$/.test(form.father_name_en)) return 'نام پدر فارسی و انگلیسی الزامی است.'
+    if (!form.birth_date) return 'تاریخ تولد شمسی الزامی است.'
+    if (!/^\d{10}$/.test(form.postal_code)) return 'کد پستی باید ۱۰ رقم باشد.'
+    if (!form.state_id || !form.city_id || form.address.trim().length < 5) return 'اول کد پستی را استعلام کنید، یا استان، شهر و نشانی را دستی وارد کنید.'
+    if (!form.shop_name.trim() || !/^[A-Za-z0-9][A-Za-z0-9 -]{1,60}$/.test(form.shop_name_en)) return 'نام فارسی و انگلیسی فروشگاه الزامی است.'
+    if (!form.category_id) return 'دسته‌بندی درگاه را از فهرست فینوپال انتخاب کنید.'
+    if (!/^https?:\/\//i.test(form.website) || !/^https?:\/\//i.test(form.callback_url)) return 'دامنه و آدرس بازگشت باید با http یا https شروع شوند.'
+    if (!form.server_ip.trim()) return 'IP سرور الزامی است.'
+    if (!/^\d{10,14}$/.test(form.tax)) return 'کد مالیاتی باید ۱۰ تا ۱۴ رقم باشد.'
+    if (!isValidSheba(form.sheba) || !isValidSheba(form.backup_sheba)) return 'هر دو شبا باید ۲۴ رقم باشند.'
+    if (normalizeSheba(form.sheba) === normalizeSheba(form.backup_sheba)) return 'شبا پشتیبان باید با شبا اصلی فرق داشته باشد.'
+    const tooBig = Object.values(docs).find((file) => file && file.size > 2 * 1024 * 1024)
+    if (tooBig) return 'هر مدرک حداکثر ۲ مگابایت و از نوع jpg، png یا pdf است.'
+    if (!docs.national_id_front || !docs.national_id_back || !docs.selfie) return 'روی کارت ملی، پشت کارت ملی و سلفی الزامی است.'
     if (isLegal) {
-      if (!form.company_name.trim()) return 'نام شرکت الزامی است.'
-      if (!form.legal_national_id.trim()) return 'شناسه ملی شرکت الزامی است.'
-      if (!form.registration_no.trim()) return 'شماره ثبت الزامی است.'
-      if (!form.economic_code.trim()) return 'شناسه اقتصادی الزامی است.'
-      if (!form.province.trim()) return 'استان الزامی است.'
-      if (!form.city.trim()) return 'شهر الزامی است.'
-      if (!form.address.trim()) return 'نشانی کامل الزامی است.'
-      if (!form.postal_code.trim()) return 'کد پستی الزامی است.'
-      if (!form.shop_name.trim()) return 'نام فروشگاه الزامی است.'
-      if (!form.shop_category.trim()) return 'صنف / دسته الزامی است.'
-      if (!docs.gazette) return 'روزنامه رسمی / آگهی تأسیس الزامی است.'
-      if (!docs.license) return 'مجوز یا پروانه کسب الزامی است.'
+      if (!form.company_name.trim() || !form.company_name_en.trim()) return 'نام فارسی و انگلیسی شرکت الزامی است.'
+      if (!/^\d{11}$/.test(form.legal_national_id)) return 'شناسه ملی شرکت باید ۱۱ رقم باشد.'
+      if (!form.registration_no.trim() || !form.register_date || !form.economic_code.trim()) return 'شماره ثبت، تاریخ ثبت و شناسه اقتصادی الزامی است.'
+      if (!docs.gazette || !docs.official_letter || !docs.company_statute) return 'معرفی‌نامه، اساسنامه و روزنامه رسمی الزامی است.'
     }
     return null
   }
@@ -308,29 +358,42 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
         fd.append('representative_user_id', ownerId)
       }
       const customer: Record<string, string> = {
-        name: form.customer_name,
-        mobile: form.mobile,
         person_type: form.person_type,
+        first_name: form.first_name,
+        last_name: form.last_name,
+        first_name_en: form.first_name_en,
+        last_name_en: form.last_name_en,
+        mobile: form.mobile,
         national_id: form.national_id,
         sheba: normalizeSheba(form.sheba),
+        backup_sheba: normalizeSheba(form.backup_sheba),
         email: form.email,
         father_name: form.father_name,
+        father_name_en: form.father_name_en,
         birth_date: form.birth_date,
         birth_certificate_no: form.birth_certificate_no,
-        birth_place: form.birth_place,
         gender: form.gender,
         province: form.province,
         city: form.city,
+        state_id: form.state_id,
+        city_id: form.city_id,
         address: form.address,
+        address_title: form.address_title,
+        phone: form.phone,
         postal_code: form.postal_code,
-        bank_name: form.bank_name,
-        account_number: form.account_number,
-        account_holder: form.account_holder,
+        bank_code: normalizeSheba(form.sheba).slice(4, 7),
         shop_name: form.shop_name,
-        shop_category: form.shop_category,
+        shop_name_en: form.shop_name_en,
+        shop_category: categories.find((c) => String(c.id) === form.category_id)?.title ?? '',
+        category_id: form.category_id,
         website: form.website,
+        callback_url: form.callback_url,
+        server_ip: form.server_ip,
+        tax: form.tax,
         company_name: form.company_name,
+        company_name_en: form.company_name_en,
         registration_no: form.registration_no,
+        register_date: form.register_date,
         economic_code: form.economic_code,
         legal_national_id: form.legal_national_id,
       }
@@ -341,7 +404,7 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
         if (file) fd.append(`documents[${key}]`, file)
       })
       await api.post('/gateway-sales', fd)
-      toast.success('درگاه با مدارک هویتی ثبت شد')
+      toast.success(t('gwRegistered'))
       qc.invalidateQueries({ queryKey: ['sales'] })
       onDone()
     } catch (error) {
@@ -399,106 +462,157 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
         ) : null}
       </section>
 
+      {vipRefError && <p className="text-sm text-red-600">فهرست استان و دسته‌بندی فینوپال بارگذاری نشد. اتصال VIP را بررسی کنید.</p>}
+
       <section className="grid gap-3">
         <div className="font-bold text-surface-800 dark:text-surface-100">هویت متقاضی</div>
         <div className="grid md:grid-cols-2 gap-3">
           <label className="field">نوع شخص
             <select className="input" value={form.person_type} onChange={(e) => set('person_type', e.target.value)}>
-              <option value="individual">حقیقی</option>
-              <option value="legal">حقوقی</option>
+              {entityOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
             </select>
           </label>
-          <label className="field"><FieldLabel required>نام و نام خانوادگی / نماینده شرکت</FieldLabel>
-            <input className="input" value={form.customer_name} onChange={(e) => set('customer_name', e.target.value)} required />
+          <label className="field">جنسیت
+            <select className="input" value={form.gender} onChange={(e) => set('gender', e.target.value)}>
+              {genderOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+            </select>
+          </label>
+          <label className="field"><FieldLabel required>نام</FieldLabel>
+            <input className="input" value={form.first_name} onChange={(e) => set('first_name', e.target.value)} required />
+          </label>
+          <label className="field"><FieldLabel required>نام خانوادگی</FieldLabel>
+            <input className="input" value={form.last_name} onChange={(e) => set('last_name', e.target.value)} required />
+          </label>
+          <label className="field"><FieldLabel required>نام انگلیسی</FieldLabel>
+            <input className="input" dir="ltr" value={form.first_name_en} onChange={(e) => set('first_name_en', e.target.value)} required />
+          </label>
+          <label className="field"><FieldLabel required>نام خانوادگی انگلیسی</FieldLabel>
+            <input className="input" dir="ltr" value={form.last_name_en} onChange={(e) => set('last_name_en', e.target.value)} required />
           </label>
           <label className="field"><FieldLabel required>کد ملی</FieldLabel>
-            <input className="input" value={form.national_id} onChange={(e) => set('national_id', e.target.value)} required maxLength={10} />
+            <input className={fieldClass('customer.national_id')} inputMode="numeric" maxLength={10} value={form.national_id} onChange={(e) => set('national_id', e.target.value.replace(/\D/g, '').slice(0, 10))} required />
+            <ErrText k="customer.national_id" />
           </label>
           <label className="field"><FieldLabel required>موبایل</FieldLabel>
-            <input className="input" value={form.mobile} onChange={(e) => set('mobile', e.target.value)} required />
+            <input className={fieldClass('customer.mobile')} inputMode="numeric" maxLength={11} value={form.mobile} onChange={(e) => set('mobile', e.target.value.replace(/\D/g, '').slice(0, 11))} required />
+            <ErrText k="customer.mobile" />
           </label>
-          <label className="field">ایمیل
-            <input className="input" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} />
+          <label className="field"><FieldLabel required>ایمیل فروشگاه</FieldLabel>
+            <input className={fieldClass('customer.email')} type="email" dir="ltr" value={form.email} onChange={(e) => set('email', e.target.value)} required />
+            <ErrText k="customer.email" />
           </label>
-          <label className="field">نام پدر
-            <input className="input" value={form.father_name} onChange={(e) => set('father_name', e.target.value)} />
+          <label className="field"><FieldLabel required>نام پدر</FieldLabel>
+            <input className="input" value={form.father_name} onChange={(e) => set('father_name', e.target.value)} required />
           </label>
-          <label className="field">تاریخ تولد
-            <JalaliDatePicker value={form.birth_date} onChange={(v) => set('birth_date', v)} placeholder="انتخاب تاریخ شمسی" fromYear={1300} toYear={1410} />
+          <label className="field"><FieldLabel required>نام پدر انگلیسی</FieldLabel>
+            <input className="input" dir="ltr" value={form.father_name_en} onChange={(e) => set('father_name_en', e.target.value)} required />
+          </label>
+          <label className="field"><FieldLabel required>تاریخ تولد</FieldLabel>
+            <JalaliDatePicker value={form.birth_date} onChange={(v) => set('birth_date', v)} placeholder="تاریخ شمسی" fromYear={1300} toYear={1410} />
           </label>
           <label className="field">شماره شناسنامه
             <input className="input" value={form.birth_certificate_no} onChange={(e) => set('birth_certificate_no', e.target.value)} />
           </label>
-          <label className="field">محل تولد
-            <SearchSelect value={form.birth_place} onChange={(v) => set('birth_place', v)} placeholder="انتخاب شهر" options={birthPlaceOptions} />
-          </label>
-          <label className="field">جنسیت
-            <select className="input" value={form.gender} onChange={(e) => set('gender', e.target.value)}>
-              <option value="">انتخاب کنید</option>
-              <option value="male">مرد</option>
-              <option value="female">زن</option>
-            </select>
-          </label>
         </div>
+      </section>
+
+      <section className="grid md:grid-cols-2 gap-3">
+        <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">آدرس</div>
+        <label className="field"><FieldLabel required>کد پستی</FieldLabel>
+          <div className="flex gap-2">
+            <input className={fieldClass('customer.postal_code')} inputMode="numeric" maxLength={10} value={form.postal_code} onChange={(e) => setForm((prev) => ({ ...prev, postal_code: e.target.value.replace(/\D/g, '').slice(0, 10), address_locked: '' }))} required />
+            <button type="button" className="btn btn-ghost shrink-0" disabled={busy} onClick={() => void inquirePostal()}>استعلام</button>
+          </div>
+          <ErrText k="customer.postal_code" />
+        </label>
+        <label className="field">عنوان آدرس
+          <input className="input" value={form.address_title} onChange={(e) => set('address_title', e.target.value)} />
+        </label>
+        <label className="field"><FieldLabel required>استان</FieldLabel>
+          <SearchSelect
+            value={form.state_id}
+            disabled={addressLocked}
+            required
+            placeholder={states.length ? 'انتخاب استان' : 'در حال دریافت...'}
+            options={states.map((s) => ({ value: s.id, label: s.title }))}
+            onChange={(id) => {
+              const title = states.find((s) => String(s.id) === id)?.title ?? ''
+              setForm((prev) => ({ ...prev, state_id: id, province: title, city_id: '', city: '' }))
+            }}
+          />
+        </label>
+        <label className="field"><FieldLabel required>شهر</FieldLabel>
+          <SearchSelect
+            value={form.city_id}
+            disabled={addressLocked || !form.state_id}
+            required
+            placeholder={form.state_id ? 'انتخاب شهر' : 'اول استان'}
+            options={cities.map((c) => ({ value: c.id, label: c.title }))}
+            onChange={(id) => {
+              const title = cities.find((c) => String(c.id) === id)?.title ?? ''
+              setForm((prev) => ({ ...prev, city_id: id, city: title }))
+            }}
+          />
+        </label>
+        <label className="field md:col-span-2"><FieldLabel required>نشانی</FieldLabel>
+          <input className="input" value={form.address} readOnly={addressLocked} onChange={(e) => set('address', e.target.value)} required />
+          {addressLocked && <button type="button" className="text-xs text-primary-600 mt-1" onClick={() => set('address_locked', '')}>اگر استعلام غلط بود، دستی اصلاح کنید</button>}
+        </label>
+        <label className="field">تلفن ثابت
+          <input className="input" dir="ltr" value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="021-12345678" />
+        </label>
       </section>
 
       {isLegal && (
         <section className="grid md:grid-cols-2 gap-3">
-          <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">مشخصات حقوقی</div>
-          <label className="field"><FieldLabel required>نام شرکت</FieldLabel><input className="input" value={form.company_name} onChange={(e) => set('company_name', e.target.value)} required={isLegal} /></label>
-          <label className="field"><FieldLabel required>شناسه ملی شرکت</FieldLabel><input className="input" value={form.legal_national_id} onChange={(e) => set('legal_national_id', e.target.value)} required={isLegal} /></label>
-          <label className="field"><FieldLabel required>شماره ثبت</FieldLabel><input className="input" value={form.registration_no} onChange={(e) => set('registration_no', e.target.value)} required={isLegal} /></label>
-          <label className="field"><FieldLabel required>شناسه اقتصادی</FieldLabel><input className="input" value={form.economic_code} onChange={(e) => set('economic_code', e.target.value)} required={isLegal} /></label>
+          <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">شرکت و صاحبان امضا</div>
+          <label className="field"><FieldLabel required>نام شرکت</FieldLabel><input className="input" value={form.company_name} onChange={(e) => set('company_name', e.target.value)} required /></label>
+          <label className="field"><FieldLabel required>نام انگلیسی شرکت</FieldLabel><input className="input" dir="ltr" value={form.company_name_en} onChange={(e) => set('company_name_en', e.target.value)} required /></label>
+          <label className="field"><FieldLabel required>شناسه ملی شرکت</FieldLabel><input className="input" inputMode="numeric" maxLength={11} value={form.legal_national_id} onChange={(e) => set('legal_national_id', e.target.value.replace(/\D/g, '').slice(0, 11))} required /></label>
+          <label className="field"><FieldLabel required>شماره ثبت</FieldLabel><input className="input" value={form.registration_no} onChange={(e) => set('registration_no', e.target.value)} required /></label>
+          <label className="field"><FieldLabel required>تاریخ ثبت</FieldLabel><JalaliDatePicker value={form.register_date} onChange={(v) => set('register_date', v)} placeholder="تاریخ شمسی" fromYear={1300} toYear={1410} /></label>
+          <label className="field"><FieldLabel required>شناسه اقتصادی</FieldLabel><input className="input" value={form.economic_code} onChange={(e) => set('economic_code', e.target.value)} required /></label>
+          <p className="md:col-span-2 text-xs text-surface-500">متقاضی همین فرم به‌عنوان صاحب امضا ارسال می‌شود. کد ملی او باید در فهرست رسمی شرکت باشد.</p>
         </section>
       )}
 
       <section className="grid md:grid-cols-2 gap-3">
-        <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">آدرس و کسب‌وکار</div>
-        <label className="field"><FieldLabel required={isLegal}>استان</FieldLabel>
+        <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">فروشگاه / درگاه</div>
+        <label className="field"><FieldLabel required>نام فروشگاه</FieldLabel><input className="input" value={form.shop_name} onChange={(e) => set('shop_name', e.target.value)} required /></label>
+        <label className="field"><FieldLabel required>نام انگلیسی فروشگاه</FieldLabel><input className="input" dir="ltr" value={form.shop_name_en} onChange={(e) => set('shop_name_en', e.target.value)} required /></label>
+        <label className="field"><FieldLabel required>دسته‌بندی درگاه</FieldLabel>
           <SearchSelect
-            testId="gateway-province"
-            value={form.province}
-            onChange={(v) => setForm((prev) => ({ ...prev, province: v, city: '' }))}
-            placeholder="انتخاب استان"
-            required={isLegal}
-            options={states.map((s) => ({ value: s.title, label: s.title, keywords: s.slug ?? '' }))}
+            value={form.category_id}
+            required
+            placeholder={categories.length ? 'انتخاب دسته' : 'در حال دریافت...'}
+            options={categories.map((c) => ({ value: c.id, label: c.title }))}
+            onChange={(id) => set('category_id', id)}
           />
         </label>
-        <label className="field"><FieldLabel required={isLegal}>شهر</FieldLabel>
-          <SearchSelect
-            testId="gateway-city"
-            value={form.city}
-            onChange={(v) => set('city', v)}
-            placeholder={form.province ? 'انتخاب شهر' : 'اول استان را انتخاب کنید'}
-            required={isLegal}
-            options={cityOptions}
-          />
-        </label>
-        <label className="field md:col-span-2"><FieldLabel required={isLegal}>نشانی کامل</FieldLabel><input className="input" value={form.address} onChange={(e) => set('address', e.target.value)} required={isLegal} /></label>
-        <label className="field"><FieldLabel required={isLegal}>کد پستی</FieldLabel><input className="input" value={form.postal_code} onChange={(e) => set('postal_code', e.target.value)} required={isLegal} /></label>
-        <label className="field"><FieldLabel required={isLegal}>نام فروشگاه</FieldLabel><input className="input" value={form.shop_name} onChange={(e) => set('shop_name', e.target.value)} required={isLegal} /></label>
-        <label className="field"><FieldLabel required={isLegal}>صنف / دسته</FieldLabel><input className="input" value={form.shop_category} onChange={(e) => set('shop_category', e.target.value)} required={isLegal} /></label>
-        <label className="field">وب‌سایت<input className="input" value={form.website} onChange={(e) => set('website', e.target.value)} /></label>
+        <label className="field"><FieldLabel required>کد مالیاتی</FieldLabel><input className="input" inputMode="numeric" maxLength={14} value={form.tax} onChange={(e) => set('tax', e.target.value.replace(/\D/g, '').slice(0, 14))} required /></label>
+        <label className="field"><FieldLabel required>دامنه</FieldLabel><input className="input" dir="ltr" value={form.website} onChange={(e) => set('website', e.target.value)} placeholder="https://shop.example.com" required /></label>
+        <label className="field"><FieldLabel required>آدرس بازگشت</FieldLabel><input className="input" dir="ltr" value={form.callback_url} onChange={(e) => set('callback_url', e.target.value)} placeholder="https://shop.example.com/callback" required /></label>
+        <label className="field"><FieldLabel required>ایمیل وب‌سرویس</FieldLabel><input className="input" dir="ltr" type="email" value={form.email} onChange={(e) => set('email', e.target.value)} required /></label>
+        <label className="field"><FieldLabel required>IP سرور</FieldLabel><input className="input" dir="ltr" value={form.server_ip} onChange={(e) => set('server_ip', e.target.value)} placeholder="1.2.3.4" required /></label>
       </section>
 
       <section className="grid md:grid-cols-2 gap-3">
-        <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">حساب بانکی تسویه</div>
-        <label className="field"><FieldLabel required>شبا</FieldLabel><input className={fieldClass('customer.sheba')} value={form.sheba} onChange={(e) => set('sheba', e.target.value)} placeholder="IRxxxxxxxxxxxxxxxxxxxxxxxx یا ۲۴ رقم" required /><ErrText k="customer.sheba" /></label>
-        <label className="field">نام بانک<input className="input" value={form.bank_name} onChange={(e) => set('bank_name', e.target.value)} /></label>
-        <label className="field">شماره حساب<input className="input" value={form.account_number} onChange={(e) => set('account_number', e.target.value)} /></label>
-        <label className="field">صاحب حساب<input className="input" value={form.account_holder} onChange={(e) => set('account_holder', e.target.value)} /></label>
+        <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">شبا</div>
+        <label className="field"><FieldLabel required>شبا اصلی</FieldLabel><input className={fieldClass('customer.sheba')} dir="ltr" value={form.sheba} onChange={(e) => set('sheba', e.target.value)} placeholder="IR و ۲۴ رقم" required /><ErrText k="customer.sheba" /></label>
+        <label className="field"><FieldLabel required>شبا پشتیبان</FieldLabel><input className={fieldClass('customer.backup_sheba')} dir="ltr" value={form.backup_sheba} onChange={(e) => set('backup_sheba', e.target.value)} placeholder="متفاوت از شبا اصلی" required /><ErrText k="customer.backup_sheba" /></label>
       </section>
 
       <section className="grid md:grid-cols-2 gap-3">
-        <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">مدارک هویتی</div>
-        <FileField required label="تصویر روی کارت ملی" file={docs.national_id_front} onChange={(file) => setDocs((d) => ({ ...d, national_id_front: file }))} />
-        <FileField required label="تصویر پشت کارت ملی" file={docs.national_id_back} onChange={(file) => setDocs((d) => ({ ...d, national_id_back: file }))} />
-        <FileField required label="تصویر شناسنامه" file={docs.birth_certificate} onChange={(file) => setDocs((d) => ({ ...d, birth_certificate: file }))} />
-        <FileField required label="سلفی احراز هویت با کارت ملی" file={docs.selfie} onChange={(file) => setDocs((d) => ({ ...d, selfie: file }))} />
+        <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">مدارک</div>
+        <p className="md:col-span-2 text-xs text-surface-500">jpg، png یا pdf و حداکثر ۲ مگابایت. بدون روی کارت، پشت کارت و سلفی، فینوپال ثبت را رد می‌کند.</p>
+        <FileField required label="روی کارت ملی" file={docs.national_id_front} onChange={(file) => setDocs((d) => ({ ...d, national_id_front: file }))} />
+        <FileField required label="پشت کارت ملی" file={docs.national_id_back} onChange={(file) => setDocs((d) => ({ ...d, national_id_back: file }))} />
+        <FileField required label="سلفی احراز هویت" file={docs.selfie} onChange={(file) => setDocs((d) => ({ ...d, selfie: file }))} />
         {isLegal && (
           <>
-            <FileField required label="روزنامه رسمی / آگهی تأسیس" file={docs.gazette} onChange={(file) => setDocs((d) => ({ ...d, gazette: file }))} />
-            <FileField required label="مجوز یا پروانه کسب" file={docs.license} onChange={(file) => setDocs((d) => ({ ...d, license: file }))} />
+            <FileField required label="معرفی‌نامه رسمی" file={docs.official_letter} onChange={(file) => setDocs((d) => ({ ...d, official_letter: file }))} />
+            <FileField required label="اساسنامه شرکت" file={docs.company_statute} onChange={(file) => setDocs((d) => ({ ...d, company_statute: file }))} />
+            <FileField required label="روزنامه رسمی" file={docs.gazette} onChange={(file) => setDocs((d) => ({ ...d, gazette: file }))} />
           </>
         )}
       </section>

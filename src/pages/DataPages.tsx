@@ -250,6 +250,7 @@ type GatewaySaleRow = {
     name: string
     external_id: string
     merchant_code?: string | null
+    metadata?: { finopal?: { tracking_code?: string } } | null
     transactions?: Array<{ id: number; amount: string; profit: string; status: string; authority?: string | null; paid_at?: string | null }>
   }
   customer?: {
@@ -274,6 +275,7 @@ type GatewaySaleRow = {
     shop_name?: string
     shop_category?: string
     website?: string
+    metadata?: { vip?: { callback_url?: string; server_ip?: string; tax?: string; backup_sheba?: string } }
     company_name?: string
     document_urls?: Record<string, string | null>
   }
@@ -479,6 +481,9 @@ function GatewayReviewModal({
           )}
           <Badge tone={gatewayTone(sale.status)}>{label(sale.status)}</Badge>
           {sale.gateway?.merchant_code && <Badge tone="info">{t('gwMerchantCode')}: {sale.gateway.merchant_code}</Badge>}
+          {sale.gateway?.metadata?.finopal?.tracking_code && (
+            <Badge tone="ok">{t('gwFinopalTracking')}: {sale.gateway.metadata.finopal.tracking_code}</Badge>
+          )}
         </div>
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 text-sm">
           <KycItem label={t('kycCustomer')} value={c?.name} />
@@ -498,6 +503,10 @@ function GatewayReviewModal({
           <KycItem label={t('kycShop')} value={c?.shop_name} />
           <KycItem label={t('kycCategory')} value={c?.shop_category} />
           <KycItem label={t('kycWebsite')} value={c?.website} />
+          <KycItem label="آدرس بازگشت" value={c?.metadata?.vip?.callback_url} />
+          <KycItem label="IP سرور" value={c?.metadata?.vip?.server_ip} />
+          <KycItem label="کد مالیاتی" value={c?.metadata?.vip?.tax} />
+          <KycItem label="شبا پشتیبان" value={c?.metadata?.vip?.backup_sheba} />
           <KycItem label={t('kycCompany')} value={c?.company_name} />
           <KycItem label={t('kycSheba')} value={c?.sheba} />
           <KycItem label={t('kycBank')} value={c?.bank_name} />
