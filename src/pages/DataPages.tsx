@@ -18,7 +18,7 @@ import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
 import { confirmAction, promptAction } from '../lib/confirm'
 import { notificationBody, notificationHref, notificationTitle, type AppNotification } from '../lib/notify'
-import { criterionLabel, dateOnly, label, localeTag, money, moneyHeader, percent, productLabel } from '../lib/format'
+import { criterionHint, criterionLabel, currentLocale, dateOnly, formatTenure, label, localeTag, money, moneyHeader, percent, productLabel } from '../lib/format'
 import {
   commissionsSubKey,
   gwNewKey,
@@ -1751,10 +1751,17 @@ export function ReferralsPage() {
   )
 }
 
-const BOOLEAN_CRITERIA = new Set(['senior_assessment', 'team_satisfaction'])
+const BOOLEAN_CRITERIA = new Set(['senior_assessment'])
+const HIDDEN_CRITERIA = new Set(['team_satisfaction'])
 
 function isBooleanCriterion(code: string) {
   return BOOLEAN_CRITERIA.has(code)
+}
+
+function tenureSentence(actual: number, required: number) {
+  return currentLocale() === 'en'
+    ? `${formatTenure(actual)} of at least ${formatTenure(required)}`
+    : `${formatTenure(actual)} از حداقل ${formatTenure(required)}`
 }
 
 function CriterionFlag({ code, passed, status }: { code: string; passed: boolean; status?: string }) {
@@ -1767,6 +1774,21 @@ function CriterionFlag({ code, passed, status }: { code: string; passed: boolean
   return passed
     ? <Badge tone="ok">{t('promoFlagYes')}</Badge>
     : <Badge tone="muted">{t('promoFlagNo')}</Badge>
+}
+
+function TenureRow({ actual, required, passed, boxed }: { actual: number; required: number; passed: boolean; boxed?: boolean }) {
+  const { t } = useApp()
+  return (
+    <div dir="rtl" className={boxed
+      ? 'rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/70 dark:bg-surface-900/40 p-3 text-right'
+      : 'py-3 border-b border-surface-100 dark:border-surface-700 last:border-0 text-right'}>
+      <div className="flex items-center justify-between gap-3">
+        <span className="font-medium text-surface-800 dark:text-surface-100">{criterionLabel.tenure_years}</span>
+        {passed ? <Badge tone="ok">{t('promoPass')}</Badge> : <Badge tone="warn">{t('promoFail')}</Badge>}
+      </div>
+      <p className="m-0 mt-1.5 text-sm leading-7 text-surface-700 dark:text-surface-200">{tenureSentence(actual, required)}</p>
+    </div>
+  )
 }
 
 function PromotionList({
@@ -1843,20 +1865,27 @@ function PromotionList({
             <div>
               <div className="font-semibold mb-2">{t('promoCriteria', { role: file.request?.target_role?.name ?? '' })}</div>
               <div className="space-y-2">
-                {(file.criteria ?? []).map((c: { id: number; criterion_code: string; actual_value: string; required_value: string; passed: boolean; kind?: string }) => (
-                  <div key={c.id} className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/70 dark:bg-surface-900/40 p-3 flex items-start justify-between gap-3">
-                    <span className="min-w-0 break-words leading-6">{criterionLabel[c.criterion_code] ?? c.criterion_code}</span>
-                    <span className="shrink-0 flex items-center gap-2">
-                      {c.kind === 'boolean' || isBooleanCriterion(c.criterion_code)
-                        ? <CriterionFlag code={c.criterion_code} passed={c.passed} status={file.request?.status} />
-                        : (
-                          <>
-                            <ScorePair actual={Number(c.actual_value)} required={Number(c.required_value)} compact />
-                            {c.passed ? <Badge tone="ok">{t('promoPass')}</Badge> : <Badge tone="warn">{t('promoFail')}</Badge>}
-                          </>
-                        )}
-                    </span>
-                  </div>
+                {(file.criteria ?? []).filter((c: { criterion_code: string }) => !HIDDEN_CRITERIA.has(c.criterion_code)).map((c: { id: number; criterion_code: string; actual_value: string; required_value: string; passed: boolean; kind?: string }) => (
+                  c.criterion_code === 'tenure_years'
+                    ? <TenureRow key={c.id} actual={Number(c.actual_value)} required={Number(c.required_value)} passed={c.passed} boxed />
+                    : (
+                      <div key={c.id} className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/70 dark:bg-surface-900/40 p-3 flex items-start justify-between gap-3">
+                        <span className="min-w-0 break-words leading-6">
+                          {criterionLabel[c.criterion_code] ?? c.criterion_code}
+                          {criterionHint[c.criterion_code] && <span className="block text-xs font-normal text-surface-500 mt-1 leading-5">{criterionHint[c.criterion_code]}</span>}
+                        </span>
+                        <span className="shrink-0 flex items-center gap-2">
+                          {c.kind === 'boolean' || isBooleanCriterion(c.criterion_code)
+                            ? <CriterionFlag code={c.criterion_code} passed={c.passed} status={file.request?.status} />
+                            : (
+                              <>
+                                <ScorePair actual={Number(c.actual_value)} required={Number(c.required_value)} compact />
+                                {c.passed ? <Badge tone="ok">{t('promoPass')}</Badge> : <Badge tone="warn">{t('promoFail')}</Badge>}
+                              </>
+                            )}
+                        </span>
+                      </div>
+                    )
                 ))}
               </div>
             </div>
@@ -1963,21 +1992,28 @@ export function PromotionsPage() {
         {!topRole && (
           <>
             <div className="font-semibold mb-3 text-surface-800 dark:text-surface-200">{t('promoCriteria', { role: targetName })}</div>
-            {(eligibility ?? []).map((c: { code: string; actual: number; required: number; passed: boolean }) => (
-              <div key={c.code} className="py-3 border-b border-surface-100 dark:border-surface-700 last:border-0">
-                <div className="flex justify-between mb-2 gap-3">
-                  <span>{criterionLabel[c.code] ?? c.code}</span>
-                  {isBooleanCriterion(c.code)
-                    ? <CriterionFlag code={c.code} passed={c.passed} />
-                    : (
-                      <span className="inline-flex items-center gap-2">
-                        <ScorePair actual={Number(c.actual)} required={Number(c.required)} compact />
-                        {c.passed ? <Badge tone="ok">{t('promoPass')}</Badge> : <Badge tone="warn">{t('promoFail')}</Badge>}
+            {(eligibility ?? []).filter((c: { code: string }) => !HIDDEN_CRITERIA.has(c.code)).map((c: { code: string; actual: number; required: number; passed: boolean }) => (
+              c.code === 'tenure_years'
+                ? <TenureRow key={c.code} actual={Number(c.actual)} required={Number(c.required)} passed={c.passed} />
+                : (
+                  <div key={c.code} className="py-3 border-b border-surface-100 dark:border-surface-700 last:border-0">
+                    <div className="flex justify-between mb-2 gap-3">
+                      <span className="min-w-0">
+                        {criterionLabel[c.code] ?? c.code}
+                        {criterionHint[c.code] && <span className="block text-xs font-normal text-surface-500 mt-1 leading-5">{criterionHint[c.code]}</span>}
                       </span>
-                    )}
-                </div>
-                {!isBooleanCriterion(c.code) && <ProgressBar value={Number(c.actual)} max={Number(c.required) || 1} />}
-              </div>
+                      {isBooleanCriterion(c.code)
+                        ? <CriterionFlag code={c.code} passed={c.passed} />
+                        : (
+                          <span className="inline-flex items-center gap-2 shrink-0">
+                            <ScorePair actual={Number(c.actual)} required={Number(c.required)} compact />
+                            {c.passed ? <Badge tone="ok">{t('promoPass')}</Badge> : <Badge tone="warn">{t('promoFail')}</Badge>}
+                          </span>
+                        )}
+                    </div>
+                    {!isBooleanCriterion(c.code) && <ProgressBar value={Number(c.actual)} max={Number(c.required) || 1} />}
+                  </div>
+                )
             ))}
             <button className="btn btn-primary mt-4" onClick={() => request.mutate()}>{t('promoManual')}</button>
           </>

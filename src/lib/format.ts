@@ -284,11 +284,11 @@ const criterionLabelFa: Record<string, string> = {
   new_representatives: 'ثبت‌نام نمایندگان جدید',
   strong_representatives: 'نمایندگان با امتیاز بالا',
   senior_assessment: 'مصاحبه و تایید مدیر ارشد',
-  tenure_years: 'سابقه مدیر فروشی (سال)',
+  tenure_years: 'سابقه مدیر فروش',
   registered_reps: 'مجموع نمایندگان ثبت‌شده',
   strong_reps: 'نمایندگان قوی',
   team_satisfaction: 'رضایت نمایندگان تیم',
-  eligible_sales_managers: 'نمایندگان واجد شرایط مدیر فروش',
+  eligible_sales_managers: 'نمایندگان معرفی‌شده آماده مدیر فروش',
   required_training: 'تکمیل دوره‌های الزامی نقش',
 }
 
@@ -297,17 +297,45 @@ const criterionLabelEn: Record<string, string> = {
   new_representatives: 'New representatives',
   strong_representatives: 'High-point representatives',
   senior_assessment: 'Senior manager interview',
-  tenure_years: 'Sales-manager tenure (years)',
+  tenure_years: 'Sales-manager tenure',
   registered_reps: 'Registered representatives',
   strong_reps: 'Strong representatives',
   team_satisfaction: 'Team satisfaction',
-  eligible_sales_managers: 'Eligible sales managers',
+  eligible_sales_managers: 'Referred reps ready for sales manager',
   required_training: 'Required role training',
 }
 
 export const criterionLabel: Record<string, string> = new Proxy({}, {
   get: (_t, key: string) => (currentLocale() === 'en' ? criterionLabelEn : criterionLabelFa)[key] ?? key,
 }) as Record<string, string>
+
+const criterionHintFa: Record<string, string> = {
+  eligible_sales_managers: 'از افرادی که این شخص معرفی کرده، چند نفر همه شرط‌های عددی و آموزشی ارتقاء به مدیر فروش را دارند. مصاحبه مدیر ارشد در این شمارش نیست. حد نصاب پیش‌فرض ۲ نفر است.',
+}
+
+const criterionHintEn: Record<string, string> = {
+  eligible_sales_managers: 'How many people this person referred already meet every numeric and training condition for sales manager. The senior interview is not counted. Default threshold is 2.',
+}
+
+export const criterionHint: Record<string, string> = new Proxy({}, {
+  get: (_t, key: string) => (currentLocale() === 'en' ? criterionHintEn : criterionHintFa)[key] ?? '',
+}) as Record<string, string>
+
+/** Years stored as a fraction (1.015 = a little over one year) shown as years and days. */
+export function formatTenure(years: number) {
+  const totalDays = Math.max(0, Math.round(Number(years) * 365))
+  const y = Math.floor(totalDays / 365)
+  const d = totalDays % 365
+  const n = (value: number) => value.toLocaleString(localeTag())
+  if (currentLocale() === 'en') {
+    const year = `${n(y)} year${y === 1 ? '' : 's'}`
+    if (d === 0) return year
+    return `${year}, ${n(d)} day${d === 1 ? '' : 's'}`
+  }
+  if (y === 0) return `${n(d)} روز`
+  if (d === 0) return `${n(y)} سال`
+  return `${n(y)} سال و ${n(d)} روز`
+}
 
 export const settingLabel: Record<string, string> = {
   qualification_thresholds: 'آستانه‌های پاداش ماهانه',
