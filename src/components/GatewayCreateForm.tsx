@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { api } from '../lib/api'
 import { gwNewKey, useProductOriented } from '../lib/productMode'
@@ -47,7 +47,6 @@ const emptyForm = {
   address: '',
   address_title: 'محل کسب',
   phone: '',
-  address_locked: '',
   sheba: '',
   backup_sheba: '',
   shop_name: '',
@@ -121,6 +120,7 @@ const FIELD_LABELS: Record<string, string> = {
   'customer.city': 'شهر',
   'customer.address': 'نشانی',
   'customer.postal_code': 'کد پستی',
+  'customer.phone': 'تلفن ثابت',
   'customer.shop_name': 'نام فروشگاه',
   'customer.shop_category': 'صنف / دسته',
   'customer.company_name': 'نام شرکت',
@@ -135,6 +135,41 @@ const FIELD_LABELS: Record<string, string> = {
   'documents.license': 'مجوز / پروانه کسب',
   shared_link_id: 'لینک اشتراکی',
   representative_user_id: 'نماینده',
+}
+
+const FA_TO_EN: Record<string, string> = {
+  ا: 'a', آ: 'a', ب: 'b', پ: 'p', ت: 't', ث: 's', ج: 'j', چ: 'ch', ح: 'h', خ: 'kh', د: 'd', ذ: 'z',
+  ر: 'r', ز: 'z', ژ: 'zh', س: 's', ش: 'sh', ص: 's', ض: 'z', ط: 't', ظ: 'z', ع: 'a', غ: 'gh', ف: 'f',
+  ق: 'gh', ک: 'k', ك: 'k', گ: 'g', ل: 'l', م: 'm', ن: 'n', و: 'v', ه: 'h', ی: 'y', ي: 'y', ئ: 'y',
+}
+
+function toLatin(value: string): string {
+  let out = ''
+  for (const char of value.normalize('NFKC')) {
+    if (FA_TO_EN[char]) out += FA_TO_EN[char]
+    else if (/[A-Za-z0-9]/.test(char)) out += char
+    else if (char === ' ' || char === '-') out += char
+    else if (/[۰-۹]/.test(char)) out += String('۰۱۲۳۴۵۶۷۸۹'.indexOf(char))
+  }
+  out = out.replace(/\s+/g, ' ').trim()
+  if (!out) return ''
+  return out.replace(/(^|\s)([a-z])/g, (_, space: string, letter: string) => space + letter.toUpperCase())
+}
+
+const EN_FROM_FA = {
+  first_name_en: 'first_name',
+  last_name_en: 'last_name',
+  father_name_en: 'father_name',
+  shop_name_en: 'shop_name',
+  company_name_en: 'company_name',
+} as const
+
+function landlinePhone(value: string): string | null {
+  const raw = value.replace(/\s/g, '')
+  if (/^0\d{2}-\d{8}$/.test(raw)) return raw
+  const digits = raw.replace(/\D/g, '')
+  if (/^0\d{10}$/.test(digits)) return `${digits.slice(0, 3)}-${digits.slice(3)}`
+  return null
 }
 
 function normalizeSheba(value: string): string {
@@ -206,9 +241,10 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
   const [docs, setDocs] = useState<Docs>({})
   const [busy, setBusy] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
+  const enLocked = useRef<Partial<Record<keyof typeof EN_FROM_FA, boolean>>>({})
   const isLegal = form.person_type === 'legal'
-  const set = (key: keyof typeof emptyForm, value: string) => {
-    setForm((prev) => ({ ...prev, [key]: value }))
+  const set = (key: keyof typeof emptyForm, value: string, extra?: Partial<typeof emptyForm>) => {
+    setForm((prev) => ({ ...prev, [key]: value, ...extra }))
     setFieldErrors((prev) => {
       const next = { ...prev }
       const map: Partial<Record<keyof typeof emptyForm, string>> = {
@@ -245,6 +281,20 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
     })
   }
 
+  const setFa = (fa: keyof typeof emptyForm, en: keyof typeof EN_FROM_FA, value: string) => {
+    set(fa, value, enLocked.current[en] ? undefined : { [en]: toLatin(value) })
+  }
+
+  const setEn = (en: keyof typeof EN_FROM_FA, value: string) => {
+    if (!value.trim()) {
+      enLocked.current[en] = false
+      set(en, toLatin(form[EN_FROM_FA[en]]))
+      return
+    }
+    enLocked.current[en] = true
+    set(en, value)
+  }
+
   const err = (key: string) => fieldErrors[key]
   const fieldClass = (key: string) => `input${err(key) ? ' border-red-500 focus:border-red-500' : ''}`
   const ErrText = ({ k }: { k: string }) => (err(k) ? <span className="text-xs text-red-600 mt-1">{err(k)}</span> : null)
@@ -275,7 +325,6 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
     queryFn: async () => (await api.get('/finopal-vip/cities', { params: { state_id: form.state_id } })).data as VipOption[],
   })
   const cities: VipOption[] = cityRows ?? []
-  const addressLocked = form.address_locked === '1'
 
   const inquirePostal = async () => {
     if (!/^\d{10}$/.test(form.postal_code)) {
@@ -290,14 +339,12 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
         province: data.province ?? '',
         city: data.city ?? '',
         address: data.address ?? '',
-        state_id: String(data.state_id ?? ''),
-        city_id: String(data.city_id ?? ''),
-        address_locked: '1',
+        state_id: data.state_id ? String(data.state_id) : prev.state_id,
+        city_id: data.city_id ? String(data.city_id) : '',
       }))
-      toast.success('آدرس از روی کد پستی پر شد.')
+      toast.success(data.state_id && data.city_id ? 'آدرس از روی کد پستی پر شد.' : 'نشانی پر شد. استان یا شهر را در فهرست انتخاب کنید.')
     } catch (error) {
-      setForm((prev) => ({ ...prev, address_locked: '' }))
-      toast.error(apiErrorMessage(error) || 'استعلام کد پستی انجام نشد. استان و شهر را دستی انتخاب کنید.')
+      toast.error(apiErrorMessage(error) || 'استعلام کد پستی انجام نشد.')
     } finally {
       setBusy(false)
     }
@@ -314,7 +361,8 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
     if (!form.father_name.trim() || !/^[A-Za-z][A-Za-z -]{1,40}$/.test(form.father_name_en)) return 'نام پدر فارسی و انگلیسی الزامی است.'
     if (!form.birth_date) return 'تاریخ تولد شمسی الزامی است.'
     if (!/^\d{10}$/.test(form.postal_code)) return 'کد پستی باید ۱۰ رقم باشد.'
-    if (!form.state_id || !form.city_id || form.address.trim().length < 5) return 'اول کد پستی را استعلام کنید، یا استان، شهر و نشانی را دستی وارد کنید.'
+    if (!landlinePhone(form.phone)) return 'تلفن ثابت باید مانند 021-12345678 باشد.'
+    if (!form.state_id || !form.city_id || form.address.trim().length < 5) return 'استان، شهر و نشانی را وارد کنید.'
     if (!form.shop_name.trim() || !/^[A-Za-z0-9][A-Za-z0-9 -]{1,60}$/.test(form.shop_name_en)) return 'نام فارسی و انگلیسی فروشگاه الزامی است.'
     if (!form.category_id) return 'دسته‌بندی درگاه را از فهرست فینوپال انتخاب کنید.'
     if (!/^https?:\/\//i.test(form.website) || !/^https?:\/\//i.test(form.callback_url)) return 'دامنه و آدرس بازگشت باید با http یا https شروع شوند.'
@@ -379,7 +427,7 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
         city_id: form.city_id,
         address: form.address,
         address_title: form.address_title,
-        phone: form.phone,
+        phone: landlinePhone(form.phone) ?? '',
         postal_code: form.postal_code,
         bank_code: normalizeSheba(form.sheba).slice(4, 7),
         shop_name: form.shop_name,
@@ -410,7 +458,7 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
     } catch (error) {
       const fields = apiFieldErrors(error)
       setFieldErrors(fields)
-      toast.error(apiErrorMessage(error), { duration: 6000 })
+      toast.error(apiErrorMessage(error), { duration: 12000 })
     } finally {
       setBusy(false)
     }
@@ -478,16 +526,16 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
             </select>
           </label>
           <label className="field"><FieldLabel required>نام</FieldLabel>
-            <input className="input" value={form.first_name} onChange={(e) => set('first_name', e.target.value)} required />
+            <input className="input" value={form.first_name} onChange={(e) => setFa('first_name', 'first_name_en', e.target.value)} required />
           </label>
           <label className="field"><FieldLabel required>نام خانوادگی</FieldLabel>
-            <input className="input" value={form.last_name} onChange={(e) => set('last_name', e.target.value)} required />
+            <input className="input" value={form.last_name} onChange={(e) => setFa('last_name', 'last_name_en', e.target.value)} required />
           </label>
           <label className="field"><FieldLabel required>نام انگلیسی</FieldLabel>
-            <input className="input" dir="ltr" value={form.first_name_en} onChange={(e) => set('first_name_en', e.target.value)} required />
+            <input className="input" dir="ltr" value={form.first_name_en} onChange={(e) => setEn('first_name_en', e.target.value)} required />
           </label>
           <label className="field"><FieldLabel required>نام خانوادگی انگلیسی</FieldLabel>
-            <input className="input" dir="ltr" value={form.last_name_en} onChange={(e) => set('last_name_en', e.target.value)} required />
+            <input className="input" dir="ltr" value={form.last_name_en} onChange={(e) => setEn('last_name_en', e.target.value)} required />
           </label>
           <label className="field"><FieldLabel required>کد ملی</FieldLabel>
             <input className={fieldClass('customer.national_id')} inputMode="numeric" maxLength={10} value={form.national_id} onChange={(e) => set('national_id', e.target.value.replace(/\D/g, '').slice(0, 10))} required />
@@ -502,10 +550,10 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
             <ErrText k="customer.email" />
           </label>
           <label className="field"><FieldLabel required>نام پدر</FieldLabel>
-            <input className="input" value={form.father_name} onChange={(e) => set('father_name', e.target.value)} required />
+            <input className="input" value={form.father_name} onChange={(e) => setFa('father_name', 'father_name_en', e.target.value)} required />
           </label>
           <label className="field"><FieldLabel required>نام پدر انگلیسی</FieldLabel>
-            <input className="input" dir="ltr" value={form.father_name_en} onChange={(e) => set('father_name_en', e.target.value)} required />
+            <input className="input" dir="ltr" value={form.father_name_en} onChange={(e) => setEn('father_name_en', e.target.value)} required />
           </label>
           <label className="field"><FieldLabel required>تاریخ تولد</FieldLabel>
             <JalaliDatePicker value={form.birth_date} onChange={(v) => set('birth_date', v)} placeholder="تاریخ شمسی" fromYear={1300} toYear={1410} />
@@ -520,7 +568,7 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
         <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">آدرس</div>
         <label className="field"><FieldLabel required>کد پستی</FieldLabel>
           <div className="flex gap-2">
-            <input className={fieldClass('customer.postal_code')} inputMode="numeric" maxLength={10} value={form.postal_code} onChange={(e) => setForm((prev) => ({ ...prev, postal_code: e.target.value.replace(/\D/g, '').slice(0, 10), address_locked: '' }))} required />
+            <input className={fieldClass('customer.postal_code')} inputMode="numeric" maxLength={10} value={form.postal_code} onChange={(e) => set('postal_code', e.target.value.replace(/\D/g, '').slice(0, 10))} required />
             <button type="button" className="btn btn-ghost shrink-0" disabled={busy} onClick={() => void inquirePostal()}>استعلام</button>
           </div>
           <ErrText k="customer.postal_code" />
@@ -531,7 +579,6 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
         <label className="field"><FieldLabel required>استان</FieldLabel>
           <SearchSelect
             value={form.state_id}
-            disabled={addressLocked}
             required
             placeholder={states.length ? 'انتخاب استان' : 'در حال دریافت...'}
             options={states.map((s) => ({ value: s.id, label: s.title }))}
@@ -544,7 +591,7 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
         <label className="field"><FieldLabel required>شهر</FieldLabel>
           <SearchSelect
             value={form.city_id}
-            disabled={addressLocked || !form.state_id}
+            disabled={!form.state_id}
             required
             placeholder={form.state_id ? 'انتخاب شهر' : 'اول استان'}
             options={cities.map((c) => ({ value: c.id, label: c.title }))}
@@ -555,19 +602,19 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
           />
         </label>
         <label className="field md:col-span-2"><FieldLabel required>نشانی</FieldLabel>
-          <input className="input" value={form.address} readOnly={addressLocked} onChange={(e) => set('address', e.target.value)} required />
-          {addressLocked && <button type="button" className="text-xs text-primary-600 mt-1" onClick={() => set('address_locked', '')}>اگر استعلام غلط بود، دستی اصلاح کنید</button>}
+          <input className="input" value={form.address} onChange={(e) => set('address', e.target.value)} required />
         </label>
-        <label className="field">تلفن ثابت
-          <input className="input" dir="ltr" value={form.phone} onChange={(e) => set('phone', e.target.value)} placeholder="021-12345678" />
+        <label className="field"><FieldLabel required>تلفن ثابت</FieldLabel>
+          <input className={fieldClass('customer.phone')} dir="ltr" inputMode="numeric" maxLength={12} value={form.phone} onChange={(e) => set('phone', e.target.value)} onBlur={() => { const next = landlinePhone(form.phone); if (next) set('phone', next) }} placeholder="021-12345678" required />
+          <ErrText k="customer.phone" />
         </label>
       </section>
 
       {isLegal && (
         <section className="grid md:grid-cols-2 gap-3">
           <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">شرکت و صاحبان امضا</div>
-          <label className="field"><FieldLabel required>نام شرکت</FieldLabel><input className="input" value={form.company_name} onChange={(e) => set('company_name', e.target.value)} required /></label>
-          <label className="field"><FieldLabel required>نام انگلیسی شرکت</FieldLabel><input className="input" dir="ltr" value={form.company_name_en} onChange={(e) => set('company_name_en', e.target.value)} required /></label>
+          <label className="field"><FieldLabel required>نام شرکت</FieldLabel><input className="input" value={form.company_name} onChange={(e) => setFa('company_name', 'company_name_en', e.target.value)} required /></label>
+          <label className="field"><FieldLabel required>نام انگلیسی شرکت</FieldLabel><input className="input" dir="ltr" value={form.company_name_en} onChange={(e) => setEn('company_name_en', e.target.value)} required /></label>
           <label className="field"><FieldLabel required>شناسه ملی شرکت</FieldLabel><input className="input" inputMode="numeric" maxLength={11} value={form.legal_national_id} onChange={(e) => set('legal_national_id', e.target.value.replace(/\D/g, '').slice(0, 11))} required /></label>
           <label className="field"><FieldLabel required>شماره ثبت</FieldLabel><input className="input" value={form.registration_no} onChange={(e) => set('registration_no', e.target.value)} required /></label>
           <label className="field"><FieldLabel required>تاریخ ثبت</FieldLabel><JalaliDatePicker value={form.register_date} onChange={(v) => set('register_date', v)} placeholder="تاریخ شمسی" fromYear={1300} toYear={1410} /></label>
@@ -578,8 +625,8 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
 
       <section className="grid md:grid-cols-2 gap-3">
         <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">فروشگاه / درگاه</div>
-        <label className="field"><FieldLabel required>نام فروشگاه</FieldLabel><input className="input" value={form.shop_name} onChange={(e) => set('shop_name', e.target.value)} required /></label>
-        <label className="field"><FieldLabel required>نام انگلیسی فروشگاه</FieldLabel><input className="input" dir="ltr" value={form.shop_name_en} onChange={(e) => set('shop_name_en', e.target.value)} required /></label>
+        <label className="field"><FieldLabel required>نام فروشگاه</FieldLabel><input className="input" value={form.shop_name} onChange={(e) => setFa('shop_name', 'shop_name_en', e.target.value)} required /></label>
+        <label className="field"><FieldLabel required>نام انگلیسی فروشگاه</FieldLabel><input className="input" dir="ltr" value={form.shop_name_en} onChange={(e) => setEn('shop_name_en', e.target.value)} required /></label>
         <label className="field"><FieldLabel required>دسته‌بندی درگاه</FieldLabel>
           <SearchSelect
             value={form.category_id}

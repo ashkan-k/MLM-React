@@ -65,6 +65,19 @@ export function dateOnly(value?: string | null) {
   return `${y}-${mo}-${d}`
 }
 
+/** تاریخ تولد و تاریخ‌های روزشمار را شمسی نشان می‌دهد، بدون جابه‌جایی به‌خاطر منطقه زمانی */
+export function jalaliDateOnly(value?: string | null) {
+  if (!value) return '—'
+  const text = String(value).trim()
+  if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(text)) return text
+  const m = text.match(/^(\d{4})-(\d{2})-(\d{2})/)
+  const date = m
+    ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+    : new Date(text)
+  if (Number.isNaN(date.getTime())) return text
+  return formatJalali(date, 'yyyy/MM/dd')
+}
+
 const productLabelFa: Record<string, string> = {
   gateway_profit: 'سود درگاه پرداخت',
   gateway: 'سود درگاه پرداخت',

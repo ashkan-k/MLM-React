@@ -18,7 +18,7 @@ import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
 import { confirmAction, promptAction } from '../lib/confirm'
 import { notificationBody, notificationHref, notificationTitle, type AppNotification } from '../lib/notify'
-import { criterionHint, criterionLabel, currentLocale, dateOnly, formatTenure, label, localeTag, money, moneyHeader, percent, productLabel } from '../lib/format'
+import { criterionHint, criterionLabel, currentLocale, formatTenure, jalaliDateOnly, label, localeTag, money, moneyHeader, percent, productLabel } from '../lib/format'
 import {
   commissionsSubKey,
   gwNewKey,
@@ -492,7 +492,7 @@ function GatewayReviewModal({
           <KycItem label={t('kycMobile')} value={c?.mobile} />
           <KycItem label={t('kycEmail')} value={c?.email} />
           <KycItem label={t('kycFather')} value={c?.father_name} />
-          <KycItem label={t('kycBirthDate')} value={c?.birth_date ? dateOnly(c.birth_date) : undefined} />
+          <KycItem label={t('kycBirthDate')} value={c?.birth_date ? jalaliDateOnly(c.birth_date) : undefined} />
           <KycItem label={t('kycBirthCert')} value={c?.birth_certificate_no} />
           <KycItem label={t('kycBirthPlace')} value={c?.birth_place} />
           <KycItem label={t('kycGender')} value={gender} />
