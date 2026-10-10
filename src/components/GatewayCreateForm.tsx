@@ -365,7 +365,7 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
     if (!form.state_id || !form.city_id || form.address.trim().length < 5) return 'استان، شهر و نشانی را وارد کنید.'
     if (!form.shop_name.trim() || !/^[A-Za-z0-9][A-Za-z0-9 -]{1,60}$/.test(form.shop_name_en)) return 'نام فارسی و انگلیسی فروشگاه الزامی است.'
     if (!form.category_id) return 'دسته‌بندی درگاه را از فهرست فینوپال انتخاب کنید.'
-    if (!/^https?:\/\//i.test(form.website) || !/^https?:\/\//i.test(form.callback_url)) return 'دامنه و آدرس بازگشت باید با http یا https شروع شوند.'
+    if (!/^https:\/\//i.test(form.website) || !/^https:\/\//i.test(form.callback_url)) return 'دامنه و آدرس بازگشت باید با https شروع شوند.'
     if (!form.server_ip.trim()) return 'IP سرور الزامی است.'
     if (!/^\d{10,14}$/.test(form.tax)) return 'کد مالیاتی باید ۱۰ تا ۱۴ رقم باشد.'
     if (!isValidSheba(form.sheba) || !isValidSheba(form.backup_sheba)) return 'هر دو شبا باید ۲۴ رقم باشند.'
