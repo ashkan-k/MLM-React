@@ -246,7 +246,7 @@ export function AdminUsers() {
               placeholder={t('adminUserSearch')}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-              className="w-full ps-9 pe-3 py-2 rounded-lg bg-surface-50 dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm text-surface-800 dark:text-surface-200 outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+              className="search-inset w-full pe-3 py-2 rounded-lg bg-surface-50 dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm text-surface-800 dark:text-surface-200 outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
             />
           </div>
           <div className="flex items-center gap-2 shrink-0">

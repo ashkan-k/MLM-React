@@ -1675,6 +1675,17 @@ export function ReferralsPage() {
             })}
             {(codes ?? []).length === 0 && <Empty text={t('refEmpty')} />}
           </div>
+          <div className="card p-5" data-testid="finopal-signup-links">
+            <div className="font-semibold mb-1 text-surface-800 dark:text-surface-200">{t('refFinopalTitle')}</div>
+            <p className="text-xs text-surface-500 m-0 mb-2 leading-6">{t('refFinopalHint')}</p>
+            {(codes ?? []).map((c: { id: number; code: string; finopal_signup_url?: string }) => (
+              <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 border-b border-surface-100 dark:border-surface-700 last:border-0">
+                <code className="font-bold text-primary-700 dark:text-primary-400">{c.code}</code>
+                {c.finopal_signup_url && <CopyLink value={c.finopal_signup_url} href={c.finopal_signup_url} />}
+              </div>
+            ))}
+            {(codes ?? []).length === 0 && <Empty text={t('refEmpty')} />}
+          </div>
           <div className="card p-5">
             <div className="font-semibold mb-3 text-surface-800 dark:text-surface-200">{t('refReferred')}</div>
             {(referrals ?? []).length === 0 && <Empty text={t('refEmpty')} />}

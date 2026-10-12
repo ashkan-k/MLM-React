@@ -173,6 +173,8 @@ select {
   background: #0f172a; border-color: #334155; color: #e2e8f0;
 }
 .input:focus, select:focus, textarea:focus { outline: 3px solid #dbeafe; border-color: #2563eb; }
+.input.with-icon,
+.search-inset { padding-inline-start: 2.75rem; }
 .field { display: grid; gap: 6px; font-size: 13px; color: #475569; }
 .dark .field { color: #94a3b8; }
 .req { color: #ef4444; margin-inline-start: 3px; font-weight: 700; }

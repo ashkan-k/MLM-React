@@ -14,6 +14,7 @@ import { CommissionsPage, FinancePage, GatewaysPage, NotificationsPage, OrgManag
 import { TransactionsPage } from './pages/TransactionsPage'
 import { MonthlyBonusPage } from './pages/MonthlyBonusPage'
 import { PointsMonitorPage } from './pages/PointsMonitorPage'
+import { BonusDefaultPage } from './pages/BonusDefaultPage'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { SharedLinkPage } from './pages/SharedLinkPage'
@@ -55,6 +56,7 @@ const roleChildren = (
     <Route path="commissions" element={<PageGate page="commissions"><CommissionsPage /></PageGate>} />
     <Route path="monthly-bonus" element={<PageGate page="monthly-bonus"><MonthlyBonusPage /></PageGate>} />
     <Route path="points" element={<PageGate page="points"><PointsMonitorPage /></PageGate>} />
+    <Route path="bonus-default" element={<PageGate page="bonus-default"><BonusDefaultPage /></PageGate>} />
     <Route path="wallet" element={<PageGate page="wallet"><WalletPage /></PageGate>} />
     <Route path="finance" element={<PageGate page="finance"><FinancePage /></PageGate>} />
     <Route path="reports" element={<PageGate page="reports"><AdminReports scope="senior" /></PageGate>} />
@@ -98,6 +100,7 @@ export default function App() {
           <Route path="transactions" element={<TransactionsPage />} />
           <Route path="commissions" element={<CommissionsPage />} />
           <Route path="points" element={<PointsMonitorPage />} />
+          <Route path="bonus-default" element={<BonusDefaultPage />} />
           <Route path="rules" element={<AdminRules />} />
           <Route path="courses/new" element={<CourseFormPage />} />
           <Route path="courses/:courseId/edit" element={<CourseFormPage />} />

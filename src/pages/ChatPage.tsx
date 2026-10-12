@@ -168,7 +168,7 @@ export function ChatPage() {
       <aside className="card p-3 grid grid-rows-[auto_1fr] overflow-hidden">
         <div className="relative mb-3">
           <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
-          <input className="input ps-9" placeholder={t('chatSearch')} value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input className="input with-icon" placeholder={t('chatSearch')} value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <div className="overflow-auto">
           <div className="text-xs text-surface-400 mb-2">{t('chatAllowed')}</div>

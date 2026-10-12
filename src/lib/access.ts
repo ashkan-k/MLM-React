@@ -8,6 +8,7 @@ export const PAGE_PERMISSION: Record<string, string> = {
   commissions: 'page.commissions',
   'monthly-bonus': 'page.monthly_bonus',
   points: 'page.points',
+  'bonus-default': 'page.points',
   wallet: 'page.wallet',
   finance: 'page.finance',
   withdrawals: 'page.withdrawals',

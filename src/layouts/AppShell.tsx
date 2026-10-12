@@ -59,6 +59,7 @@ const roleGroups: NavGroup[] = [
       { to: 'commissions', labelKey: 'navCommissions', icon: TrendingUp },
       { to: 'monthly-bonus', labelKey: 'navMonthlyBonus', icon: Award },
       { to: 'points', labelKey: 'navPoints', icon: Target },
+      { to: 'bonus-default', labelKey: 'navBonusDefault', icon: Award },
     ],
   },
   {
@@ -114,6 +115,7 @@ const adminGroups: NavGroup[] = [
       { to: '/superuser/permissions', labelKey: 'navPermissions', icon: Shield },
       { to: '/superuser/gateways', labelKey: 'navGateways', icon: CreditCard },
       { to: '/superuser/points', labelKey: 'navPoints', icon: Target },
+      { to: '/superuser/bonus-default', labelKey: 'navBonusDefault', icon: Award },
     ],
   },
   {
@@ -145,6 +147,7 @@ const titleKeys: Record<string, string> = {
   commissions: 'navCommissions',
   'monthly-bonus': 'navMonthlyBonus',
   points: 'navPoints',
+  'bonus-default': 'navBonusDefault',
   wallet: 'navWallet',
   finance: 'navFinanceReport',
   withdrawals: 'navWithdrawals',
@@ -166,6 +169,7 @@ const titleKeys: Record<string, string> = {
   '/superuser/gateways': 'navGateways',
   '/superuser/commissions': 'navCommissions',
   '/superuser/points': 'navPoints',
+  '/superuser/bonus-default': 'navBonusDefault',
   '/superuser/rules': 'navRules',
   '/superuser/org-criteria': 'navOrgCriteria',
   '/superuser/courses': 'navCourses',

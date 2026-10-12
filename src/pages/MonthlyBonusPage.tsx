@@ -25,6 +25,7 @@ type BonusCurrent = {
   profit_sum?: string
   bonus_percent?: string
   bonus_amount?: string
+  bonus_default?: boolean
   month?: string
 }
 
@@ -55,6 +56,7 @@ type MonitorRow = {
   bonus_percent: string
   bonus_amount: string
   profit_sum: string
+  bonus_default?: boolean
 }
 
 export function MonthlyBonusPage() {
@@ -224,16 +226,26 @@ export function MonthlyBonusPage() {
                         </td>
                         <td className="px-5 py-3">
                           {row.bonus_posted ? (
-                            <Badge tone="ok">{t('bonusStatusPosted')}</Badge>
-                          ) : canPay ? (
-                            <Badge tone="warn">{t('dashBonusEligible')}</Badge>
-                          ) : row.qualified && row.pay_blocked_reason ? (
-                            <div className="space-y-1 max-w-[14rem]">
-                              <Badge tone="muted">{t('bonusQualifiedNoPay')}</Badge>
-                              <div className="text-[11px] leading-4 text-amber-600 dark:text-amber-400">{row.pay_blocked_reason}</div>
+                            <div className="space-y-1">
+                              <Badge tone="ok">{t('bonusStatusPosted')}</Badge>
+                              {row.bonus_default ? <Badge tone="ok">{t('bonusDefaultActive')}</Badge> : null}
                             </div>
                           ) : (
-                            <Badge tone="muted">{t('dashBonusWaiting')}</Badge>
+                            <div className="space-y-1 max-w-[16rem]">
+                              {row.bonus_default ? <Badge tone="ok">{t('bonusDefaultActive')}</Badge> : null}
+                              {canPay ? (
+                                <Badge tone="warn">{t('dashBonusEligible')}</Badge>
+                              ) : row.qualified && row.pay_blocked_reason ? (
+                                <>
+                                  {row.bonus_default ? null : <Badge tone="muted">{t('bonusQualifiedNoPay')}</Badge>}
+                                  <div className="text-[11px] leading-4 text-amber-600 dark:text-amber-400">{row.pay_blocked_reason}</div>
+                                </>
+                              ) : row.bonus_default ? (
+                                <div className="text-[11px] leading-4 text-surface-500">{t('bonusDefaultNoSale')}</div>
+                              ) : (
+                                <Badge tone="muted">{t('dashBonusWaiting')}</Badge>
+                              )}
+                            </div>
                           )}
                         </td>
                         <td className="px-5 py-3 font-bold text-emerald-600">{money(row.bonus_amount)}</td>
@@ -314,8 +326,17 @@ export function MonthlyBonusPage() {
                   <ScorePair actual={actual} required={required} unit={unit || undefined} />
                 </div>
               </div>
-              <div className={`text-sm font-medium ${current?.qualified ? 'text-emerald-600' : 'text-amber-600'}`}>
-                {current?.qualified ? t('dashBonusEligible') : t('dashBonusWaiting')}
+              <div className="space-y-1 text-end">
+                {current?.bonus_default ? (
+                  <div className="text-sm font-medium text-emerald-600">{t('bonusDefaultActive')}</div>
+                ) : null}
+                <div className={`text-sm font-medium ${current?.qualified ? 'text-emerald-600' : 'text-amber-600'}`}>
+                  {current?.bonus_default && !current?.qualified
+                    ? t('bonusDefaultNoSale')
+                    : current?.qualified
+                      ? t('dashBonusEligible')
+                      : t('dashBonusWaiting')}
+                </div>
               </div>
             </div>
             <ProgressBar value={actual} max={required || 1} />

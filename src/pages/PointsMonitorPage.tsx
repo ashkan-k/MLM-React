@@ -37,6 +37,7 @@ type PointsInfo = {
   progress_pct: number
   threshold_met: boolean
   permanent_eligible_count?: number
+  bonus_default?: boolean
 }
 
 type TreeNode = {
@@ -89,6 +90,8 @@ type DetailPayload = {
     customer_name?: string
   }>
   can_adjust: boolean
+  bonus_default?: boolean
+  can_grant_bonus_default?: boolean
 }
 
 function currentMonthKey() {
@@ -637,7 +640,7 @@ export function PointsMonitorPage() {
               <div className="relative w-56 max-w-full">
                 <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3 w-3.5 h-3.5 text-surface-400 z-[1]" />
                 <input
-                  className="input !ps-9"
+                  className="input with-icon"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') setSearch(searchInput.trim()) }}
