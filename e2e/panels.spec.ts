@@ -101,6 +101,12 @@ test.describe('پوشش کامل پنل‌ها و باگ‌های گزارش‌�
 
   test('برداشت ردشده دوباره قابل تایید دسته‌ای است', async ({ page }) => {
     await login(page, '09125555555')
+    const token = await page.evaluate(() => localStorage.getItem('finopal.token'))
+    const switched = await page.request.post('http://127.0.0.1:8000/api/auth/switch-role', {
+      headers: { Authorization: `Bearer ${token}` },
+      data: { role_slug: 'representative' },
+    })
+    expect(switched.ok()).toBeTruthy()
     await page.goto('/dashboard/representative/withdrawals')
     await page.getByTestId('withdraw-open').click()
     await page.getByTestId('withdraw-amount').fill('700')
