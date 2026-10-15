@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Bell, Check, MapPin, MessageSquare, Pencil, Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { Bell, CalendarDays, Check, Eye, MapPin, MessageSquare, Pencil, Phone, Plus, Trash2 } from 'lucide-react'
+import { useState, type ReactNode } from 'react'
 import { useLocation, Navigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { JalaliDatePicker } from '../components/JalaliDatePicker'
@@ -151,6 +151,44 @@ function errorText(error: { response?: { data?: { message?: string; errors?: Rec
   return errors?.notify_in_app?.[0] ?? errors?.place?.[0] ?? errors?.person_name?.[0] ?? errors?.title?.[0] ?? error.response?.data?.message ?? fallback
 }
 
+function IconBtn({ label, tone = 'edit', onClick, children }: {
+  label: string
+  tone?: 'edit' | 'danger'
+  onClick: () => void
+  children: ReactNode
+}) {
+  const toneClass = tone === 'danger'
+    ? 'hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10'
+    : 'hover:bg-primary-50 hover:text-primary-700 dark:hover:bg-primary-900/30'
+  return (
+    <button type="button" aria-label={label} onClick={onClick} className={`w-8 h-8 rounded-lg inline-flex items-center justify-center text-surface-400 shrink-0 ${toneClass}`}>
+      {children}
+    </button>
+  )
+}
+
+function MetaChip({ children }: { children: ReactNode }) {
+  return <span className="inline-flex items-center gap-1 max-w-full min-w-0 overflow-hidden rounded-lg bg-surface-50 dark:bg-surface-900/70 px-2 py-1 text-xs text-surface-600 dark:text-surface-300">{children}</span>
+}
+
+function ClampBox({ text, empty, label, onOpen }: { text?: string | null; empty: string; label: string; onOpen: () => void }) {
+  const value = text?.trim() ?? ''
+  return (
+    <button type="button" aria-label={label} onClick={onOpen} className="mx-4 mb-4 block w-[calc(100%-2rem)] rounded-xl bg-surface-50 px-3 py-2.5 text-start text-sm hover:bg-surface-100 dark:bg-surface-900/60 dark:hover:bg-surface-900">
+      <span className={`line-clamp-2 min-h-12 leading-6 break-words ${value ? 'text-surface-700 dark:text-surface-200' : 'text-surface-400'}`}>{value || empty}</span>
+    </button>
+  )
+}
+
+function DetailRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-2 text-sm min-w-0">
+      <div className="text-surface-400">{label}</div>
+      <div className="wrap-anywhere text-surface-800 dark:text-surface-100">{children}</div>
+    </div>
+  )
+}
+
 function ReminderChoices({
   inApp, sms, onInApp, onSms, notifyId, smsId,
 }: {
@@ -179,6 +217,7 @@ export function CrmActivitiesPage() {
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<'open' | 'done' | 'all'>('open')
   const [open, setOpen] = useState(false)
+  const [detail, setDetail] = useState<Visit | null>(null)
   const [form, setForm] = useState<VisitForm>(emptyVisit())
   const [editing, setEditing] = useState<number | null>(null)
   const { data, isLoading, refresh } = useCrm(q)
@@ -242,36 +281,61 @@ export function CrmActivitiesPage() {
       <FilterBar q={q} onQ={setQ} placeholder="جستجوی مخاطب، موبایل، کد ملی یا مکان" testId="crm-visit-filter" filter={filter} onFilter={setFilter} />
       {isLoading && <div className="text-sm text-surface-500">در حال بارگذاری...</div>}
       {!isLoading && visits.length === 0 && <div className="card p-8 text-center text-sm text-surface-500">هنوز فعالیتی ثبت نشده است.</div>}
-      <div className="grid md:grid-cols-2 gap-3 min-w-0">
+      <div className="grid md:grid-cols-2 gap-3 min-w-0 items-stretch">
         {visits.map((visit) => (
-          <article key={visit.id} data-testid="crm-visit-row" className="card p-4 space-y-2 overflow-hidden">
-            <div className="flex items-start justify-between gap-2 min-w-0">
-              <div className="min-w-0 flex-1">
-                <button type="button" className="block w-full text-start font-semibold break-words wrap-anywhere text-surface-800 dark:text-surface-100" onClick={() => openForm(visit)}>{visit.person_name}</button>
-                {filter === 'all' && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    <Badge tone={visit.status === 'done' ? 'ok' : 'info'}>{visit.status === 'done' ? 'انجام‌شده' : 'باز'}</Badge>
-                    <Badge tone="muted">{ACTIVITY_TYPE[visit.activity_type || 'visit']}</Badge>
-                  </div>
-                )}
+          <article key={visit.id} data-testid="crm-visit-row" className="card overflow-hidden h-full flex flex-col">
+            <div className="flex items-start gap-3 p-4 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300 inline-flex items-center justify-center shrink-0">
+                {visit.activity_type === 'call' ? <Phone className="w-4 h-4" /> : visit.activity_type === 'meeting' ? <CalendarDays className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
               </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <button type="button" className="text-surface-400 hover:text-primary-600" aria-label="ویرایش فعالیت" onClick={() => openForm(visit)}><Pencil className="w-4 h-4" /></button>
-                <button type="button" className="text-surface-400 hover:text-rose-500" aria-label="حذف فعالیت" onClick={() => askRemove(visit)}><Trash2 className="w-4 h-4" /></button>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <button type="button" className="block min-w-0 flex-1 text-start font-semibold leading-6 line-clamp-1 break-all text-surface-800 dark:text-surface-100" onClick={() => openForm(visit)}>{visit.person_name}</button>
+                  <div className="flex items-center shrink-0">
+                    <IconBtn label="مشاهده فعالیت" onClick={() => setDetail(visit)}><Eye className="w-4 h-4" /></IconBtn>
+                    <IconBtn label="ویرایش فعالیت" onClick={() => openForm(visit)}><Pencil className="w-4 h-4" /></IconBtn>
+                    <IconBtn label="حذف فعالیت" tone="danger" onClick={() => askRemove(visit)}><Trash2 className="w-4 h-4" /></IconBtn>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  <Badge tone="muted">{ACTIVITY_TYPE[visit.activity_type || 'visit']}</Badge>
+                  {filter === 'all' && <Badge tone={visit.status === 'done' ? 'ok' : 'info'}>{visit.status === 'done' ? 'انجام‌شده' : 'باز'}</Badge>}
+                </div>
+                <div className="flex flex-wrap gap-1.5 mt-3">
+                  <MetaChip><MapPin className="w-3.5 h-3.5 shrink-0" /><span className="truncate">{visit.place}</span></MetaChip>
+                  <MetaChip><span className="datetime-ltr truncate" dir="ltr">{jalaliDateOnly(visit.visited_on)}</span></MetaChip>
+                  {visit.mobile && <MetaChip><Phone className="w-3.5 h-3.5 shrink-0" /><span className="truncate">{visit.mobile}</span></MetaChip>}
+                  {visit.national_id && <MetaChip><span className="truncate">کد ملی {visit.national_id}</span></MetaChip>}
+                </div>
               </div>
             </div>
-            <div className="text-sm text-surface-500 flex flex-wrap items-center gap-1 min-w-0 wrap-anywhere"><MapPin className="w-3.5 h-3.5 shrink-0" /> {ACTIVITY_TYPE[visit.activity_type || 'visit']} · {visit.place} · <span className="datetime-ltr" dir="ltr">{jalaliDateOnly(visit.visited_on)}</span></div>
-            <div className="text-xs text-surface-400 wrap-anywhere">{[visit.mobile, visit.national_id].filter(Boolean).join(' · ') || 'بدون شماره تماس'}</div>
-            {visit.result && <p className="text-sm m-0 wrap-anywhere text-surface-700 dark:text-surface-200">{visit.result}</p>}
+            <ClampBox text={visit.result} empty="نتیجه‌ای ثبت نشده" label="مشاهده نتیجه" onOpen={() => setDetail(visit)} />
             {visit.remind_at && (
-              <div className="text-xs text-primary-700 dark:text-primary-300 flex flex-wrap items-center gap-1 min-w-0">
-                {visit.notify_sms ? <MessageSquare className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
+              <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-surface-100 dark:border-surface-700 bg-primary-50/70 dark:bg-primary-900/25 px-4 py-2.5 text-xs text-primary-800 dark:text-primary-200 min-w-0">
+                {visit.notify_sms ? <MessageSquare className="w-3.5 h-3.5 shrink-0" /> : <Bell className="w-3.5 h-3.5 shrink-0" />}
                 <ReminderLine at={visit.remind_at} inApp={visit.notify_in_app} sms={visit.notify_sms} sent={visit.reminded_at} />
               </div>
             )}
           </article>
         ))}
       </div>
+
+      <Modal open={detail !== null} title="جزئیات فعالیت" subtitle="متن کامل، بدون کوتاه شدن" onClose={() => setDetail(null)}>
+        {detail && (
+          <div className="grid gap-3">
+            <DetailRow label="مخاطب">{detail.person_name}</DetailRow>
+            <DetailRow label="نوع">{ACTIVITY_TYPE[detail.activity_type || 'visit']}</DetailRow>
+            <DetailRow label="وضعیت">{detail.status === 'done' ? 'انجام‌شده' : 'باز'}</DetailRow>
+            <DetailRow label="مکان">{detail.place}</DetailRow>
+            <DetailRow label="تاریخ"><span className="datetime-ltr" dir="ltr">{jalaliDateOnly(detail.visited_on)}</span></DetailRow>
+            {detail.mobile && <DetailRow label="موبایل">{detail.mobile}</DetailRow>}
+            {detail.national_id && <DetailRow label="کد ملی">{detail.national_id}</DetailRow>}
+            <DetailRow label="نتیجه">{detail.result?.trim() || 'نتیجه‌ای ثبت نشده'}</DetailRow>
+            {detail.remind_at && <DetailRow label="یادآور"><ReminderLine at={detail.remind_at} inApp={detail.notify_in_app} sms={detail.notify_sms} sent={detail.reminded_at} /></DetailRow>}
+            <button type="button" className="btn btn-primary" onClick={() => { const visit = detail; setDetail(null); openForm(visit) }}>ویرایش</button>
+          </div>
+        )}
+      </Modal>
 
       <Modal open={open} title={editing ? 'ویرایش فعالیت' : 'ثبت فعالیت'} subtitle="یادآور برای خودتان است، نه برای مخاطب." onClose={() => setOpen(false)}>
         <div className="grid gap-3">
@@ -326,6 +390,7 @@ export function CrmTasksPage() {
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<'open' | 'done' | 'all'>('open')
   const [open, setOpen] = useState(false)
+  const [detail, setDetail] = useState<Task | null>(null)
   const [form, setForm] = useState<TaskForm>(emptyTask())
   const [editing, setEditing] = useState<number | null>(null)
   const { data, isLoading, refresh } = useCrm(q)
@@ -395,35 +460,51 @@ export function CrmTasksPage() {
       <FilterBar q={q} onQ={setQ} placeholder="جستجوی عنوان یا توضیح وظیفه" testId="crm-task-filter" filter={filter} onFilter={setFilter} openCount={data?.open_tasks ?? 0} />
       {isLoading && <div className="text-sm text-surface-500">در حال بارگذاری...</div>}
       {!isLoading && tasks.length === 0 && <div className="card p-8 text-center text-sm text-surface-500">وظیفه‌ای در این فهرست نیست.</div>}
-      <div className="space-y-2">
+      <div className="grid md:grid-cols-2 gap-3 min-w-0 items-stretch">
         {tasks.map((task) => (
-          <article key={task.id} data-testid="crm-task-row" className="card p-4 overflow-hidden">
-            <div className="flex items-start gap-3 min-w-0">
-              <button type="button" data-testid="crm-task-done" className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center ${task.completed_at ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-surface-300'}`} aria-label="انجام وظیفه" onClick={() => toggle.mutate(task)}>
+          <article key={task.id} data-testid="crm-task-row" className="card overflow-hidden h-full flex flex-col">
+            <div className="flex items-start gap-3 p-4 min-w-0">
+              <button type="button" data-testid="crm-task-done" className={`mt-1 w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 ${task.completed_at ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-surface-300 dark:border-surface-600'}`} aria-label="انجام وظیفه" onClick={() => toggle.mutate(task)}>
                 {task.completed_at && <Check className="w-3.5 h-3.5" />}
               </button>
               <div className="flex-1 min-w-0">
-                <button type="button" className={`block w-full text-start font-semibold wrap-anywhere ${task.completed_at ? 'line-through text-surface-400' : 'text-surface-800 dark:text-surface-100'}`} onClick={() => openForm(task)}>{task.title}</button>
-                {filter === 'all' && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    <Badge tone={task.completed_at ? 'ok' : 'info'}>{task.completed_at ? 'انجام‌شده' : 'باز'}</Badge>
-                    <Badge tone={task.priority === 'high' ? 'danger' : 'muted'}>{task.priority === 'high' ? 'مهم' : 'عادی'}</Badge>
+                <div className="flex items-start justify-between gap-2">
+                  <button type="button" className={`block min-w-0 flex-1 text-start font-semibold leading-6 line-clamp-1 break-all ${task.completed_at ? 'line-through text-surface-400' : 'text-surface-800 dark:text-surface-100'}`} onClick={() => openForm(task)}>{task.title}</button>
+                  <div className="flex items-center shrink-0">
+                    <IconBtn label="مشاهده وظیفه" onClick={() => setDetail(task)}><Eye className="w-4 h-4" /></IconBtn>
+                    <IconBtn label="ویرایش وظیفه" onClick={() => openForm(task)}><Pencil className="w-4 h-4" /></IconBtn>
+                    <IconBtn label="حذف وظیفه" tone="danger" onClick={() => askRemove(task)}><Trash2 className="w-4 h-4" /></IconBtn>
                   </div>
-                )}
-                {filter !== 'all' && task.priority === 'high' && <span className="text-[11px] text-rose-600 ms-2">مهم</span>}
-                {task.notes && <p className="text-sm m-0 mt-1 wrap-anywhere text-surface-500">{task.notes}</p>}
-                {task.due_at && (
-                  <div className="text-xs text-primary-700 dark:text-primary-300 mt-2">
-                    <ReminderLine at={task.due_at} inApp={task.notify_in_app} sms={task.notify_sms} sent={task.reminded_at} />
-                  </div>
-                )}
+                </div>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {filter === 'all' && <Badge tone={task.completed_at ? 'ok' : 'info'}>{task.completed_at ? 'انجام‌شده' : 'باز'}</Badge>}
+                  {(filter === 'all' || task.priority === 'high') && <Badge tone={task.priority === 'high' ? 'danger' : 'muted'}>{task.priority === 'high' ? 'مهم' : 'عادی'}</Badge>}
+                </div>
               </div>
-              <button type="button" className="shrink-0 text-surface-400 hover:text-primary-600" aria-label="ویرایش وظیفه" onClick={() => openForm(task)}><Pencil className="w-4 h-4" /></button>
-              <button type="button" className="shrink-0 text-surface-400 hover:text-rose-500" aria-label="حذف وظیفه" onClick={() => askRemove(task)}><Trash2 className="w-4 h-4" /></button>
             </div>
+            <ClampBox text={task.notes} empty="توضیحی ثبت نشده" label="مشاهده توضیح" onOpen={() => setDetail(task)} />
+            {task.due_at && (
+              <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-surface-100 dark:border-surface-700 bg-primary-50/70 dark:bg-primary-900/25 px-4 py-2.5 text-xs text-primary-800 dark:text-primary-200 min-w-0">
+                {task.notify_sms ? <MessageSquare className="w-3.5 h-3.5 shrink-0" /> : <Bell className="w-3.5 h-3.5 shrink-0" />}
+                <ReminderLine at={task.due_at} inApp={task.notify_in_app} sms={task.notify_sms} sent={task.reminded_at} />
+              </div>
+            )}
           </article>
         ))}
       </div>
+
+      <Modal open={detail !== null} title="جزئیات وظیفه" subtitle="متن کامل، بدون کوتاه شدن" onClose={() => setDetail(null)}>
+        {detail && (
+          <div className="grid gap-3">
+            <DetailRow label="عنوان">{detail.title}</DetailRow>
+            <DetailRow label="اولویت">{detail.priority === 'high' ? 'مهم' : 'عادی'}</DetailRow>
+            <DetailRow label="وضعیت">{detail.completed_at ? 'انجام‌شده' : 'باز'}</DetailRow>
+            <DetailRow label="توضیح">{detail.notes?.trim() || 'توضیحی ثبت نشده'}</DetailRow>
+            {detail.due_at && <DetailRow label="یادآور"><ReminderLine at={detail.due_at} inApp={detail.notify_in_app} sms={detail.notify_sms} sent={detail.reminded_at} /></DetailRow>}
+            <button type="button" className="btn btn-primary" onClick={() => { const task = detail; setDetail(null); openForm(task) }}>ویرایش</button>
+          </div>
+        )}
+      </Modal>
 
       <Modal open={open} title={editing ? 'ویرایش وظیفه' : 'وظیفه جدید'} subtitle="در زمان یادآور، اعلان یا پیامک برای خودتان می‌رود." onClose={() => setOpen(false)}>
         <div className="grid gap-3">
