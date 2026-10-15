@@ -7,12 +7,12 @@ import { currentLocale, dateOnly, dateTime, jalaliMonth, localeTag, productLabel
 
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-1">
-      <div>
-        <h2 className="text-xl font-bold m-0 text-surface-800 dark:text-surface-100">{title}</h2>
-        {subtitle && <p className="text-sm text-surface-500 mt-1 mb-0">{subtitle}</p>}
+    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-1 min-w-0">
+      <div className="min-w-0">
+        <h2 className="text-xl font-bold m-0 break-words text-surface-800 dark:text-surface-100">{title}</h2>
+        {subtitle && <p className="text-sm text-surface-500 mt-1 mb-0 break-words">{subtitle}</p>}
       </div>
-      {action}
+      {action ? <div className="max-w-full shrink-0">{action}</div> : null}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import { addDays, addMonths, format, getDay, getDaysInMonth, getMonth, getYear, setMonth, setYear, startOfMonth } from 'date-fns-jalali'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 
 const WEEKDAYS = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج']
 const MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
@@ -19,6 +20,17 @@ function toIso(date: Date) {
 
 function weekdayIndex(date: Date) {
   return (getDay(date) + 1) % 7
+}
+
+export function jalaliPopStyle(anchor: HTMLElement | null, width: number): CSSProperties {
+  if (!anchor) return { position: 'fixed', zIndex: 80, width }
+  const rect = anchor.getBoundingClientRect()
+  const rtl = document.documentElement.dir === 'rtl'
+  let left = rtl ? rect.right - width : rect.left
+  left = Math.max(8, Math.min(left, window.innerWidth - width - 8))
+  let top = rect.bottom + 6
+  if (top + 420 > window.innerHeight) top = Math.max(8, rect.top - 426)
+  return { position: 'fixed', top, left, width, zIndex: 80 }
 }
 
 export function JalaliDatePicker({
@@ -42,6 +54,8 @@ export function JalaliDatePicker({
   const [open, setOpen] = useState(false)
   const [cursor, setCursor] = useState(() => selected ?? new Date())
   const box = useRef<HTMLDivElement>(null)
+  const pop = useRef<HTMLDivElement>(null)
+  const [popStyle, setPopStyle] = useState<CSSProperties>({})
 
   useEffect(() => {
     if (selected) setCursor(selected)
@@ -49,11 +63,25 @@ export function JalaliDatePicker({
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
-      if (box.current && !box.current.contains(e.target as Node)) setOpen(false)
+      const target = e.target as Node
+      if (box.current?.contains(target) || pop.current?.contains(target)) return
+      setOpen(false)
     }
     document.addEventListener('mousedown', close)
     return () => document.removeEventListener('mousedown', close)
   }, [])
+
+  useEffect(() => {
+    if (!open) return
+    const place = () => setPopStyle(jalaliPopStyle(box.current, 320))
+    place()
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => {
+      window.removeEventListener('resize', place)
+      window.removeEventListener('scroll', place, true)
+    }
+  }, [open])
 
   const year = getYear(cursor)
   const month = getMonth(cursor)
@@ -74,8 +102,8 @@ export function JalaliDatePicker({
       <button type="button" className="input jalali-trigger" onClick={() => setOpen((v) => !v)}>
         <span dir="ltr">{selected ? format(selected, 'yyyy/MM/dd') : placeholder}</span>
       </button>
-      {open && (
-        <div className="jalali-pop" role="dialog" aria-label="انتخاب تاریخ شمسی">
+      {open && createPortal(
+        <div ref={pop} className="jalali-pop is-fixed" style={popStyle} role="dialog" aria-label="انتخاب تاریخ شمسی">
           <div className="jalali-nav">
             <button type="button" className="btn btn-ghost" onClick={() => setCursor(addMonths(cursor, -1))}>ماه قبل</button>
             <div className="jalali-selects">
@@ -115,7 +143,8 @@ export function JalaliDatePicker({
             <button type="button" className="btn btn-ghost" onClick={() => { onChange(toIso(new Date())); setOpen(false) }}>امروز</button>
             {allowClear && <button type="button" className="btn btn-ghost" onClick={() => { onChange(''); setOpen(false) }}>پاک کردن</button>}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

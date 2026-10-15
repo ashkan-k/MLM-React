@@ -1,0 +1,113 @@
+import { expect, test, type Page } from '@playwright/test'
+
+async function login(page: Page, mobile: string) {
+  await page.goto('/login')
+  await page.getByTestId('login-mobile').fill(mobile)
+  await page.getByTestId('login-password').fill('Password123!')
+  await page.getByTestId('login-submit').click()
+  await expect(page).not.toHaveURL(/\/login$/, { timeout: 20_000 })
+}
+
+async function pickDateTime(page: Page, testId: string, hour: string, minute: string) {
+  await page.getByTestId(testId).click()
+  await page.getByTestId(`${testId}-hour`).selectOption(hour)
+  await page.getByTestId(`${testId}-minute`).selectOption(minute)
+  await page.getByTestId(`${testId}-confirm`).click()
+}
+
+test('کارتابل در موبایل از عرض صفحه بیرون نمی‌زند', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await login(page, '09125555555')
+  await page.goto('/dashboard/representative/crm/activities')
+  await expect(page.getByTestId('crm-activities-page')).toBeVisible()
+  await page.getByTestId('crm-visit-open').click()
+  const long = 'س'.repeat(80)
+  await page.getByTestId('crm-visit-place').fill(long)
+  await page.getByTestId('crm-visit-person').fill(long)
+  await page.getByTestId('crm-visit-result').fill(long)
+  await page.getByTestId('crm-visit-save').click()
+  await expect(page.getByTestId('crm-visit-row').filter({ hasText: long.slice(0, 12) }).first()).toBeVisible()
+  const overflow = await page.evaluate(() => {
+    const root = document.querySelector('main') as HTMLElement
+    return root.scrollWidth - root.clientWidth
+  })
+  expect(overflow).toBeLessThanOrEqual(1)
+  await page.getByTestId('crm-search').fill(long.slice(0, 20))
+  await page.getByLabel('حذف فعالیت').first().click()
+  await page.getByRole('button', { name: 'حذف شود' }).click()
+})
+
+test('نماینده فعالیت و وظیفه را با یادآور شمسی ثبت و انجام می‌کند', async ({ page }) => {
+  const stamp = Date.now().toString().slice(-6)
+  const person = `مخاطب ${stamp}`
+  const taskTitle = `وظیفه ${stamp}`
+
+  await login(page, '09125555555')
+  await page.goto('/dashboard/representative/crm')
+  await expect(page.getByTestId('crm-activities-page')).toBeVisible()
+  await expect(page.getByRole('button', { name: 'کارتابل' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'فعالیت‌ها' })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'وظایف' })).toBeVisible()
+
+  await page.getByTestId('crm-visit-open').click()
+  await page.getByTestId('crm-visit-place').fill(`پاساژ ${stamp}`)
+  await page.getByTestId('crm-visit-person').fill(person)
+  await page.getByTestId('crm-visit-national').fill('0012345678')
+  await page.getByTestId('crm-visit-mobile').fill('09120001122')
+  await page.getByTestId('crm-visit-result').fill('قرار جلسه بعدی')
+  await expect(page.getByTestId('crm-visit-date').locator('.jalali-trigger')).toContainText('/')
+  await pickDateTime(page, 'crm-visit-remind', '10', '30')
+  await expect(page.getByTestId('crm-visit-remind')).toContainText('10:30')
+  await page.getByTestId('crm-visit-sms').check()
+  await page.getByTestId('crm-visit-save').click()
+  await expect(page.getByText(person)).toBeVisible()
+
+  await page.getByTestId('crm-search').fill(person)
+  await page.getByTestId('crm-visit-filter-all').click()
+  const visit = page.getByTestId('crm-visit-row').filter({ hasText: person })
+  await expect(visit.locator('.badge', { hasText: 'باز' })).toBeVisible()
+  await expect(visit.locator('.badge', { hasText: 'مراجعه' })).toBeVisible()
+  await page.getByTestId('crm-visit-filter-open').click()
+  await expect(page.getByTestId('crm-visit-row')).toHaveCount(1)
+  await page.getByRole('button', { name: person }).click()
+  await expect(page.getByTestId('crm-visit-sms')).toBeChecked()
+  await expect(page.getByTestId('crm-visit-notify')).toBeChecked()
+  await expect(page.getByTestId('crm-visit-place')).toHaveValue(`پاساژ ${stamp}`)
+  await expect(page.getByTestId('crm-visit-remind')).toContainText('10:30')
+  await page.getByRole('button', { name: 'بستن' }).click()
+  await page.getByRole('button', { name: 'ویرایش فعالیت' }).click()
+  await expect(page.getByTestId('crm-visit-person')).toHaveValue(person)
+  await page.getByRole('button', { name: 'بستن' }).click()
+
+  await page.goto('/dashboard/representative/crm/tasks')
+  await expect(page.getByTestId('crm-tasks-page')).toBeVisible()
+  await page.getByTestId('crm-task-open').click()
+  await page.getByTestId('crm-task-title').fill(taskTitle)
+  await page.getByTestId('crm-task-notes').fill('یادآوری تماس')
+  await pickDateTime(page, 'crm-task-due', '09', '00')
+  await page.getByTestId('crm-task-sms').check()
+  await page.getByTestId('crm-task-save').click()
+  const task = page.getByTestId('crm-task-row').filter({ hasText: taskTitle })
+  await expect(task).toBeVisible()
+  await page.getByTestId('crm-task-filter-all').click()
+  await expect(task.getByText('باز')).toBeVisible()
+  await expect(task.getByText('عادی')).toBeVisible()
+  await page.getByTestId('crm-task-filter-open').click()
+  await task.getByTestId('crm-task-done').click()
+  await expect(page.getByText(taskTitle)).toHaveCount(0)
+  await page.getByTestId('crm-task-filter-done').click()
+  const done = page.getByTestId('crm-task-row').filter({ hasText: taskTitle })
+  await expect(done.locator('.line-through')).toBeVisible()
+  await done.getByLabel('ویرایش وظیفه').click()
+  await expect(page.getByTestId('crm-task-title')).toHaveValue(taskTitle)
+  await page.getByRole('button', { name: 'بستن' }).click()
+  await done.getByLabel('حذف وظیفه').click()
+  await page.getByRole('button', { name: 'حذف شود' }).click()
+  await expect(page.getByText(taskTitle)).toHaveCount(0)
+
+  await page.goto('/dashboard/representative/crm/activities')
+  await page.getByTestId('crm-search').fill(person)
+  await page.getByLabel('حذف فعالیت').click()
+  await page.getByRole('button', { name: 'حذف شود' }).click()
+  await expect(page.getByText(person)).toHaveCount(0)
+})

@@ -40,6 +40,9 @@ test.describe('پوشش کامل پنل‌ها و باگ‌های گزارش‌�
     await login(page, '09121111111')
     const paths = [
       '/dashboard/senior-manager',
+      '/dashboard/senior-manager/crm',
+      '/dashboard/senior-manager/crm/activities',
+      '/dashboard/senior-manager/crm/tasks',
       '/dashboard/senior-manager/team',
       '/dashboard/senior-manager/gateways',
       '/dashboard/senior-manager/transactions',
@@ -67,6 +70,9 @@ test.describe('پوشش کامل پنل‌ها و باگ‌های گزارش‌�
     await login(page, '09120000000')
     const paths = [
       '/superuser',
+      '/superuser/crm',
+      '/superuser/crm/activities',
+      '/superuser/crm/tasks',
       '/superuser/reports',
       '/superuser/users',
       '/superuser/network',

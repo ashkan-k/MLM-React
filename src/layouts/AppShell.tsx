@@ -3,6 +3,8 @@ import {
   Bell,
   BookOpen,
   Building2,
+  CalendarDays,
+  ListTodo,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -46,6 +48,10 @@ type NavGroup = { key: string; items: LinkItem[]; standalone?: boolean }
 
 const roleGroups: NavGroup[] = [
   { key: 'navDashboard', standalone: true, items: [{ to: '', labelKey: 'navDashboard', icon: LayoutDashboard, end: true }] },
+  { key: 'navCrm', items: [
+    { to: 'crm/activities', labelKey: 'navCrmActivities', icon: CalendarDays },
+    { to: 'crm/tasks', labelKey: 'navCrmTasks', icon: ListTodo },
+  ] },
   { key: 'navReportsStandalone', standalone: true, items: [{ to: 'reports', labelKey: 'navReports', icon: FileBarChart }] },
   { key: 'navOrg', items: [
     { to: 'team', labelKey: 'navTeam', icon: GitBranch },
@@ -95,6 +101,13 @@ const adminGroups: NavGroup[] = [
     standalone: true,
     items: [
       { to: '/superuser', labelKey: 'navStats', icon: LayoutDashboard, end: true },
+    ],
+  },
+  {
+    key: 'navCrm',
+    items: [
+      { to: '/superuser/crm/activities', labelKey: 'navCrmActivities', icon: CalendarDays },
+      { to: '/superuser/crm/tasks', labelKey: 'navCrmTasks', icon: ListTodo },
     ],
   },
   {
@@ -157,9 +170,15 @@ const titleKeys: Record<string, string> = {
   courses: 'navCoursesManage',
   chat: 'navChat',
   notifications: 'navNotifications',
+  crm: 'navCrm',
+  activities: 'navCrmActivities',
+  tasks: 'navCrmTasks',
   transfers: 'navTransfers',
   reports: 'navReports',
   '/superuser': 'navStats',
+  '/superuser/crm': 'navCrm',
+  '/superuser/crm/activities': 'navCrmActivities',
+  '/superuser/crm/tasks': 'navCrmTasks',
   '/superuser/reports': 'navReports',
   '/superuser/transactions': 'navTransactions',
   '/superuser/users': 'navUsersPage',
@@ -188,7 +207,7 @@ function itemActive(item: LinkItem, pathname: string) {
   }
   const segs = pathname.split('/').filter(Boolean)
   if (item.end) return segs.length === 2 && segs[0] === 'dashboard'
-  return segs[segs.length - 1] === item.to
+  return item.to !== '' && pathname.endsWith(`/${item.to}`)
 }
 
 function SidebarNav({ groups, extra }: { groups: NavGroup[]; extra?: ReactNode }) {
@@ -403,9 +422,9 @@ export function AppShell() {
   return (
     <div className="flex h-screen overflow-hidden bg-surface-50 dark:bg-surface-950">
       <SidebarNav groups={roleGroups} extra={extra} />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <ShellTopbar panel="role" title={currentTitle(location.pathname, t, `${t('titleDashboard')} ${roleLabel(user?.active_role?.slug)}`, productOriented)} />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 animate-fadeIn"><Outlet /></main>
+        <main className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto p-4 lg:p-6 animate-fadeIn"><Outlet /></main>
       </div>
     </div>
   )
@@ -424,9 +443,9 @@ export function SuperuserShell() {
         groups={adminGroups}
         extra={<NavLink to={back} className="nav-link w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800">{t('navBackRole')}</NavLink>}
       />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         <ShellTopbar panel="admin" title={currentTitle(location.pathname, t, t('titleAdmin'), productOriented)} />
-        <main className="flex-1 overflow-y-auto p-4 lg:p-6 animate-fadeIn"><Outlet /></main>
+        <main className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto p-4 lg:p-6 animate-fadeIn"><Outlet /></main>
       </div>
     </div>
   )

@@ -9,6 +9,7 @@ import { CourseFormPage } from './pages/CourseFormPage'
 import { AdminNetwork } from './pages/AdminNetwork'
 import { AdminReports } from './pages/AdminReports'
 import { ChatPage } from './pages/ChatPage'
+import { CrmActivitiesPage, CrmIndexRedirect, CrmTasksPage } from './pages/CrmPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { CommissionsPage, FinancePage, GatewaysPage, NotificationsPage, OrgManagersPage, PromotionsPage, ReferralsPage, TeamPage, TrainingPage, TransfersPage, WalletPage, WithdrawalsPage } from './pages/DataPages'
 import { TransactionsPage } from './pages/TransactionsPage'
@@ -49,6 +50,9 @@ function Guest() {
 const roleChildren = (
   <>
     <Route index element={<PageGate page=""><DashboardPage /></PageGate>} />
+    <Route path="crm" element={<PageGate page="crm"><CrmIndexRedirect /></PageGate>} />
+    <Route path="crm/activities" element={<PageGate page="crm"><CrmActivitiesPage /></PageGate>} />
+    <Route path="crm/tasks" element={<PageGate page="crm"><CrmTasksPage /></PageGate>} />
     <Route path="team" element={<PageGate page="team"><TeamPage /></PageGate>} />
     <Route path="org-managers" element={<PageGate page="team"><OrgManagersPage /></PageGate>} />
     <Route path="gateways" element={<PageGate page="gateways"><GatewaysPage /></PageGate>} />
@@ -91,6 +95,9 @@ export default function App() {
       <Route element={<Guard superuserOnly />}>
         <Route path="/superuser" element={<SuperuserShell />}>
           <Route index element={<AdminHome />} />
+          <Route path="crm" element={<CrmIndexRedirect />} />
+          <Route path="crm/activities" element={<CrmActivitiesPage />} />
+          <Route path="crm/tasks" element={<CrmTasksPage />} />
           <Route path="reports" element={<AdminReports />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="network" element={<AdminNetwork />} />
