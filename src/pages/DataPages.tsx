@@ -91,7 +91,7 @@ export function TeamPage() {
         subtitle={t('orgSubtitle')}
         action={canManageOrg ? <Link className="btn btn-primary" to="../org-managers">{t('navOrgManagers')}</Link> : undefined}
       />
-      <OrgTree nodes={nodes} testId="org-tree" lazy onLoadChildren={loadChildren} />
+      <OrgTree nodes={nodes} testId="org-tree" hideTitle lazy onLoadChildren={loadChildren} />
       <TeamTable
         team={teamRows}
         t={t}
@@ -187,7 +187,7 @@ function TeamTable({
               </td>
               <td>{u.mobile}</td>
               <td className="font-mono dir-ltr text-left">{u.national_id || '—'}</td>
-              <td><DateOnlyText value={u.birth_date} /></td>
+              <td><DateOnlyText value={u.birth_date} shamsi /></td>
               <td>{(u.roles ?? []).join('، ') || '—'}</td>
               <td><Badge tone={u.is_active === false ? 'danger' : 'ok'}>{u.is_active === false ? t('blocked') : t('adminActive')}</Badge></td>
               {canBlock && (

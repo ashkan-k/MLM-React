@@ -23,7 +23,7 @@ export function AdminNetwork() {
         subtitle={t('orgSubtitle')}
         action={<Link className="btn btn-primary" to="/superuser/org-managers">{t('navOrgManagers')}</Link>}
       />
-      <OrgTree nodes={nodes} testId="admin-network" lazy onLoadChildren={loadChildren} />
+      <OrgTree nodes={nodes} testId="admin-network" hideTitle lazy onLoadChildren={loadChildren} />
     </div>
   )
 }

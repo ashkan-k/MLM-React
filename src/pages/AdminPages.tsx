@@ -10,7 +10,7 @@ import { BulkBar, BulkButton, CheckBox, DeleteAction, EditAction, BlockAction, U
 import { Badge, DateOnlyText, DateTimeText, Empty, FieldHint, Modal, PageHeader, StatCard } from '../components/ui'
 import { api } from '../lib/api'
 import { confirmAction } from '../lib/confirm'
-import { auditLabel, dateOnly, dateTimeExport, entityName, label, money, permissionLabel, percent, settingLabel } from '../lib/format'
+import { auditLabel, dateTimeExport, entityName, jalaliDateOnly, label, money, permissionLabel, percent, settingLabel } from '../lib/format'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../stores/auth'
 
@@ -262,7 +262,7 @@ export function AdminUsers() {
             <button type="button" className="p-2 rounded-lg border border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-500" aria-label="فیلتر">
               <Filter className="w-4 h-4" />
             </button>
-            <button type="button" className="p-2 rounded-lg border border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-500" aria-label="خروجی" onClick={() => exportSelected('کاربران', rows.map((u) => ({ شناسه: u.id, نام: u.name, موبایل: u.mobile, 'کد ملی': u.national_id || '', 'تاریخ تولد': dateOnly(u.birth_date) === '—' ? '' : dateOnly(u.birth_date), نقش: (u.roles ?? []).map((r) => r.name).join('، '), وضعیت: u.is_active ? 'فعال' : 'غیرفعال' })))}>
+            <button type="button" className="p-2 rounded-lg border border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-500" aria-label="خروجی" onClick={() => exportSelected('کاربران', rows.map((u) => ({ شناسه: u.id, نام: u.name, موبایل: u.mobile, 'کد ملی': u.national_id || '', 'تاریخ تولد': jalaliDateOnly(u.birth_date) === '—' ? '' : jalaliDateOnly(u.birth_date), نقش: (u.roles ?? []).map((r) => r.name).join('، '), وضعیت: u.is_active ? 'فعال' : 'غیرفعال' })))}>
               <Download className="w-4 h-4" />
             </button>
           </div>
@@ -308,7 +308,7 @@ export function AdminUsers() {
                   </td>
                   <td>{u.mobile}</td>
                   <td className="font-mono dir-ltr text-left">{u.national_id || '—'}</td>
-                  <td><DateOnlyText value={u.birth_date} /></td>
+                  <td><DateOnlyText value={u.birth_date} shamsi /></td>
                   <td>{u.roles?.map((r) => r.name).join('، ')}</td>
                   <td><Badge tone={u.is_active ? 'ok' : 'danger'}>{u.is_active ? t('adminActive') : t('blocked')}</Badge></td>
                   <td><DateTimeText value={u.created_at} /></td>
@@ -401,7 +401,7 @@ export function AdminUsers() {
             {detail.birth_date && (
               <div className="flex items-center gap-3 text-sm">
                 <CalendarDays className="w-4 h-4 text-surface-400 shrink-0" />
-                <span>{t('kycBirthDate')}: <DateOnlyText value={detail.birth_date} /></span>
+                <span>{t('kycBirthDate')}: <DateOnlyText value={detail.birth_date} shamsi /></span>
               </div>
             )}
             <div className="flex items-center gap-3 text-sm"><Shield className="w-4 h-4 text-surface-400" /><span>نقش‌ها: {detail.roles?.map((r) => r.name).join('، ') || '—'}</span></div>

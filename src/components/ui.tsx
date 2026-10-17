@@ -3,7 +3,7 @@ import { X, type LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Area, AreaChart, Bar, BarChart as ReBarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useApp } from '../contexts/AppContext'
-import { currentLocale, dateOnly, dateTime, jalaliMonth, localeTag, productLabel, productTone } from '../lib/format'
+import { currentLocale, dateOnly, dateTime, jalaliDateOnly, jalaliMonth, localeTag, productLabel, productTone } from '../lib/format'
 
 export function PageHeader({ title, subtitle, action }: { title: string; subtitle?: string; action?: ReactNode }) {
   return (
@@ -88,8 +88,8 @@ export function DateTimeText({ value }: { value?: string | null }) {
   return <time className="datetime-ltr" dir="ltr" dateTime={value ?? undefined}>{dateTime(value)}</time>
 }
 
-export function DateOnlyText({ value }: { value?: string | null }) {
-  const text = dateOnly(value)
+export function DateOnlyText({ value, shamsi = false }: { value?: string | null; shamsi?: boolean }) {
+  const text = shamsi ? jalaliDateOnly(value) : dateOnly(value)
   const iso = text === '—' ? undefined : text
   return <time className="datetime-ltr" dir="ltr" dateTime={iso}>{text}</time>
 }

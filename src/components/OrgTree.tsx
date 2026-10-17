@@ -285,6 +285,7 @@ export function OrgTree({
   title,
   subtitle,
   testId,
+  hideTitle = false,
   lazy = true,
   onLoadChildren,
 }: {
@@ -292,6 +293,7 @@ export function OrgTree({
   title?: string
   subtitle?: string
   testId?: string
+  hideTitle?: boolean
   onExport?: () => void
   lazy?: boolean
   onLoadChildren?: (nodeId: number) => Promise<OrgNode[]>
@@ -376,11 +378,13 @@ export function OrgTree({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-        <div>
-          <h3 className="text-xl font-bold text-surface-800 dark:text-surface-100 m-0">{heading}</h3>
-          <p className="text-sm text-surface-500 mt-1 mb-0">{sub}</p>
-        </div>
+      <div className={`flex flex-col lg:flex-row items-start lg:items-center gap-4 ${hideTitle ? 'justify-end' : 'justify-between'}`}>
+        {!hideTitle && (
+          <div>
+            <h3 className="text-xl font-bold text-surface-800 dark:text-surface-100 m-0">{heading}</h3>
+            <p className="text-sm text-surface-500 mt-1 mb-0">{sub}</p>
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" data-testid="org-export-excel" onClick={exportExcel} className="px-3 py-2 rounded-lg border border-surface-200 dark:border-surface-600 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-50 dark:hover:bg-surface-700">
             <Download className="w-4 h-4 inline ms-1" />

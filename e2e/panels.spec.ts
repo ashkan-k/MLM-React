@@ -86,12 +86,19 @@ test.describe('پوشش کامل پنل‌ها و باگ‌های گزارش‌�
       '/superuser/notifications',
       '/superuser/frasoft',
     ]
-    for (const path of paths) await visit(page, path)
+    for (const path of paths) {
+      await visit(page, path)
+      if (path === '/superuser/network') {
+        await expect(page.getByRole('heading', { name: 'شبکه و زیرمجموعه' })).toHaveCount(1)
+      }
+    }
   })
 
   test('فیلتر درخت شبکه کار می‌کند و خروجی دیاگرام دارد', async ({ page }) => {
     await login(page, '09121111111')
     await page.goto('/dashboard/senior-manager/team')
+    await expect(page.getByRole('heading', { name: 'شبکه و زیرمجموعه' })).toHaveCount(0)
+    await expect(page.getByText('نمایش درختی شبکه فروش چندسطحی')).toHaveCount(1)
     await expect(page.getByTestId('org-tree')).toBeVisible()
     await expect(page.getByTestId('org-search')).toBeVisible()
     await expect(page.getByTestId('org-export-excel')).toBeVisible()
