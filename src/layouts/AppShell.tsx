@@ -19,6 +19,7 @@ import {
   MessagesSquare,
   Moon,
   Network,
+  Package,
   PieChart,
   Repeat,
   ScrollText,
@@ -143,6 +144,7 @@ const adminGroups: NavGroup[] = [
     key: 'navSystem',
     items: [
       { to: '/superuser/chat', labelKey: 'navChat', icon: MessagesSquare },
+      { to: '/superuser/products', labelKey: 'navProducts', icon: Package },
       { to: '/superuser/settings', labelKey: 'navSettings', icon: Settings },
       { to: '/superuser/audits', labelKey: 'navAudits', icon: ScrollText },
       { to: '/superuser/sms', labelKey: 'navSmsDebug', icon: MessageSquare },
@@ -194,6 +196,7 @@ const titleKeys: Record<string, string> = {
   '/superuser/courses': 'navCourses',
   '/superuser/chat': 'navChat',
   '/superuser/notifications': 'navNotifications',
+  '/superuser/products': 'navProducts',
   '/superuser/settings': 'navSettings',
   '/superuser/audits': 'navAudits',
   '/superuser/sms': 'navSmsDebug',

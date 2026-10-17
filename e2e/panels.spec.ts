@@ -79,6 +79,7 @@ test.describe('پوشش کامل پنل‌ها و باگ‌های گزارش‌�
       '/superuser/permissions',
       '/superuser/rules',
       '/superuser/courses',
+      '/superuser/products',
       '/superuser/settings',
       '/superuser/audits',
       '/superuser/chat',

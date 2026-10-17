@@ -48,6 +48,17 @@ export function TransactionsPage() {
     to: '',
   })
   const [filters, setFilters] = useState(draft)
+  const products = useQuery({
+    queryKey: ['catalog-products'],
+    enabled: productOriented,
+    queryFn: async () => (await api.get('/catalog/products')).data as Array<{ type: string; label: string }>,
+  })
+  const productOptions = products.data?.length ? products.data : [
+    { type: 'gateway_profit', label: t('product_gateway_profit') },
+    { type: 'ticketing', label: t('product_ticketing') },
+    { type: 'subscription', label: t('product_subscription') },
+    { type: 'ghalebazar', label: t('product_ghalebazar') },
+  ]
 
   const params = useMemo(() => ({
     page,
@@ -99,10 +110,7 @@ export function TransactionsPage() {
           <label className="field">{t('productCol')}
             <select className="input" value={draft.product_type} onChange={(e) => setDraft({ ...draft, product_type: e.target.value })} data-testid="tx-product">
               <option value="">{t('allProducts')}</option>
-              <option value="gateway_profit">{t('product_gateway_profit')}</option>
-              <option value="ticketing">{t('product_ticketing')}</option>
-              <option value="subscription">{t('product_subscription')}</option>
-              <option value="ghalebazar">{t('product_ghalebazar')}</option>
+              {productOptions.map((product) => <option key={product.type} value={product.type}>{product.label}</option>)}
             </select>
           </label>
         )}

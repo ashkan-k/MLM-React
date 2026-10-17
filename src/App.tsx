@@ -5,6 +5,7 @@ import { canAccessPage } from './lib/access'
 import { dashboardPath } from './lib/roles'
 import { AdminAuditDetail } from './pages/AdminAuditDetail'
 import { AdminAudits, AdminCourses, AdminFraSoft, AdminHome, AdminOrgCriteria, AdminPermissions, AdminRules, AdminSettings, AdminUsers } from './pages/AdminPages'
+import { CatalogProductsPage } from './pages/CatalogProductsPage'
 import { CourseFormPage } from './pages/CourseFormPage'
 import { AdminNetwork } from './pages/AdminNetwork'
 import { AdminReports } from './pages/AdminReports'
@@ -114,6 +115,7 @@ export default function App() {
           <Route path="courses/new" element={<CourseFormPage />} />
           <Route path="courses/:courseId/edit" element={<CourseFormPage />} />
           <Route path="courses" element={<AdminCourses />} />
+          <Route path="products" element={<CatalogProductsPage />} />
           <Route path="settings" element={<AdminSettings />} />
           <Route path="org-criteria" element={<AdminOrgCriteria />} />
           <Route path="audits" element={<AdminAudits />} />
