@@ -102,6 +102,7 @@ export function TransactionsPage() {
               <option value="gateway_profit">{t('product_gateway_profit')}</option>
               <option value="ticketing">{t('product_ticketing')}</option>
               <option value="subscription">{t('product_subscription')}</option>
+              <option value="ghalebazar">{t('product_ghalebazar')}</option>
             </select>
           </label>
         )}

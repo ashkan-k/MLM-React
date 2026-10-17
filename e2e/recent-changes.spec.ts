@@ -77,6 +77,8 @@ test.describe('تغییرات اخیر — پاداش پیش‌فرض، جستج
     const finopalCard = page.getByTestId('finopal-signup-links')
     const finopal = finopalCard.locator('a').first()
     await expect(finopal).toHaveAttribute('href', /^https:\/\/finopal\.ir\/login\?finonet_ref=/)
+    await finopalCard.getByTestId('signup-product').selectOption('ghalebazar')
+    await expect(finopalCard.locator('a').first()).toHaveAttribute('href', /^https:\/\/ghalebazar\.ir\/account\/profile\?finonet_ref=/)
     const href = await finopal.getAttribute('href')
     expect(href).not.toContain('code=')
     expect(href).not.toContain('/register')

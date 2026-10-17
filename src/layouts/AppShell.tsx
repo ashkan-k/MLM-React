@@ -207,7 +207,7 @@ function itemActive(item: LinkItem, pathname: string) {
   }
   const segs = pathname.split('/').filter(Boolean)
   if (item.end) return segs.length === 2 && segs[0] === 'dashboard'
-  return item.to !== '' && pathname.endsWith(`/${item.to}`)
+  return item.to !== '' && (pathname.endsWith(`/${item.to}`) || pathname.includes(`/${item.to}/`))
 }
 
 function SidebarNav({ groups, extra }: { groups: NavGroup[]; extra?: ReactNode }) {
@@ -402,6 +402,7 @@ function currentTitle(pathname: string, t: (key: string) => string, fallback: st
   if (pathname.endsWith('/gateways') || pathname === '/superuser/gateways') return t(productNavKey(productOriented))
   if (titleKeys[pathname]) return t(titleKeys[pathname])
   if (pathname.match(/^\/superuser\/audits\/\d+$/)) return t('titleAuditDetail')
+  if (/\/crm\/activities\/\d+$/.test(pathname)) return t('navCrmActivities')
   const last = pathname.split('/').filter(Boolean).pop() ?? ''
   if (last === 'gateways') return t(productNavKey(productOriented))
   if (titleKeys[last]) return t(titleKeys[last])

@@ -83,6 +83,8 @@ const productLabelFa: Record<string, string> = {
   gateway: 'سود درگاه پرداخت',
   ticketing: 'سیستم تیکتینگ فینوپال',
   subscription: 'اشتراک فاینوپال',
+  ghalebazar: 'قالب بازار',
+  ghale_bazar: 'قالب بازار',
   monthly_bonus: 'پاداش ماهانه',
   monthly_bonus_residual: 'مابقی پاداش',
   organizational: 'سود درگاه پرداخت',
@@ -94,6 +96,8 @@ const productLabelEn: Record<string, string> = {
   gateway: 'Payment gateway profit',
   ticketing: 'Finopal ticketing',
   subscription: 'Finopal subscription',
+  ghalebazar: 'Ghalebazar',
+  ghale_bazar: 'Ghalebazar',
   monthly_bonus: 'Monthly bonus',
   monthly_bonus_residual: 'Residual bonus',
   organizational: 'Payment gateway profit',
@@ -114,6 +118,7 @@ export function productTone(type?: string | null): 'ok' | 'warn' | 'info' | 'mut
   if (key === 'gateway_profit' || key === 'gateway') return 'info'
   if (key === 'ticketing') return 'ok'
   if (key === 'subscription') return 'warn'
+  if (key === 'ghalebazar' || key === 'ghale_bazar') return 'ok'
   if (key === 'monthly_bonus' || key === 'organizational') return 'warn'
   return 'muted'
 }

@@ -1559,6 +1559,37 @@ export function WithdrawalsPage() {
   )
 }
 
+function SignupLinks({ codes }: { codes: Array<{ id: number; code: string; finopal_signup_url?: string; signup_links?: Array<{ product_type: string; label: string; url: string }> }> }) {
+  const { t } = useApp()
+  const choices = codes[0]?.signup_links ?? []
+  const [product, setProduct] = useState(choices[0]?.product_type || 'gateway_profit')
+  const selected = choices.find((item) => item.product_type === product)?.product_type || choices[0]?.product_type || 'gateway_profit'
+
+  return (
+    <div className="card p-5" data-testid="finopal-signup-links">
+      <div className="font-semibold mb-1 text-surface-800 dark:text-surface-200">{t('refFinopalTitle')}</div>
+      <p className="text-xs text-surface-500 m-0 mb-3 leading-6">{t('refFinopalHint')}</p>
+      {choices.length > 0 && (
+        <label className="field max-w-xs mb-2">محصول
+          <select className="input" data-testid="signup-product" value={selected} onChange={(e) => setProduct(e.target.value)}>
+            {choices.map((item) => <option key={item.product_type} value={item.product_type}>{item.label}</option>)}
+          </select>
+        </label>
+      )}
+      {codes.map((c) => {
+        const link = c.signup_links?.find((item) => item.product_type === selected)?.url || c.finopal_signup_url
+        return (
+          <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 border-b border-surface-100 dark:border-surface-700 last:border-0">
+            <code className="font-bold text-primary-700 dark:text-primary-400 shrink-0">{c.code}</code>
+            {link && <CopyLink value={link} href={link} />}
+          </div>
+        )
+      })}
+      {codes.length === 0 && <Empty text={t('refEmpty')} />}
+    </div>
+  )
+}
+
 function CopyLink({ value, href }: { value: string; href?: string }) {
   const { t } = useApp()
   return (
@@ -1675,17 +1706,7 @@ export function ReferralsPage() {
             })}
             {(codes ?? []).length === 0 && <Empty text={t('refEmpty')} />}
           </div>
-          <div className="card p-5" data-testid="finopal-signup-links">
-            <div className="font-semibold mb-1 text-surface-800 dark:text-surface-200">{t('refFinopalTitle')}</div>
-            <p className="text-xs text-surface-500 m-0 mb-2 leading-6">{t('refFinopalHint')}</p>
-            {(codes ?? []).map((c: { id: number; code: string; finopal_signup_url?: string }) => (
-              <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 border-b border-surface-100 dark:border-surface-700 last:border-0">
-                <code className="font-bold text-primary-700 dark:text-primary-400">{c.code}</code>
-                {c.finopal_signup_url && <CopyLink value={c.finopal_signup_url} href={c.finopal_signup_url} />}
-              </div>
-            ))}
-            {(codes ?? []).length === 0 && <Empty text={t('refEmpty')} />}
-          </div>
+          <SignupLinks codes={codes ?? []} />
           <div className="card p-5">
             <div className="font-semibold mb-3 text-surface-800 dark:text-surface-200">{t('refReferred')}</div>
             {(referrals ?? []).length === 0 && <Empty text={t('refEmpty')} />}

@@ -9,7 +9,7 @@ import { CourseFormPage } from './pages/CourseFormPage'
 import { AdminNetwork } from './pages/AdminNetwork'
 import { AdminReports } from './pages/AdminReports'
 import { ChatPage } from './pages/ChatPage'
-import { CrmActivitiesPage, CrmIndexRedirect, CrmTasksPage } from './pages/CrmPage'
+import { CrmActivitiesPage, CrmActivityDetailPage, CrmIndexRedirect, CrmTasksPage } from './pages/CrmPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { CommissionsPage, FinancePage, GatewaysPage, NotificationsPage, OrgManagersPage, PromotionsPage, ReferralsPage, TeamPage, TrainingPage, TransfersPage, WalletPage, WithdrawalsPage } from './pages/DataPages'
 import { TransactionsPage } from './pages/TransactionsPage'
@@ -52,6 +52,7 @@ const roleChildren = (
     <Route index element={<PageGate page=""><DashboardPage /></PageGate>} />
     <Route path="crm" element={<PageGate page="crm"><CrmIndexRedirect /></PageGate>} />
     <Route path="crm/activities" element={<PageGate page="crm"><CrmActivitiesPage /></PageGate>} />
+    <Route path="crm/activities/:visitId" element={<PageGate page="crm"><CrmActivityDetailPage /></PageGate>} />
     <Route path="crm/tasks" element={<PageGate page="crm"><CrmTasksPage /></PageGate>} />
     <Route path="team" element={<PageGate page="team"><TeamPage /></PageGate>} />
     <Route path="org-managers" element={<PageGate page="team"><OrgManagersPage /></PageGate>} />
@@ -97,6 +98,7 @@ export default function App() {
           <Route index element={<AdminHome />} />
           <Route path="crm" element={<CrmIndexRedirect />} />
           <Route path="crm/activities" element={<CrmActivitiesPage />} />
+          <Route path="crm/activities/:visitId" element={<CrmActivityDetailPage />} />
           <Route path="crm/tasks" element={<CrmTasksPage />} />
           <Route path="reports" element={<AdminReports />} />
           <Route path="users" element={<AdminUsers />} />

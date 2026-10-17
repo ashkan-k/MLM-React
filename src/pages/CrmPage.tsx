@@ -1,15 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Bell, CalendarDays, Check, Eye, MapPin, MessageSquare, Pencil, Phone, Plus, Trash2 } from 'lucide-react'
 import { useState, type ReactNode } from 'react'
-import { useLocation, Navigate } from 'react-router-dom'
+import { useLocation, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { JalaliDatePicker } from '../components/JalaliDatePicker'
 import { JalaliDateTimePicker } from '../components/JalaliDateTimePicker'
 import { Badge, Modal, PageHeader } from '../components/ui'
 import { useApp } from '../contexts/AppContext'
+import { useAuth } from '../stores/auth'
 import { confirmAction } from '../lib/confirm'
 import { api } from '../lib/api'
 import { dateTime, jalaliDateOnly } from '../lib/format'
+
+type VisitLog = {
+  id: number
+  body: string
+  created_at?: string | null
+}
 
 type Visit = {
   id: number
@@ -26,6 +33,8 @@ type Visit = {
   notify_in_app: boolean
   notify_sms: boolean
   reminded_at?: string | null
+  logs_count?: number
+  logs?: VisitLog[]
 }
 
 type Task = {
@@ -135,8 +144,10 @@ function FilterBar({ q, onQ, placeholder, testId, filter, onFilter, openCount }:
 
 function useCrm(q: string) {
   const qc = useQueryClient()
+  const roleId = useAuth((s) => s.user?.active_role?.id)
   const query = useQuery({
-    queryKey: ['crm', q],
+    queryKey: ['crm', roleId, q],
+    enabled: Boolean(roleId),
     queryFn: async () => (await api.get('/crm', { params: { q: q.trim() || undefined } })).data as CrmData,
   })
   const refresh = () => {
@@ -148,7 +159,7 @@ function useCrm(q: string) {
 
 function errorText(error: { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }, fallback: string) {
   const errors = error.response?.data?.errors
-  return errors?.notify_in_app?.[0] ?? errors?.place?.[0] ?? errors?.person_name?.[0] ?? errors?.title?.[0] ?? error.response?.data?.message ?? fallback
+  return errors?.body?.[0] ?? errors?.notify_in_app?.[0] ?? errors?.place?.[0] ?? errors?.person_name?.[0] ?? errors?.title?.[0] ?? error.response?.data?.message ?? fallback
 }
 
 function IconBtn({ label, tone = 'edit', onClick, children }: {
@@ -214,10 +225,11 @@ export function CrmIndexRedirect() {
 
 export function CrmActivitiesPage() {
   const { t } = useApp()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<'open' | 'done' | 'all'>('open')
   const [open, setOpen] = useState(false)
-  const [detail, setDetail] = useState<Visit | null>(null)
   const [form, setForm] = useState<VisitForm>(emptyVisit())
   const [editing, setEditing] = useState<number | null>(null)
   const { data, isLoading, refresh } = useCrm(q)
@@ -229,21 +241,21 @@ export function CrmActivitiesPage() {
       return api.post('/crm/visits', payload)
     },
     onSuccess: () => {
-      toast.success(editing ? 'فعالیت به‌روز شد' : 'فعالیت ثبت شد')
+      toast.success(editing ? 'به‌روز شد' : 'ثبت شد')
       setOpen(false)
       refresh()
     },
     onError: (error: { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }) => {
-      toast.error(errorText(error, 'ثبت فعالیت انجام نشد'))
+      toast.error(errorText(error, 'ثبت انجام نشد'))
     },
   })
   const remove = useMutation({
     mutationFn: async (id: number) => api.delete(`/crm/visits/${id}`),
-    onSuccess: () => { toast.success('فعالیت حذف شد'); refresh() },
+    onSuccess: () => { toast.success('حذف شد'); refresh() },
   })
 
   const askRemove = async (visit: Visit) => {
-    if (!await confirmAction({ title: 'حذف فعالیت', text: `فعالیت «${visit.person_name}» حذف شود؟`, confirmText: 'حذف شود' })) return
+    if (!await confirmAction({ title: 'حذف', text: `«${visit.person_name}» حذف شود؟`, confirmText: 'حذف شود' })) return
     remove.mutate(visit.id)
   }
 
@@ -265,6 +277,8 @@ export function CrmActivitiesPage() {
     setOpen(true)
   }
 
+  const openDetail = (id: number) => navigate(`${pathname.replace(/\/$/, '')}/${id}`)
+
   const visits = (data?.visits ?? []).filter((visit) => {
     if (filter === 'done') return visit.status === 'done'
     if (filter === 'open') return visit.status !== 'done'
@@ -276,11 +290,11 @@ export function CrmActivitiesPage() {
       <PageHeader
         title={t('navCrmActivities')}
         subtitle={t('crmActivitiesSub')}
-        action={<button type="button" className="btn btn-primary w-full sm:w-auto" data-testid="crm-visit-open" onClick={() => openForm()}><Plus className="w-4 h-4" /> ثبت فعالیت</button>}
+        action={<button type="button" className="btn btn-primary w-full sm:w-auto" data-testid="crm-visit-open" onClick={() => openForm()}><Plus className="w-4 h-4" /> ثبت جدید</button>}
       />
       <FilterBar q={q} onQ={setQ} placeholder="جستجوی مخاطب، موبایل، کد ملی یا مکان" testId="crm-visit-filter" filter={filter} onFilter={setFilter} />
       {isLoading && <div className="text-sm text-surface-500">در حال بارگذاری...</div>}
-      {!isLoading && visits.length === 0 && <div className="card p-8 text-center text-sm text-surface-500">هنوز فعالیتی ثبت نشده است.</div>}
+      {!isLoading && visits.length === 0 && <div className="card p-8 text-center text-sm text-surface-500">هنوز موردی ثبت نشده است.</div>}
       <div className="grid md:grid-cols-2 gap-3 min-w-0 items-stretch">
         {visits.map((visit) => (
           <article key={visit.id} data-testid="crm-visit-row" className="card overflow-hidden h-full flex flex-col">
@@ -290,9 +304,9 @@ export function CrmActivitiesPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
-                  <button type="button" className="block min-w-0 flex-1 text-start font-semibold leading-6 line-clamp-1 break-all text-surface-800 dark:text-surface-100" onClick={() => openForm(visit)}>{visit.person_name}</button>
+                  <button type="button" className="block min-w-0 flex-1 text-start font-semibold leading-6 line-clamp-1 break-all text-surface-800 dark:text-surface-100" onClick={() => openDetail(visit.id)}>{visit.person_name}</button>
                   <div className="flex items-center shrink-0">
-                    <IconBtn label="مشاهده فعالیت" onClick={() => setDetail(visit)}><Eye className="w-4 h-4" /></IconBtn>
+                    <IconBtn label="مشاهده فعالیت" onClick={() => openDetail(visit.id)}><Eye className="w-4 h-4" /></IconBtn>
                     <IconBtn label="ویرایش فعالیت" onClick={() => openForm(visit)}><Pencil className="w-4 h-4" /></IconBtn>
                     <IconBtn label="حذف فعالیت" tone="danger" onClick={() => askRemove(visit)}><Trash2 className="w-4 h-4" /></IconBtn>
                   </div>
@@ -306,10 +320,11 @@ export function CrmActivitiesPage() {
                   <MetaChip><span className="datetime-ltr truncate" dir="ltr">{jalaliDateOnly(visit.visited_on)}</span></MetaChip>
                   {visit.mobile && <MetaChip><Phone className="w-3.5 h-3.5 shrink-0" /><span className="truncate">{visit.mobile}</span></MetaChip>}
                   {visit.national_id && <MetaChip><span className="truncate">کد ملی {visit.national_id}</span></MetaChip>}
+                  {(visit.logs_count ?? 0) > 0 && <MetaChip>{visit.logs_count} گزارش</MetaChip>}
                 </div>
               </div>
             </div>
-            <ClampBox text={visit.result} empty="نتیجه‌ای ثبت نشده" label="مشاهده نتیجه" onOpen={() => setDetail(visit)} />
+            <ClampBox text={visit.result} empty="نتیجه‌ای ثبت نشده" label="مشاهده نتیجه" onOpen={() => openDetail(visit.id)} />
             {visit.remind_at && (
               <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-surface-100 dark:border-surface-700 bg-primary-50/70 dark:bg-primary-900/25 px-4 py-2.5 text-xs text-primary-800 dark:text-primary-200 min-w-0">
                 {visit.notify_sms ? <MessageSquare className="w-3.5 h-3.5 shrink-0" /> : <Bell className="w-3.5 h-3.5 shrink-0" />}
@@ -320,24 +335,194 @@ export function CrmActivitiesPage() {
         ))}
       </div>
 
-      <Modal open={detail !== null} title="جزئیات فعالیت" subtitle="متن کامل، بدون کوتاه شدن" onClose={() => setDetail(null)}>
-        {detail && (
-          <div className="grid gap-3">
-            <DetailRow label="مخاطب">{detail.person_name}</DetailRow>
-            <DetailRow label="نوع">{ACTIVITY_TYPE[detail.activity_type || 'visit']}</DetailRow>
-            <DetailRow label="وضعیت">{detail.status === 'done' ? 'انجام‌شده' : 'باز'}</DetailRow>
-            <DetailRow label="مکان">{detail.place}</DetailRow>
-            <DetailRow label="تاریخ"><span className="datetime-ltr" dir="ltr">{jalaliDateOnly(detail.visited_on)}</span></DetailRow>
-            {detail.mobile && <DetailRow label="موبایل">{detail.mobile}</DetailRow>}
-            {detail.national_id && <DetailRow label="کد ملی">{detail.national_id}</DetailRow>}
-            <DetailRow label="نتیجه">{detail.result?.trim() || 'نتیجه‌ای ثبت نشده'}</DetailRow>
-            {detail.remind_at && <DetailRow label="یادآور"><ReminderLine at={detail.remind_at} inApp={detail.notify_in_app} sms={detail.notify_sms} sent={detail.reminded_at} /></DetailRow>}
-            <button type="button" className="btn btn-primary" onClick={() => { const visit = detail; setDetail(null); openForm(visit) }}>ویرایش</button>
+      <Modal open={open} title={editing ? 'ویرایش' : 'ثبت جدید'} subtitle="یادآور برای خودتان است، نه برای مخاطب." onClose={() => setOpen(false)}>
+        <div className="grid gap-3">
+          <div className="grid sm:grid-cols-2 gap-3">
+            <label className="field">نوع فعالیت
+              <select className="input" data-testid="crm-visit-type" value={form.activity_type} onChange={(e) => setForm({ ...form, activity_type: e.target.value })}>
+                <option value="visit">مراجعه</option>
+                <option value="call">تماس</option>
+                <option value="meeting">جلسه</option>
+              </select>
+            </label>
+            <label className="field">وضعیت
+              <select className="input" data-testid="crm-visit-status" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                <option value="open">باز</option>
+                <option value="done">انجام‌شده</option>
+              </select>
+            </label>
           </div>
-        )}
+          <label className="field">مخاطب
+            <input className="input" data-testid="crm-visit-person" value={form.person_name} onChange={(e) => setForm({ ...form, person_name: e.target.value })} />
+          </label>
+          <label className="field">مکان
+            <input className="input" data-testid="crm-visit-place" value={form.place} onChange={(e) => setForm({ ...form, place: e.target.value })} />
+          </label>
+          <div className="grid sm:grid-cols-2 gap-3">
+            <label className="field">موبایل
+              <input className="input" data-testid="crm-visit-mobile" value={form.mobile} onChange={(e) => setForm({ ...form, mobile: e.target.value })} />
+            </label>
+            <label className="field">کد ملی
+              <input className="input" data-testid="crm-visit-national" value={form.national_id} onChange={(e) => setForm({ ...form, national_id: e.target.value })} />
+            </label>
+          </div>
+          <label className="field">تاریخ فعالیت
+            <JalaliDatePicker testId="crm-visit-date" value={form.visited_on} onChange={(visited_on) => setForm({ ...form, visited_on })} allowClear={false} />
+          </label>
+          <label className="field">نتیجه
+            <textarea className="input min-h-20" data-testid="crm-visit-result" value={form.result} onChange={(e) => setForm({ ...form, result: e.target.value })} />
+          </label>
+          <label className="field">یادآور
+            <JalaliDateTimePicker testId="crm-visit-remind" value={form.remind_at} onChange={(remind_at) => setForm({ ...form, remind_at })} />
+          </label>
+          <ReminderChoices inApp={form.notify_in_app} sms={form.notify_sms} notifyId="crm-visit-notify" smsId="crm-visit-sms" onInApp={(notify_in_app) => setForm({ ...form, notify_in_app })} onSms={(notify_sms) => setForm({ ...form, notify_sms })} />
+          <button type="button" className="btn btn-primary" data-testid="crm-visit-save" disabled={save.isPending} onClick={() => save.mutate()}>ذخیره</button>
+        </div>
       </Modal>
+    </div>
+  )
+}
 
-      <Modal open={open} title={editing ? 'ویرایش فعالیت' : 'ثبت فعالیت'} subtitle="یادآور برای خودتان است، نه برای مخاطب." onClose={() => setOpen(false)}>
+export function CrmActivityDetailPage() {
+  const { visitId } = useParams()
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const qc = useQueryClient()
+  const roleId = useAuth((s) => s.user?.active_role?.id)
+  const [open, setOpen] = useState(false)
+  const [form, setForm] = useState<VisitForm>(emptyVisit())
+  const [note, setNote] = useState('')
+  const id = Number(visitId)
+  const listPath = pathname.replace(/\/\d+$/, '')
+
+  const query = useQuery({
+    queryKey: ['crm-visit', roleId, id],
+    enabled: Boolean(roleId) && Number.isFinite(id) && id > 0,
+    queryFn: async () => (await api.get(`/crm/visits/${id}`)).data as Visit,
+  })
+  const visit = query.data
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['crm-visit', roleId, id] })
+    qc.invalidateQueries({ queryKey: ['crm'] })
+  }
+
+  const save = useMutation({
+    mutationFn: async () => api.put(`/crm/visits/${id}`, { ...form, remind_at: form.remind_at || null }),
+    onSuccess: () => {
+      toast.success('به‌روز شد')
+      setOpen(false)
+      refresh()
+    },
+    onError: (error: { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }) => {
+      toast.error(errorText(error, 'ثبت انجام نشد'))
+    },
+  })
+  const remove = useMutation({
+    mutationFn: async () => api.delete(`/crm/visits/${id}`),
+    onSuccess: () => {
+      toast.success('حذف شد')
+      qc.invalidateQueries({ queryKey: ['crm'] })
+      navigate(listPath)
+    },
+  })
+  const addLog = useMutation({
+    mutationFn: async () => api.post(`/crm/visits/${id}/logs`, { body: note.trim() }),
+    onSuccess: () => {
+      toast.success('گزارش ثبت شد')
+      setNote('')
+      refresh()
+    },
+    onError: (error: { response?: { data?: { message?: string; errors?: Record<string, string[]> } } }) => {
+      toast.error(errorText(error, 'ثبت گزارش انجام نشد'))
+    },
+  })
+  const removeLog = useMutation({
+    mutationFn: async (logId: number) => api.delete(`/crm/visits/${id}/logs/${logId}`),
+    onSuccess: () => {
+      toast.success('گزارش حذف شد')
+      refresh()
+    },
+  })
+
+  const openForm = () => {
+    if (!visit) return
+    setForm({
+      visited_on: visit.visited_on,
+      activity_type: visit.activity_type || 'visit',
+      status: visit.status || 'open',
+      place: visit.place,
+      person_name: visit.person_name,
+      national_id: visit.national_id ?? '',
+      mobile: visit.mobile ?? '',
+      result: visit.result ?? '',
+      remind_at: visit.remind_at_input ?? '',
+      notify_in_app: visit.notify_in_app,
+      notify_sms: visit.notify_sms,
+    })
+    setOpen(true)
+  }
+
+  const askRemove = async () => {
+    if (!visit) return
+    if (!await confirmAction({ title: 'حذف', text: `«${visit.person_name}» حذف شود؟`, confirmText: 'حذف شود' })) return
+    remove.mutate()
+  }
+
+  const askRemoveLog = async (log: VisitLog) => {
+    if (!await confirmAction({ title: 'حذف گزارش', text: 'این گزارش حذف شود؟', confirmText: 'حذف شود' })) return
+    removeLog.mutate(log.id)
+  }
+
+  return (
+    <div className="space-y-4" data-testid="crm-activity-page">
+      <button type="button" className="btn btn-ghost" data-testid="crm-activity-back" onClick={() => navigate(listPath)}>بازگشت به فهرست</button>
+      {query.isLoading && <div className="text-sm text-surface-500">در حال بارگذاری...</div>}
+      {query.isError && <div className="card p-8 text-center text-sm text-surface-500">این مورد پیدا نشد.</div>}
+      {visit && (
+        <>
+          <PageHeader
+            title={visit.person_name}
+            subtitle={visit.place}
+            action={(
+              <div className="flex gap-2">
+                <button type="button" className="btn btn-ghost" aria-label="ویرایش فعالیت" onClick={openForm}><Pencil className="w-4 h-4" /> ویرایش</button>
+                <button type="button" className="btn btn-ghost text-rose-600" aria-label="حذف فعالیت" onClick={askRemove}><Trash2 className="w-4 h-4" /> حذف</button>
+              </div>
+            )}
+          />
+          <article className="card p-4 grid gap-3 min-w-0">
+            <div className="flex flex-wrap gap-1">
+              <Badge tone="muted">{ACTIVITY_TYPE[visit.activity_type || 'visit']}</Badge>
+              <Badge tone={visit.status === 'done' ? 'ok' : 'info'}>{visit.status === 'done' ? 'انجام‌شده' : 'باز'}</Badge>
+            </div>
+            <DetailRow label="تاریخ"><span className="datetime-ltr" dir="ltr">{jalaliDateOnly(visit.visited_on)}</span></DetailRow>
+            {visit.mobile && <DetailRow label="موبایل">{visit.mobile}</DetailRow>}
+            {visit.national_id && <DetailRow label="کد ملی">{visit.national_id}</DetailRow>}
+            <DetailRow label="نتیجه"><span className="whitespace-pre-wrap">{visit.result?.trim() || 'نتیجه‌ای ثبت نشده'}</span></DetailRow>
+            {visit.remind_at && <DetailRow label="یادآور"><ReminderLine at={visit.remind_at} inApp={visit.notify_in_app} sms={visit.notify_sms} sent={visit.reminded_at} /></DetailRow>}
+          </article>
+          <section className="card p-4 space-y-3 min-w-0">
+            <div className="font-semibold text-surface-800 dark:text-surface-100">گزارش‌های پیگیری</div>
+            <p className="text-xs text-surface-500 m-0">هر بار که پرزنت را ادامه می‌دهید، یک گزارش جدید بنویسید؛ مثلاً ورود به مرحلهٔ بعد.</p>
+            <textarea className="input min-h-24" data-testid="crm-log-body" placeholder="مثلاً وارد مرحله ۲ شد" value={note} onChange={(e) => setNote(e.target.value)} />
+            <button type="button" className="btn btn-primary" data-testid="crm-log-save" disabled={addLog.isPending || note.trim() === ''} onClick={() => addLog.mutate()}>ثبت گزارش</button>
+            {(visit.logs ?? []).length === 0 && <div className="text-sm text-surface-500">هنوز گزارشی ثبت نشده است.</div>}
+            <div className="grid gap-2">
+              {(visit.logs ?? []).map((log) => (
+                <div key={log.id} data-testid="crm-log-row" className="rounded-xl bg-surface-50 dark:bg-surface-900/60 px-3 py-2.5 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-sm leading-6 m-0 wrap-anywhere text-surface-700 dark:text-surface-200 whitespace-pre-wrap">{log.body}</p>
+                    <IconBtn label="حذف گزارش" tone="danger" onClick={() => askRemoveLog(log)}><Trash2 className="w-4 h-4" /></IconBtn>
+                  </div>
+                  {log.created_at && <div className="text-xs text-surface-400 mt-1"><span className="datetime-ltr" dir="ltr">{dateTime(log.created_at)}</span></div>}
+                </div>
+              ))}
+            </div>
+          </section>
+        </>
+      )}
+      <Modal open={open} title="ویرایش" subtitle="یادآور برای خودتان است، نه برای مخاطب." onClose={() => setOpen(false)}>
         <div className="grid gap-3">
           <div className="grid sm:grid-cols-2 gap-3">
             <label className="field">نوع فعالیت
