@@ -95,6 +95,12 @@ type DetailPayload = {
 }
 
 function currentMonthKey() {
+  // ماه شمسی جاری برای API (از آبان ۱۴۰۵ به بعد)
+  const fmt = new Intl.DateTimeFormat('en-u-ca-persian', { year: 'numeric', month: '2-digit' })
+  const parts = Object.fromEntries(fmt.formatToParts(new Date()).map((p) => [p.type, p.value]))
+  const year = String(parts.year ?? '').replace(/\D/g, '')
+  const month = String(parts.month ?? '').padStart(2, '0')
+  if (year.length === 4 && month.length === 2) return `${year}-${month}`
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }

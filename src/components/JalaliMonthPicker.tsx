@@ -5,15 +5,24 @@ const MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', '�
 
 function fromYm(value?: string) {
   if (!value || !/^\d{4}-\d{2}$/.test(value)) return new Date()
+  const [y, m] = value.split('-').map(Number)
+  if (y < 1600) {
+    let date = new Date()
+    date = setYear(date, y)
+    date = setMonth(date, m - 1)
+    return date
+  }
   const date = new Date(`${value}-15T12:00:00`)
   return Number.isNaN(date.getTime()) ? new Date() : date
 }
 
 function toYm(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+  const y = getYear(date)
+  const m = getMonth(date) + 1
+  return `${y}-${String(m).padStart(2, '0')}`
 }
 
-/** انتخاب ماه/سال شمسی → مقدار API به‌صورت YYYY-MM میلادی */
+/** انتخاب ماه/سال شمسی → مقدار API به‌صورت YYYY-MM شمسی (مثل 1405-08) */
 export function JalaliMonthPicker({
   value,
   onChange,

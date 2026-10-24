@@ -125,12 +125,24 @@ export function productTone(type?: string | null): 'ok' | 'warn' | 'info' | 'mut
   return 'muted'
 }
 
-/** YYYY-MM یا تاریخ کامل → نام ماه شمسی + سال (مثلاً شهریور ۱۴۰۵) */
+const jalaliMonthNamesFa = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند']
+const jalaliMonthNamesEn = ['Farvardin', 'Ordibehesht', 'Khordad', 'Tir', 'Mordad', 'Shahrivar', 'Mehr', 'Aban', 'Azar', 'Dey', 'Bahman', 'Esfand']
+
+/** YYYY-MM شمسی (مثل 1405-08) یا میلادی/تاریخ کامل → نام ماه شمسی + سال */
 export function jalaliMonth(value?: string | null) {
   if (!value) return '—'
-  const raw = value.length === 7 ? `${value}-01T12:00:00` : value
+  const key = String(value).trim()
+  const ym = key.match(/^(\d{4})-(\d{2})$/)
+  if (ym && Number(ym[1]) < 1600) {
+    const monthIndex = Number(ym[2]) - 1
+    if (monthIndex < 0 || monthIndex > 11) return key
+    const name = currentLocale() === 'en' ? jalaliMonthNamesEn[monthIndex] : jalaliMonthNamesFa[monthIndex]
+    const year = currentLocale() === 'en' ? ym[1] : ym[1].replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)])
+    return `${name} ${year}`
+  }
+  const raw = key.length === 7 ? `${key}-01T12:00:00` : key
   const date = new Date(raw)
-  if (Number.isNaN(date.getTime())) return value
+  if (Number.isNaN(date.getTime())) return key
   const text = formatJalali(date, 'MMMM yyyy')
   if (currentLocale() === 'en') return text
   return text.replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[Number(d)])
