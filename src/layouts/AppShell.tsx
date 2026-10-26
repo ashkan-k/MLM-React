@@ -31,6 +31,9 @@ import {
   User,
   Users,
   Wallet,
+  Crosshair,
+  Eye,
+  UserCog,
   X,
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
@@ -38,7 +41,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
-import { canAccessPage } from '../lib/access'
+import { canAccessGoalsBank, canAccessPage } from '../lib/access'
 import { roleLabel } from '../lib/i18n'
 import { productNavKey, useProductOriented } from '../lib/productMode'
 import { dashboardPath } from '../lib/roles'
@@ -67,6 +70,14 @@ const roleGroups: NavGroup[] = [
       { to: 'monthly-bonus', labelKey: 'navMonthlyBonus', icon: Award },
       { to: 'points', labelKey: 'navPoints', icon: Target },
       { to: 'bonus-default', labelKey: 'navBonusDefault', icon: Award },
+    ],
+  },
+  {
+    key: 'navGoalsBankGroup',
+    items: [
+      { to: 'goals-bank', labelKey: 'navGoalsBankList', icon: Crosshair },
+      { to: 'goals-access', labelKey: 'navGoalsAccess', icon: UserCog },
+      { to: 'goals-monitor', labelKey: 'navGoalsMonitor', icon: Eye },
     ],
   },
   {
@@ -133,6 +144,14 @@ const adminGroups: NavGroup[] = [
     ],
   },
   {
+    key: 'navGoalsBankGroup',
+    items: [
+      { to: '/superuser/goals-bank', labelKey: 'navGoalsBankList', icon: Crosshair },
+      { to: '/superuser/goals-access', labelKey: 'navGoalsAccess', icon: UserCog },
+      { to: '/superuser/goals-monitor', labelKey: 'navGoalsMonitor', icon: Eye },
+    ],
+  },
+  {
     key: 'navMlm',
     items: [
       { to: '/superuser/rules', labelKey: 'navRules', icon: TrendingUp },
@@ -163,6 +182,9 @@ const titleKeys: Record<string, string> = {
   'monthly-bonus': 'navMonthlyBonus',
   points: 'navPoints',
   'bonus-default': 'navBonusDefault',
+  'goals-bank': 'navGoalsBankList',
+  'goals-access': 'navGoalsAccess',
+  'goals-monitor': 'navGoalsMonitor',
   wallet: 'navWallet',
   finance: 'navFinanceReport',
   withdrawals: 'navWithdrawals',
@@ -191,6 +213,9 @@ const titleKeys: Record<string, string> = {
   '/superuser/commissions': 'navCommissions',
   '/superuser/points': 'navPoints',
   '/superuser/bonus-default': 'navBonusDefault',
+  '/superuser/goals-bank': 'navGoalsBankList',
+  '/superuser/goals-access': 'navGoalsAccess',
+  '/superuser/goals-monitor': 'navGoalsMonitor',
   '/superuser/rules': 'navRules',
   '/superuser/org-criteria': 'navOrgCriteria',
   '/superuser/courses': 'navCourses',
@@ -227,6 +252,17 @@ function SidebarNav({ groups, extra }: { groups: NavGroup[]; extra?: ReactNode }
         items: group.items
           .filter((item) => {
             if (item.to === 'org-managers' && user?.active_role?.slug !== 'senior_manager') return false
+            const goalsPath = item.to === 'goals-bank' || item.to === '/superuser/goals-bank'
+              || item.to === 'goals-access' || item.to === '/superuser/goals-access'
+              || item.to === 'goals-monitor' || item.to === '/superuser/goals-monitor'
+            if (goalsPath) {
+              if (!canAccessGoalsBank(user)) return false
+              const managerOnly = item.to.includes('goals-access') || item.to.includes('goals-monitor')
+              if (managerOnly) {
+                return !!(user?.is_superuser || user?.active_role?.slug === 'senior_manager' || user?.active_role?.slug === 'superuser')
+              }
+              return true
+            }
             return canAccessPage(user, item.to)
           })
           .map((item) => (

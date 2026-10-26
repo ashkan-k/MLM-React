@@ -55,6 +55,9 @@ test.describe('پوشش کامل پنل‌ها و باگ‌های گزارش‌�
       '/dashboard/senior-manager/referrals',
       '/dashboard/senior-manager/promotions',
       '/dashboard/senior-manager/training',
+      '/dashboard/senior-manager/goals-bank',
+      '/dashboard/senior-manager/goals-access',
+      '/dashboard/senior-manager/goals-monitor',
       '/dashboard/senior-manager/chat',
       '/dashboard/senior-manager/notifications',
     ]
@@ -85,6 +88,9 @@ test.describe('پوشش کامل پنل‌ها و باگ‌های گزارش‌�
       '/superuser/chat',
       '/superuser/notifications',
       '/superuser/frasoft',
+      '/superuser/goals-bank',
+      '/superuser/goals-access',
+      '/superuser/goals-monitor',
     ]
     for (const path of paths) {
       await visit(page, path)

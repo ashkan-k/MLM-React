@@ -33,6 +33,16 @@ export type AuthUser = {
       gateway_sale_enabled?: boolean
     }
     product_oriented?: boolean
+    goal_bank?: {
+      enabled?: boolean
+      max_concurrent?: number
+      in_progress?: number
+      can_claim_more?: boolean
+      can_receive_batch?: boolean
+      remaining_slots?: number
+      batch_size?: number
+      is_manager?: boolean
+    }
   }
 }
 

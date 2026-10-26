@@ -20,6 +20,15 @@ export const PAGE_PERMISSION: Record<string, string> = {
   chat: 'page.chat',
   notifications: 'page.notifications',
   reports: 'page.reports',
+  'goals-bank': 'page.goals_bank',
+  'goals-access': 'page.goals_bank',
+  'goals-monitor': 'page.goals_bank',
+}
+
+export function canAccessGoalsBank(user: AuthUser | null | undefined): boolean {
+  if (!user) return false
+  if (user.is_superuser || user.active_role?.slug === 'superuser' || user.active_role?.slug === 'senior_manager') return true
+  return !!user.features?.goal_bank?.enabled
 }
 
 /** Normalize `/superuser/commissions` → `commissions` for permission lookup. */
@@ -42,6 +51,9 @@ export function canAccessPage(user: AuthUser | null | undefined, pageKey: string
   // پنل مدیر سامانه (از جمله پورسانت) مستقل از FINOPAL_PRODUCT_ORIENTED است
   if (user.is_superuser || user.active_role?.slug === 'superuser') return true
   const key = pageAccessKey(pageKey)
+  // مسیر صفحه برای همه نقش‌ها باز است؛ خود صفحه اگر دسترسی نباشد پیام می‌دهد.
+  // نمایش لینک منو همچنان با canAccessGoalsBank محدود می‌شود.
+  if (key === 'goals-bank' || key === 'goals-access' || key === 'goals-monitor') return true
   const slug = PAGE_PERMISSION[key] ?? PAGE_PERMISSION[pageKey]
   if (!slug) return true
   if (user.permissions?.includes(slug)) return true
