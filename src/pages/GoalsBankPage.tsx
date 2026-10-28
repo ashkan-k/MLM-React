@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Navigate } from 'react-router-dom'
+import { Cell, ResponsiveContainer, Tooltip as ReTooltip, Bar, BarChart as ReBarChart, CartesianGrid, XAxis, YAxis } from 'recharts'
 import { toast } from 'sonner'
 import { api } from '../lib/api'
 import { dashboardPath } from '../lib/roles'
@@ -98,6 +99,31 @@ function apiErr(e: unknown, fallback: string) {
   return err?.response?.data?.message || first || fallback
 }
 
+/** تطبیق نام استان/شهر با فهرست فینوپال (ی/ک عربی و فاصله) */
+function geoLabelMatch(a?: string | null, b?: string | null) {
+  const fold = (v: string) => v
+    .normalize('NFKC')
+    .replace(/ي/g, 'ی')
+    .replace(/ى/g, 'ی')
+    .replace(/ك/g, 'ک')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase()
+  if (!a || !b) return false
+  return fold(a) === fold(b)
+}
+
+function withStoredGeoOption(
+  options: Array<{ value: string; label: string }>,
+  storedLabel: string,
+  selectedId: string,
+  storedValuePrefix: string,
+) {
+  if (!storedLabel) return options
+  if (options.some((o) => geoLabelMatch(o.label, storedLabel))) return options
+  return [{ value: selectedId || `${storedValuePrefix}:${storedLabel}`, label: storedLabel }, ...options]
+}
+
 function FieldBlock({
   label,
   value,
@@ -111,12 +137,12 @@ function FieldBlock({
 }) {
   const empty = value == null || value === ''
   return (
-    <div className="min-w-0 py-2 border-b border-surface-100/90 dark:border-surface-700/80 last:border-b-0" data-testid={testId}>
-      <div className="text-[11px] font-medium tracking-wide text-surface-400 mb-0.5">{label}</div>
+    <div className="min-w-0 py-1.5 border-b border-surface-100/90 dark:border-surface-700/80 last:border-b-0" data-testid={testId}>
+      <div className="text-[10px] font-medium tracking-wide text-surface-400 mb-0.5">{label}</div>
       {empty ? (
-        <div className="text-sm text-surface-300">—</div>
+        <div className="text-[13px] text-surface-300">—</div>
       ) : (
-        <div className="text-sm text-surface-800 dark:text-surface-100 break-words whitespace-pre-wrap" dir={dir}>{value}</div>
+        <div className="text-[13px] leading-snug text-surface-800 dark:text-surface-100 break-words whitespace-pre-wrap" dir={dir}>{value}</div>
       )}
     </div>
   )
@@ -126,15 +152,15 @@ function GoalPartCard({ item, footer }: { item: GoalItem; footer?: ReactNode }) 
   const location = [item.province, item.city].filter(Boolean).join(' / ') || null
   return (
     <article
-      className="card p-4 sm:p-5 flex flex-col h-full min-w-0 hover:border-primary-200/80 transition-colors"
+      className="card p-3.5 flex flex-col h-full min-w-0 hover:border-primary-200/80 transition-colors"
       data-testid={`goal-item-${item.id}`}
     >
-      <header className="flex items-start justify-between gap-3 shrink-0 pb-3 border-b border-surface-100 dark:border-surface-700">
+      <header className="flex items-start justify-between gap-2 shrink-0 pb-2.5 border-b border-surface-100 dark:border-surface-700">
         <div className="min-w-0 flex-1">
-          <h3 className="m-0 font-semibold text-[15px] leading-snug text-surface-900 dark:text-surface-50 break-words">
+          <h3 className="m-0 font-semibold text-sm leading-snug text-surface-900 dark:text-surface-50 break-words">
             {item.name}
           </h3>
-          <p className="m-0 mt-1 text-xs text-surface-500 break-all">
+          <p className="m-0 mt-1 text-[11px] text-surface-500 break-all line-clamp-2">
             <span>{item.platform}</span>
             {item.platform_url ? (
               <>
@@ -151,13 +177,13 @@ function GoalPartCard({ item, footer }: { item: GoalItem; footer?: ReactNode }) 
         </span>
       </header>
 
-      <div className="flex-1 min-w-0 mt-1">
-        <div className="grid grid-cols-2 gap-x-4">
+      <div className="flex-1 min-w-0 mt-0.5">
+        <div className="grid grid-cols-2 gap-x-3">
           <FieldBlock label="مخاطبین" value={item.audience_count != null ? item.audience_count.toLocaleString('fa-IR') : null} />
           <FieldBlock label="موقعیت" value={location} />
+          <FieldBlock label="شماره تماس" value={item.phone} dir="ltr" testId={`goal-phone-${item.id}`} />
+          <FieldBlock label="شماره موبایل" value={item.mobile} dir="ltr" testId={`goal-mobile-${item.id}`} />
         </div>
-        <FieldBlock label="شماره تماس" value={item.phone} dir="ltr" testId={`goal-phone-${item.id}`} />
-        <FieldBlock label="شماره موبایل" value={item.mobile} dir="ltr" testId={`goal-mobile-${item.id}`} />
         <FieldBlock label="آدرس" value={item.address} />
         <FieldBlock label="توضیحات" value={item.description} />
         {item.claimant && (
@@ -196,7 +222,7 @@ function AccessGeoFields({
       if (!row.province) setStateId('')
       return
     }
-    const match = states.find((s) => s.title === row.province)
+    const match = states.find((s) => geoLabelMatch(s.title, row.province))
     if (match) setStateId(String(match.id))
   }, [row.user_id, row.province, states])
 
@@ -213,44 +239,63 @@ function AccessGeoFields({
       if (!row.city) setCityId('')
       return
     }
-    const match = cities.find((c) => c.title === row.city)
+    const match = cities.find((c) => geoLabelMatch(c.title, row.city))
     if (match) setCityId(String(match.id))
   }, [row.user_id, row.city, cities])
 
+  const provinceOptions = withStoredGeoOption(
+    states.map((s) => ({ value: String(s.id), label: s.title })),
+    row.province ?? '',
+    stateId,
+    'prov',
+  )
+  const cityOptions = withStoredGeoOption(
+    cities.map((c) => ({ value: String(c.id), label: c.title })),
+    row.city ?? '',
+    cityId,
+    'city',
+  )
+  const provinceValue = stateId || (row.province ? (provinceOptions.find((o) => geoLabelMatch(o.label, row.province))?.value ?? '') : '')
+  const cityValue = cityId || (row.city ? (cityOptions.find((o) => geoLabelMatch(o.label, row.city))?.value ?? '') : '')
+
   return (
     <>
-      <label className="field !mb-0">
+      <label className="field !mb-0 min-w-0">
         استان
-        <SearchSelect
-          value={stateId}
-          placeholder={states.length ? 'انتخاب استان' : 'در حال دریافت…'}
-          options={states.map((s) => ({ value: String(s.id), label: s.title }))}
-          onChange={(id) => {
-            const title = states.find((s) => String(s.id) === id)?.title ?? ''
-            setStateId(id)
-            setCityId('')
-            if ((title || null) === (row.province ?? null) && !row.city) return
-            onSave(title || null, null)
-          }}
-          testId={`goals-access-province-${row.user_id}`}
-        />
+        <div className="[&_button.input]:h-11 [&_button.input]:w-full">
+          <SearchSelect
+            value={provinceValue}
+            placeholder={states.length || row.province ? 'انتخاب استان' : 'در حال دریافت…'}
+            options={provinceOptions}
+            onChange={(id) => {
+              const title = provinceOptions.find((o) => String(o.value) === id)?.label ?? ''
+              setStateId(id.startsWith('prov:') ? '' : id)
+              setCityId('')
+              if ((title || null) === (row.province ?? null) && !row.city) return
+              onSave(title || null, null)
+            }}
+            testId={`goals-access-province-${row.user_id}`}
+          />
+        </div>
       </label>
-      <label className="field !mb-0">
+      <label className="field !mb-0 min-w-0">
         شهر
-        <SearchSelect
-          value={cityId}
-          disabled={!stateId}
-          placeholder={stateId ? 'انتخاب شهر' : 'اول استان'}
-          options={cities.map((c) => ({ value: String(c.id), label: c.title }))}
-          onChange={(id) => {
-            const title = cities.find((c) => String(c.id) === id)?.title ?? ''
-            setCityId(id)
-            const province = states.find((s) => String(s.id) === stateId)?.title ?? row.province ?? null
-            if ((title || null) === (row.city ?? null)) return
-            onSave(province, title || null)
-          }}
-          testId={`goals-access-city-${row.user_id}`}
-        />
+        <div className="[&_button.input]:h-11 [&_button.input]:w-full">
+          <SearchSelect
+            value={cityValue}
+            disabled={!provinceValue}
+            placeholder={provinceValue ? 'انتخاب شهر' : 'اول استان'}
+            options={cityOptions}
+            onChange={(id) => {
+              const title = cityOptions.find((o) => String(o.value) === id)?.label ?? ''
+              setCityId(id.startsWith('city:') ? '' : id)
+              const province = provinceOptions.find((o) => String(o.value) === provinceValue)?.label ?? row.province ?? null
+              if ((title || null) === (row.city ?? null)) return
+              onSave(province, title || null)
+            }}
+            testId={`goals-access-city-${row.user_id}`}
+          />
+        </div>
       </label>
     </>
   )
@@ -357,6 +402,56 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
     },
   })
 
+  const monitorStatsQ = useQuery({
+    queryKey: ['goals-monitor-stats', monitorUser?.user_id],
+    enabled: isManager && section === 'monitor' && !!monitorUser,
+    queryFn: async () => {
+      const { data } = await api.get('/goals/bank/user-stats', { params: { user_id: monitorUser!.user_id } })
+      return data as {
+        stats: {
+          user_id: number
+          total: number
+          in_progress: number
+          completed: number
+          failed: number
+          success_rate: number | null
+        }
+      }
+    },
+  })
+
+  const monitorChartRows = useMemo(() => {
+    const s = monitorStatsQ.data?.stats
+    if (!s) return [] as Array<{ key: string; name: string; value: number; color: string }>
+    return [
+      { key: 'in_progress', name: 'در حال انجام', value: s.in_progress, color: '#f59e0b' },
+      { key: 'completed', name: 'انجام‌شده', value: s.completed, color: '#10b981' },
+      { key: 'failed', name: 'انجام‌نشده', value: s.failed, color: '#f43f5e' },
+    ]
+  }, [monitorStatsQ.data?.stats])
+
+  const monitorPctRows = useMemo(() => {
+    const total = monitorStatsQ.data?.stats.total ?? 0
+    return monitorChartRows.map((r) => ({
+      ...r,
+      pct: total > 0 ? Math.round((r.value / total) * 1000) / 10 : 0,
+    }))
+  }, [monitorChartRows, monitorStatsQ.data?.stats.total])
+
+  const monitorOutcome = useMemo(() => {
+    const s = monitorStatsQ.data?.stats
+    if (!s) return null
+    const decided = s.completed + s.failed
+    if (decided <= 0) return null
+    return {
+      decided,
+      successPct: Math.round((s.completed / decided) * 1000) / 10,
+      failPct: Math.round((s.failed / decided) * 1000) / 10,
+      completed: s.completed,
+      failed: s.failed,
+    }
+  }, [monitorStatsQ.data?.stats])
+
   const meQ = useQuery({
     queryKey: ['goals-bank-me'],
     enabled: section !== 'bank',
@@ -374,7 +469,7 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
 
   useEffect(() => {
     if (!formOpen || !form.province || form.state_id || states.length === 0) return
-    const match = states.find((s) => s.title === form.province)
+    const match = states.find((s) => geoLabelMatch(s.title, form.province))
     if (match) setForm((prev) => ({ ...prev, state_id: String(match.id) }))
   }, [formOpen, form.province, form.state_id, states])
 
@@ -387,9 +482,32 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
 
   useEffect(() => {
     if (!formOpen || !form.city || form.city_id || cities.length === 0) return
-    const match = cities.find((c) => c.title === form.city)
+    const match = cities.find((c) => geoLabelMatch(c.title, form.city))
     if (match) setForm((prev) => ({ ...prev, city_id: String(match.id) }))
   }, [formOpen, form.city, form.city_id, cities])
+
+  const formProvinceOptions = useMemo(
+    () => withStoredGeoOption(
+      states.map((s) => ({ value: String(s.id), label: s.title })),
+      form.province,
+      form.state_id,
+      'prov',
+    ),
+    [states, form.province, form.state_id],
+  )
+  const formCityOptions = useMemo(
+    () => withStoredGeoOption(
+      cities.map((c) => ({ value: String(c.id), label: c.title })),
+      form.city,
+      form.city_id,
+      'city',
+    ),
+    [cities, form.city, form.city_id],
+  )
+  const formProvinceValue = form.state_id
+    || (form.province ? (formProvinceOptions.find((o) => geoLabelMatch(o.label, form.province))?.value ?? '') : '')
+  const formCityValue = form.city_id
+    || (form.city ? (formCityOptions.find((o) => geoLabelMatch(o.label, form.city))?.value ?? '') : '')
 
   const state = listQ.data?.goal_bank ?? meQ.data?.goal_bank ?? (user?.features?.goal_bank as GoalBankState | undefined)
   const items = listQ.data?.data ?? []
@@ -451,6 +569,7 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
       toast.success(okMsg)
       await qc.invalidateQueries({ queryKey: ['goals-bank'] })
       await qc.invalidateQueries({ queryKey: ['goals-monitor-parts'] })
+      await qc.invalidateQueries({ queryKey: ['goals-monitor-stats'] })
       await useAuth.getState().hydrate()
     },
     onError: (e: unknown) => toast.error(apiErr(e, 'خطا در تعیین‌تکلیف')),
@@ -473,11 +592,16 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
       province?: string | null
       city?: string | null
       role_id?: number
-    }) => api.post('/goals/access', payload),
-    onSuccess: async (_res, vars) => {
-      toast.success(vars.enabled
-        ? `دسترسی فعال شد (مشترک همهٔ نقش‌ها) — هر نوبت ${vars.max_concurrent} پارت.`
-        : 'دسترسی غیرفعال شد.')
+    }) => api.post('/goals/access', {
+      ...payload,
+      enabled: Boolean(payload.enabled),
+      max_concurrent: Number(payload.max_concurrent) || 10,
+    }),
+    onSuccess: async (res) => {
+      const body = res.data as { message?: string; access?: { enabled?: boolean; max_concurrent?: number } }
+      toast.success(body.message || (body.access?.enabled
+        ? `تنظیمات ذخیره شد — دسترسی روشن (هر نوبت ${body.access.max_concurrent ?? 10} پارت).`
+        : 'تنظیمات ذخیره شد — دسترسی خاموش است.'))
       await qc.invalidateQueries({ queryKey: ['goals-access'] })
       await qc.invalidateQueries({ queryKey: ['goals-monitor-users'] })
     },
@@ -644,7 +768,7 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
           {items.length === 0 ? (
             <Empty text={isManager ? 'موردی نیست' : 'هنوز پارتی به شما تخصیص داده نشده. با دکمهٔ «دریافت نوبت» شروع کنید.'} />
           ) : (
-            <div className="grid gap-4 grid-cols-1 xl:grid-cols-2 items-stretch">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 items-stretch">
               {items.map((item) => <GoalPartCard key={item.id} item={item} footer={cardActions(item)} />)}
             </div>
           )}
@@ -692,64 +816,73 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
                   ))}
                 </div>
               )}
-              <div className="grid sm:grid-cols-2 lg:grid-cols-[auto_auto_1fr_1fr_auto] gap-2 items-end border-t border-surface-100 dark:border-surface-700 pt-3">
-                <label className="field !mb-0">
-                  دسترسی
-                  <select
-                    className="input min-w-[6rem]"
-                    value={row.enabled ? '1' : '0'}
-                    data-testid={`goals-access-enabled-${row.user_id}`}
-                    onChange={(e) => accessMut.mutate({
-                      user_id: row.user_id,
-                      enabled: e.target.value === '1',
-                      max_concurrent: row.max_concurrent,
-                      province: row.province ?? null,
-                      city: row.city ?? null,
-                      role_id: row.roles[0]?.role_id,
-                    })}
-                  >
-                    <option value="0">خاموش</option>
-                    <option value="1">روشن</option>
-                  </select>
-                </label>
-                <label className="field !mb-0">
-                  تعداد مجاز هر نوبت
-                  <input
-                    className="input w-28"
-                    type="number"
-                    min={1}
-                    max={500}
-                    defaultValue={row.max_concurrent}
-                    key={`max-${row.user_id}-${row.max_concurrent}`}
-                    data-testid={`goals-access-max-${row.user_id}`}
-                    onBlur={(e) => {
-                      const max = Number(e.target.value)
-                      if (!Number.isFinite(max) || max < 1) return
-                      if (max === row.max_concurrent) return
-                      accessMut.mutate({
+              <div className="border-t border-surface-100 dark:border-surface-700 pt-4 space-y-4">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 items-end">
+                  <label className="field !mb-0 min-w-0">
+                    دسترسی
+                    <select
+                      className="input w-full h-11"
+                      value={row.enabled ? '1' : '0'}
+                      data-testid={`goals-access-enabled-${row.user_id}`}
+                      onChange={(e) => accessMut.mutate({
                         user_id: row.user_id,
-                        enabled: row.enabled,
-                        max_concurrent: max,
+                        enabled: e.target.value === '1',
+                        max_concurrent: Number(row.max_concurrent) || 10,
                         province: row.province ?? null,
                         city: row.city ?? null,
                         role_id: row.roles[0]?.role_id,
-                      })
-                    }}
+                      })}
+                    >
+                      <option value="0">خاموش</option>
+                      <option value="1">روشن</option>
+                    </select>
+                  </label>
+                  <label className="field !mb-0 min-w-0">
+                    تعداد مجاز هر نوبت
+                    <input
+                      className="input w-full h-11"
+                      type="number"
+                      min={1}
+                      max={500}
+                      defaultValue={row.max_concurrent}
+                      key={`max-${row.user_id}-${row.max_concurrent}`}
+                      data-testid={`goals-access-max-${row.user_id}`}
+                      onBlur={(e) => {
+                        const max = Number(e.target.value)
+                        if (!Number.isFinite(max) || max < 1) return
+                        if (max === row.max_concurrent) return
+                        accessMut.mutate({
+                          user_id: row.user_id,
+                          enabled: Boolean(row.enabled),
+                          max_concurrent: max,
+                          province: row.province ?? null,
+                          city: row.city ?? null,
+                          role_id: row.roles[0]?.role_id,
+                        })
+                      }}
+                    />
+                  </label>
+                  <div className="field !mb-0 min-w-0">
+                    <span className="block text-sm text-surface-600 dark:text-surface-300 mb-1.5">پارت جاری</span>
+                    <div className="input w-full h-11 flex items-center text-surface-700 dark:text-surface-200 bg-surface-50 dark:bg-surface-900/40" data-testid={`goals-access-current-${row.user_id}`}>
+                      {row.in_progress.toLocaleString('fa-IR')}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 items-end">
+                  <AccessGeoFields
+                    row={row}
+                    states={states}
+                    onSave={(province, city) => accessMut.mutate({
+                      user_id: row.user_id,
+                      enabled: Boolean(row.enabled),
+                      max_concurrent: Number(row.max_concurrent) || 10,
+                      province,
+                      city,
+                      role_id: row.roles[0]?.role_id,
+                    })}
                   />
-                </label>
-                <AccessGeoFields
-                  row={row}
-                  states={states}
-                  onSave={(province, city) => accessMut.mutate({
-                    user_id: row.user_id,
-                    enabled: row.enabled,
-                    max_concurrent: row.max_concurrent,
-                    province,
-                    city,
-                    role_id: row.roles[0]?.role_id,
-                  })}
-                />
-                <div className="text-xs text-surface-500 pb-2 sm:text-left">جاری: {row.in_progress}</div>
+                </div>
               </div>
             </div>
           ))}
@@ -861,6 +994,103 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
                 </label>
               </div>
 
+              {monitorUser && (
+                <div className="space-y-3" data-testid="goals-monitor-analytics">
+                  <div className="grid gap-3 grid-cols-2 lg:grid-cols-4" data-testid="goals-monitor-stat-cards">
+                    <StatCard title="کل پارت‌ها" value={String(monitorStatsQ.data?.stats.total ?? '—')} />
+                    <StatCard title="در حال انجام" value={String(monitorStatsQ.data?.stats.in_progress ?? '—')} />
+                    <StatCard title="انجام‌شده" value={String(monitorStatsQ.data?.stats.completed ?? '—')} />
+                    <StatCard
+                      title="نرخ موفقیت"
+                      value={monitorStatsQ.data?.stats.success_rate != null
+                        ? `${monitorStatsQ.data.stats.success_rate.toLocaleString('fa-IR')}٪`
+                        : '—'}
+                    />
+                  </div>
+
+                  <div className="grid gap-3 grid-cols-1 xl:grid-cols-2">
+                    <div className="card p-4 space-y-2" data-testid="goals-monitor-bar-chart">
+                      <div className="text-sm font-semibold text-surface-800 dark:text-surface-100">تفکیک وضعیت (میله‌ای)</div>
+                      <p className="text-[11px] text-surface-500 m-0">مقایسه تعداد پارت در هر وضعیت برای این کاربر</p>
+                      <div className="h-56">
+                        {!monitorStatsQ.data ? (
+                          <div className="h-full flex items-center justify-center text-sm text-surface-500">در حال بارگذاری نمودار…</div>
+                        ) : monitorChartRows.every((r) => r.value === 0) ? (
+                          <Empty text="هنوز پارتی برای این کاربر ثبت نشده." />
+                        ) : (
+                          <ResponsiveContainer width="100%" height="100%">
+                            <ReBarChart data={monitorChartRows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                              <YAxis allowDecimals={false} tick={{ fontSize: 11 }} width={36} />
+                              <ReTooltip formatter={(value) => [Number(value ?? 0).toLocaleString('fa-IR'), 'تعداد']} />
+                              <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                                {monitorChartRows.map((entry) => (
+                                  <Cell key={entry.key} fill={entry.color} />
+                                ))}
+                              </Bar>
+                            </ReBarChart>
+                          </ResponsiveContainer>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="card p-4 space-y-3" data-testid="goals-monitor-pct-chart">
+                      <div>
+                        <div className="text-sm font-semibold text-surface-800 dark:text-surface-100">سهم درصدی وضعیت‌ها</div>
+                        <p className="text-[11px] text-surface-500 m-0 mt-0.5">درصد هر وضعیت از کل پارت‌ها + نتیجهٔ پارت‌های بسته‌شده</p>
+                      </div>
+                      {!monitorStatsQ.data ? (
+                        <div className="h-40 flex items-center justify-center text-sm text-surface-500">در حال بارگذاری…</div>
+                      ) : monitorPctRows.every((r) => r.value === 0) ? (
+                        <Empty text="هنوز پارتی برای محاسبه درصد نیست." />
+                      ) : (
+                        <div className="space-y-4">
+                          <div className="space-y-3" data-testid="goals-monitor-pct-bars">
+                            {monitorPctRows.map((r) => (
+                              <div key={r.key} className="space-y-1">
+                                <div className="flex items-center justify-between gap-2 text-xs text-surface-600 dark:text-surface-300">
+                                  <span className="inline-flex items-center gap-1.5 font-medium text-surface-800 dark:text-surface-100">
+                                    <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: r.color }} />
+                                    {r.name}
+                                  </span>
+                                  <span dir="ltr" className="tabular-nums shrink-0">
+                                    {r.pct.toLocaleString('fa-IR')}٪ · {r.value.toLocaleString('fa-IR')}
+                                  </span>
+                                </div>
+                                <div className="h-2.5 rounded-full bg-surface-100 dark:bg-surface-800 overflow-hidden">
+                                  <div
+                                    className="h-full rounded-full transition-[width] duration-500"
+                                    style={{ width: `${Math.min(100, r.pct)}%`, background: r.color }}
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {monitorOutcome && (
+                            <div className="rounded-xl border border-surface-100 dark:border-surface-700 p-3 space-y-2 bg-surface-50/70 dark:bg-surface-900/30" data-testid="goals-monitor-outcome">
+                              <div className="flex items-center justify-between gap-2 text-xs">
+                                <span className="font-medium text-surface-700 dark:text-surface-200">از پارت‌های بسته‌شده ({monitorOutcome.decided.toLocaleString('fa-IR')})</span>
+                                <span className="text-emerald-700 dark:text-emerald-400 tabular-nums">موفقیت {monitorOutcome.successPct.toLocaleString('fa-IR')}٪</span>
+                              </div>
+                              <div className="h-3 rounded-full overflow-hidden flex bg-surface-200 dark:bg-surface-700">
+                                <div className="h-full bg-emerald-500 transition-[width] duration-500" style={{ width: `${monitorOutcome.successPct}%` }} title="انجام‌شده" />
+                                <div className="h-full bg-rose-500 transition-[width] duration-500" style={{ width: `${monitorOutcome.failPct}%` }} title="انجام‌نشده" />
+                              </div>
+                              <div className="flex justify-between text-[11px] text-surface-500">
+                                <span>انجام‌شده {monitorOutcome.completed.toLocaleString('fa-IR')}</span>
+                                <span>انجام‌نشده {monitorOutcome.failed.toLocaleString('fa-IR')}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {!monitorUser ? (
                 <Empty text="برای دیدن پارت‌ها ابتدا کاربر را انتخاب کنید." />
               ) : monitorPartsQ.isFetching && !monitorPartsQ.data ? (
@@ -868,7 +1098,7 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
               ) : (monitorPartsQ.data?.data?.length ?? 0) === 0 ? (
                 <Empty text="پارتی با این فیلتر برای کاربر یافت نشد." />
               ) : (
-                <div className="grid gap-4 grid-cols-1 xl:grid-cols-2 items-stretch">
+                <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 items-stretch">
                   {(monitorPartsQ.data?.data ?? []).map((item) => (
                     <GoalPartCard key={item.id} item={item} />
                   ))}
@@ -924,12 +1154,18 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
           <label className="field">
             استان
             <SearchSelect
-              value={form.state_id}
-              placeholder={states.length ? 'انتخاب استان' : 'در حال دریافت…'}
-              options={states.map((s) => ({ value: String(s.id), label: s.title }))}
+              value={formProvinceValue}
+              placeholder={states.length || form.province ? 'انتخاب استان' : 'در حال دریافت…'}
+              options={formProvinceOptions}
               onChange={(id) => {
-                const title = states.find((s) => String(s.id) === id)?.title ?? ''
-                setForm((prev) => ({ ...prev, state_id: id, province: title, city_id: '', city: '' }))
+                const title = formProvinceOptions.find((o) => String(o.value) === id)?.label ?? ''
+                setForm((prev) => ({
+                  ...prev,
+                  state_id: id.startsWith('prov:') ? '' : id,
+                  province: title,
+                  city_id: '',
+                  city: '',
+                }))
               }}
               testId="goals-field-province"
             />
@@ -937,13 +1173,17 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
           <label className="field">
             شهر
             <SearchSelect
-              value={form.city_id}
-              disabled={!form.state_id}
-              placeholder={form.state_id ? 'انتخاب شهر' : 'اول استان'}
-              options={cities.map((c) => ({ value: String(c.id), label: c.title }))}
+              value={formCityValue}
+              disabled={!formProvinceValue}
+              placeholder={formProvinceValue ? 'انتخاب شهر' : 'اول استان'}
+              options={formCityOptions}
               onChange={(id) => {
-                const title = cities.find((c) => String(c.id) === id)?.title ?? ''
-                setForm((prev) => ({ ...prev, city_id: id, city: title }))
+                const title = formCityOptions.find((o) => String(o.value) === id)?.label ?? ''
+                setForm((prev) => ({
+                  ...prev,
+                  city_id: id.startsWith('city:') ? '' : id,
+                  city: title,
+                }))
               }}
               testId="goals-field-city"
             />

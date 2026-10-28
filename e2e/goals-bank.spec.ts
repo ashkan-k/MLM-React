@@ -121,6 +121,10 @@ test.describe('Goals Bank', () => {
     await expect(page.getByTestId(`goals-monitor-pick-${target!.user_id}`)).toBeVisible({ timeout: 10000 })
     await page.getByTestId(`goals-monitor-pick-${target!.user_id}`).click()
     await expect(page.getByTestId('goals-monitor-selected')).toBeVisible()
+    await expect(page.getByTestId('goals-monitor-analytics')).toBeVisible({ timeout: 10000 })
+    await expect(page.getByTestId('goals-monitor-stat-cards')).toBeVisible()
+    await expect(page.getByTestId('goals-monitor-bar-chart')).toBeVisible()
+    await expect(page.getByTestId('goals-monitor-pct-chart')).toBeVisible()
     await page.getByTestId('goals-monitor-status').selectOption('')
     const anyCard = page.locator('[data-testid^="goal-item-"]').first()
     if (await anyCard.count()) {
