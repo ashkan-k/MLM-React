@@ -1,11 +1,12 @@
 import axios from 'axios'
+import { readAuthToken } from './authToken'
 
 export const api = axios.create({
   baseURL: '/api',
 })
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('finopal.token')
+  const token = readAuthToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -24,6 +25,7 @@ export type AuthUser = {
   email?: string | null
   avatar_url?: string | null
   is_superuser: boolean
+  impersonating?: boolean
   roles: Role[]
   active_role: { id: number; name: string; slug: string } | null
   permissions?: string[]

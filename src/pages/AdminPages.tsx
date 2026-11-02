@@ -6,11 +6,12 @@ import { toast } from 'sonner'
 import { ExportBar } from '../components/ExportBar'
 import { JalaliDatePicker } from '../components/JalaliDatePicker'
 import { stripHtml } from '../components/RichTextEditor'
-import { BulkBar, BulkButton, CheckBox, DeleteAction, EditAction, BlockAction, UnblockAction, RowActions, TablePager, ViewAction, exportSelected, useSelection } from '../components/table'
+import { BulkBar, BulkButton, CheckBox, DeleteAction, EditAction, BlockAction, ImpersonateAction, UnblockAction, RowActions, TablePager, ViewAction, exportSelected, useSelection } from '../components/table'
 import { Badge, DateOnlyText, DateTimeText, Empty, FieldHint, Modal, PageHeader, StatCard } from '../components/ui'
 import { api } from '../lib/api'
 import { confirmAction } from '../lib/confirm'
 import { auditLabel, dateTimeExport, entityName, jalaliDateOnly, label, money, permissionLabel, percent, settingLabel } from '../lib/format'
+import { roleLabel } from '../lib/i18n'
 import { useApp } from '../contexts/AppContext'
 import { useAuth } from '../stores/auth'
 
@@ -86,7 +87,7 @@ export function AdminHome() {
 }
 
 export function AdminUsers() {
-  const { t } = useApp()
+  const { t, locale } = useApp()
   const qc = useQueryClient()
   const me = useAuth((s) => s.user)
   const { data: roles } = useQuery({ queryKey: ['roles'], queryFn: async () => (await api.get('/superuser/roles')).data })
@@ -106,11 +107,70 @@ export function AdminUsers() {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<UserRow | null>(null)
   const [detail, setDetail] = useState<UserRow | null>(null)
+  const [impersonateTarget, setImpersonateTarget] = useState<UserRow | null>(null)
+  const [impersonateRole, setImpersonateRole] = useState('')
+  const [impersonating, setImpersonating] = useState(false)
   const [form, setForm] = useState(emptyUser)
   const [avatarFile, setAvatarFile] = useState<File | null>(null)
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
   const rows: UserRow[] = data?.data ?? []
   const selection = useSelection(rows.map((u) => u.id))
+
+  const startImpersonate = (user: UserRow) => {
+    if (!user.is_active) {
+      toast.error(t('impersonateInactive'))
+      return
+    }
+    const activeRoles = user.roles ?? []
+    if (!activeRoles.length) {
+      toast.error(t('impersonateNoRole'))
+      return
+    }
+    if (activeRoles.length === 1) {
+      void runImpersonate(user, activeRoles[0].slug)
+      return
+    }
+    setImpersonateTarget(user)
+    setImpersonateRole(activeRoles[0].slug)
+  }
+
+  const runImpersonate = async (user: UserRow, roleSlug: string) => {
+    setImpersonating(true)
+    try {
+      const { data: result } = await api.post<{ token: string; redirect_path: string }>(
+        `/superuser/users/${user.id}/impersonate`,
+        { role_slug: roleSlug },
+      )
+      // Seed sessionStorage on the new tab before navigation so the superuser
+      // tab's localStorage (and its session) stays untouched.
+      const opened = window.open('about:blank', '_blank')
+      if (!opened) {
+        toast.error(t('impersonatePopupBlocked'))
+        return
+      }
+      try {
+        opened.sessionStorage.setItem('finopal.token', result.token)
+        opened.sessionStorage.setItem('finopal.impersonating', '1')
+        opened.sessionStorage.setItem(
+          'finopal.impersonate.pending',
+          JSON.stringify({ token: result.token, redirect: result.redirect_path }),
+        )
+      } catch {
+        // Fallback if sessionStorage seed fails (rare cross-origin blank edge case).
+        opened.location.href = `/impersonate#token=${encodeURIComponent(result.token)}&redirect=${encodeURIComponent(result.redirect_path)}`
+        toast.success(t('impersonateOpened'))
+        setImpersonateTarget(null)
+        return
+      }
+      opened.location.href = `/impersonate?redirect=${encodeURIComponent(result.redirect_path)}`
+      toast.success(t('impersonateOpened'))
+      setImpersonateTarget(null)
+    } catch {
+      toast.error(t('impersonateFail'))
+    } finally {
+      setImpersonating(false)
+    }
+  }
 
   const openCreate = () => {
     setEditing(null)
@@ -315,6 +375,10 @@ export function AdminUsers() {
                   <td>
                     <RowActions>
                       <ViewAction onClick={() => setDetail(u)} />
+                      <ImpersonateAction
+                        label={t('impersonateEnter')}
+                        onClick={() => startImpersonate(u)}
+                      />
                       <EditAction onClick={() => openEdit(u)} />
                       {u.is_active
                         ? <BlockAction label={t('blockUser')} onClick={() => toggleBlock(u)} />
@@ -406,6 +470,45 @@ export function AdminUsers() {
             )}
             <div className="flex items-center gap-3 text-sm"><Shield className="w-4 h-4 text-surface-400" /><span>نقش‌ها: {detail.roles?.map((r) => r.name).join('، ') || '—'}</span></div>
             <div className="flex items-center gap-3 text-sm"><Users className="w-4 h-4 text-surface-400" /><span>شناسه {detail.id}</span></div>
+            {detail.is_active && (detail.roles?.length ?? 0) > 0 && (
+              <button type="button" className="btn btn-primary w-full" data-testid="impersonate-from-detail" onClick={() => { setDetail(null); startImpersonate(detail) }}>
+                {t('impersonateEnter')}
+              </button>
+            )}
+          </div>
+        )}
+      </Modal>
+      <Modal
+        open={Boolean(impersonateTarget)}
+        title={t('impersonatePickRole')}
+        subtitle={impersonateTarget ? `${impersonateTarget.name} · ${impersonateTarget.mobile}` : undefined}
+        onClose={() => setImpersonateTarget(null)}
+      >
+        {impersonateTarget && (
+          <div className="space-y-3" data-testid="impersonate-role-modal">
+            <label className="field">
+              {t('impersonateRole')}
+              <select
+                className="input"
+                data-testid="impersonate-role-select"
+                value={impersonateRole}
+                onChange={(e) => setImpersonateRole(e.target.value)}
+              >
+                {(impersonateTarget.roles ?? []).map((r) => (
+                  <option key={r.slug} value={r.slug}>{roleLabel(r.slug, locale) || r.name}</option>
+                ))}
+              </select>
+            </label>
+            <FieldHint>{t('impersonateHint')}</FieldHint>
+            <button
+              type="button"
+              className="btn btn-primary w-full"
+              data-testid="impersonate-confirm"
+              disabled={impersonating || !impersonateRole}
+              onClick={() => void runImpersonate(impersonateTarget, impersonateRole)}
+            >
+              {t('impersonateOpenTab')}
+            </button>
           </div>
         )}
       </Modal>

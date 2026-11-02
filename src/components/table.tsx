@@ -1,4 +1,4 @@
-import { Check, ChevronLeft, ChevronRight, Edit, Eye, Ban, Trash2, UserCheck, type LucideIcon } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Edit, Eye, Ban, LogIn, Trash2, UserCheck, type LucideIcon } from 'lucide-react'
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../contexts/AppContext'
@@ -19,19 +19,21 @@ export function IconAction({
   icon: Icon,
   onClick,
   to,
+  testId,
 }: {
   label: string
   tone?: keyof typeof actionClass
   icon: LucideIcon
   onClick?: () => void
   to?: string
+  testId?: string
 }) {
   const className = `p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 ${actionClass[tone]}`
   if (to) {
-    return <Link to={to} aria-label={label} className={className}><Icon className="w-4 h-4" /></Link>
+    return <Link to={to} aria-label={label} data-testid={testId} className={className}><Icon className="w-4 h-4" /></Link>
   }
   return (
-    <button type="button" aria-label={label} className={className} onClick={onClick}>
+    <button type="button" aria-label={label} data-testid={testId} className={className} onClick={onClick}>
       <Icon className="w-4 h-4" />
     </button>
   )
@@ -59,6 +61,10 @@ export function UnblockAction(props: { onClick: () => void; label?: string }) {
 
 export function ApproveAction(props: { onClick: () => void; label?: string }) {
   return <IconAction label={props.label ?? 'تایید'} tone="ok" icon={Check} onClick={props.onClick} />
+}
+
+export function ImpersonateAction(props: { onClick: () => void; label?: string }) {
+  return <IconAction label={props.label ?? 'ورود به پنل'} tone="view" icon={LogIn} onClick={props.onClick} testId="impersonate-user" />
 }
 
 export function RowActions({ children }: { children: ReactNode }) {

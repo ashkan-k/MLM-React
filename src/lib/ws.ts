@@ -1,3 +1,5 @@
+import { readAuthToken } from './authToken'
+
 type Handler = (event: string, payload: unknown) => void
 
 export type RealtimeClient = {
@@ -84,7 +86,7 @@ function openSocket() {
 }
 
 export function connectRealtime(userId: number, onEvent: Handler): RealtimeClient {
-  const token = () => localStorage.getItem('finopal.token') ?? ''
+  const token = () => readAuthToken() ?? ''
   if (!shared || shared.userId !== userId) {
     shared?.socket?.close()
     shared = { userId, socket: null, handlers: new Set(), queue: [], retries: 0 }

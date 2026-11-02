@@ -18,6 +18,7 @@ import { MonthlyBonusPage } from './pages/MonthlyBonusPage'
 import { PointsMonitorPage } from './pages/PointsMonitorPage'
 import { BonusDefaultPage } from './pages/BonusDefaultPage'
 import { GoalsAccessPage, GoalsBankPage, GoalsMonitorPage } from './pages/GoalsBankPage'
+import { ImpersonatePage } from './pages/ImpersonatePage'
 import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { SharedLinkPage } from './pages/SharedLinkPage'
@@ -87,6 +88,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/shared-link/:token" element={<SharedLinkPage />} />
+      <Route path="/impersonate" element={<ImpersonatePage />} />
       <Route element={<Guest />}>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />

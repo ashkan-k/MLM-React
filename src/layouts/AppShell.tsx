@@ -371,12 +371,43 @@ function HeaderIcons({ panel }: { panel: 'role' | 'admin' }) {
   )
 }
 
+function ImpersonationBanner() {
+  const { user, logout } = useAuth()
+  const { t } = useApp()
+  const navigate = useNavigate()
+  if (!user?.impersonating) return null
+  return (
+    <div
+      data-testid="impersonation-banner"
+      className="bg-amber-500 text-amber-950 px-4 py-2 text-sm flex flex-wrap items-center justify-between gap-2"
+    >
+      <span>
+        {t('impersonatingAs')} <strong>{user.name}</strong>
+        {user.active_role ? ` · ${roleLabel(user.active_role.slug)}` : ''}
+        {' '}({user.mobile})
+      </span>
+      <button
+        type="button"
+        data-testid="impersonation-exit"
+        className="px-3 py-1 rounded-lg bg-amber-950/15 hover:bg-amber-950/25 font-medium"
+        onClick={async () => {
+          await logout()
+          navigate('/login', { replace: true })
+        }}
+      >
+        {t('impersonationExit')}
+      </button>
+    </div>
+  )
+}
+
 function ShellTopbar({ title, panel }: { title: string; panel: 'role' | 'admin' }) {
   const { user, switchRole, logout } = useAuth()
   const { darkMode, toggleDarkMode, toggleDirection, setSidebarOpen, t, locale } = useApp()
   const navigate = useNavigate()
   const [menu, setMenu] = useState(false)
   const active = user?.active_role
+  const impersonating = Boolean(user?.impersonating)
 
   return (
     <header className="h-16 bg-white dark:bg-surface-900 border-b border-surface-200 dark:border-surface-700 flex items-center justify-between px-4 lg:px-6">
@@ -401,7 +432,7 @@ function ShellTopbar({ title, panel }: { title: string; panel: 'role' | 'admin' 
               navigate(dashboardPath(e.target.value))
             }}
           >
-            {user?.roles.filter((r) => r.is_active !== false).map((role) => (
+            {user?.roles.filter((r) => r.is_active !== false && r.slug !== 'superuser').map((role) => (
               <option key={role.slug} value={role.slug}>{roleLabel(role.slug, locale)}</option>
             ))}
           </select>
@@ -426,7 +457,7 @@ function ShellTopbar({ title, panel }: { title: string; panel: 'role' | 'admin' 
           {menu && (
             <div className="absolute top-full mt-2 end-0 w-56 bg-white dark:bg-surface-800 rounded-xl shadow-lg border border-surface-200 dark:border-surface-700 p-1.5 z-40">
               <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-danger-500 hover:bg-danger-500/10" onClick={async () => { await logout(); navigate('/login') }}>
-                <LogOut className="w-4 h-4" /> {t('logout')}
+                <LogOut className="w-4 h-4" /> {impersonating ? t('impersonationExit') : t('logout')}
               </button>
             </div>
           )}
@@ -461,8 +492,9 @@ export function AppShell() {
 
   return (
     <div className="flex h-screen overflow-hidden bg-surface-50 dark:bg-surface-950">
-      <SidebarNav groups={roleGroups} extra={extra} />
+      <SidebarNav groups={roleGroups} extra={user?.impersonating ? null : extra} />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <ImpersonationBanner />
         <ShellTopbar panel="role" title={currentTitle(location.pathname, t, `${t('titleDashboard')} ${roleLabel(user?.active_role?.slug)}`, productOriented)} />
         <main className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto p-4 lg:p-6 animate-fadeIn"><Outlet /></main>
       </div>
@@ -481,9 +513,10 @@ export function SuperuserShell() {
     <div className="flex h-screen overflow-hidden bg-surface-50 dark:bg-surface-950">
       <SidebarNav
         groups={adminGroups}
-        extra={<NavLink to={back} className="nav-link w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800">{t('navBackRole')}</NavLink>}
+        extra={user?.impersonating ? null : <NavLink to={back} className="nav-link w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800">{t('navBackRole')}</NavLink>}
       />
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <ImpersonationBanner />
         <ShellTopbar panel="admin" title={currentTitle(location.pathname, t, t('titleAdmin'), productOriented)} />
         <main className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto p-4 lg:p-6 animate-fadeIn"><Outlet /></main>
       </div>

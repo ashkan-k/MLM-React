@@ -1,10 +1,11 @@
 import { create } from 'zustand'
 import { authApi, type AuthUser } from '../lib/api'
+import { clearAuthToken, isImpersonationSession, readAuthToken, writeAuthToken } from '../lib/authToken'
 
 type AuthState = {
   user: AuthUser | null
   loading: boolean
-  setSession: (token: string, user: AuthUser) => void
+  setSession: (token: string, user: AuthUser, opts?: { impersonating?: boolean }) => void
   hydrate: () => Promise<void>
   switchRole: (slug: string) => Promise<void>
   logout: () => Promise<void>
@@ -13,31 +14,36 @@ type AuthState = {
 export const useAuth = create<AuthState>((set) => ({
   user: null,
   loading: true,
-  setSession: (token, user) => {
-    localStorage.setItem('finopal.token', token)
-    set({ user, loading: false })
+  setSession: (token, user, opts) => {
+    writeAuthToken(token, opts?.impersonating ? 'impersonation' : 'normal')
+    set({
+      user: opts?.impersonating ? { ...user, impersonating: true } : user,
+      loading: false,
+    })
   },
   hydrate: async () => {
-    const token = localStorage.getItem('finopal.token')
+    const token = readAuthToken()
     if (!token) {
       set({ user: null, loading: false })
       return
     }
     try {
       const { data } = await authApi.me()
-      set({ user: data, loading: false })
+      const impersonating = Boolean(data.impersonating) || isImpersonationSession()
+      set({ user: { ...data, impersonating }, loading: false })
     } catch {
-      localStorage.removeItem('finopal.token')
+      clearAuthToken()
       set({ user: null, loading: false })
     }
   },
   switchRole: async (slug) => {
     const { data } = await authApi.switchRole(slug)
-    set({ user: data })
+    const impersonating = Boolean(data.impersonating) || isImpersonationSession()
+    set({ user: { ...data, impersonating } })
   },
   logout: async () => {
     try { await authApi.logout() } catch { /* ignore */ }
-    localStorage.removeItem('finopal.token')
+    clearAuthToken()
     set({ user: null })
   },
 }))

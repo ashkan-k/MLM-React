@@ -44,6 +44,7 @@ import {
 import { useMemo } from 'react'
 import 'ckeditor5/ckeditor5.css'
 import { api } from '../lib/api'
+import { readAuthToken } from '../lib/authToken'
 
 type Props = {
   value: string
@@ -108,7 +109,7 @@ class UploadFilePlugin extends Plugin {
 }
 
 export function RichTextEditor({ value, onChange, placeholder, minHeight = 180, disabled }: Props) {
-  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('finopal.token') : null
+  const token = typeof window !== 'undefined' ? readAuthToken() : null
 
   const config = useMemo((): EditorConfig => ({
     licenseKey: 'GPL',
