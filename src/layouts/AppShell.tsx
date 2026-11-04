@@ -263,7 +263,6 @@ function filterGroups(groups: NavGroup[], user: ReturnType<typeof useAuth.getSta
       ...group,
       items: group.items
         .filter((item) => {
-          if (item.to === 'org-managers' && user?.active_role?.slug !== 'senior_manager') return false
           const goalsPath = item.to === 'goals-bank' || item.to === '/superuser/goals-bank'
             || item.to === 'goals-access' || item.to === '/superuser/goals-access'
             || item.to === 'goals-monitor' || item.to === '/superuser/goals-monitor'

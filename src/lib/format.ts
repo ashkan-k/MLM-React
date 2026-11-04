@@ -312,6 +312,9 @@ export const permissionLabel: Record<string, string> = {
   'page.transactions': 'صفحه / تراکنش‌ها',
   'page.reports': 'صفحه / گزارشات شبکه',
   'page.goals_bank': 'صفحه / بانک اهداف',
+  'page.crm': 'صفحه / CRM (فعالیت‌ها و کارها)',
+  'page.org_managers': 'صفحه / مدیران سازمان',
+  'page.bonus_default': 'صفحه / پاداش پیش‌فرض',
 }
 
 const criterionLabelFa: Record<string, string> = {
