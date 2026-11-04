@@ -54,5 +54,7 @@ export const authApi = {
   register: (payload: Record<string, string>) => api.post('/auth/register', payload),
   me: () => api.get<AuthUser>('/auth/me'),
   switchRole: (role_slug: string) => api.post<AuthUser>('/auth/switch-role', { role_slug }),
+  changePassword: (payload: { current_password: string; password: string; password_confirmation: string }) =>
+    api.post<{ ok: boolean; message?: string }>('/auth/change-password', payload),
   logout: () => api.post('/auth/logout'),
 }

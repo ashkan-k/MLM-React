@@ -79,7 +79,7 @@ export function LoginPage() {
             ))}
           </div>
         </div>
-        <p className="relative text-sidetx/60 text-[0.7rem] m-0">فاینوپال — سازمان فروش</p>
+        <p className="relative text-sidetx/60 text-[0.7rem] m-0">فینونت — سازمان فروش</p>
       </div>
 
       <div className="flex items-center justify-center p-6 sm:p-10 bg-bg relative">

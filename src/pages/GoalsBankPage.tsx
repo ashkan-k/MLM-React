@@ -99,7 +99,7 @@ function apiErr(e: unknown, fallback: string) {
   return err?.response?.data?.message || first || fallback
 }
 
-/** تطبیق نام استان/شهر با فهرست فینوپال (ی/ک عربی و فاصله) */
+/** تطبیق نام استان/شهر با فهرست فینونت (ی/ک عربی و فاصله) */
 function geoLabelMatch(a?: string | null, b?: string | null) {
   const fold = (v: string) => v
     .normalize('NFKC')
@@ -1146,7 +1146,7 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
         </div>
       </Modal>
 
-      <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'ویرایش پارت' : 'پارت جدید'} subtitle="استان و شهر از فهرست فینوپال انتخاب می‌شوند." wide>
+      <Modal open={formOpen} onClose={() => setFormOpen(false)} title={editing ? 'ویرایش پارت' : 'پارت جدید'} subtitle="استان و شهر از فهرست فینونت انتخاب می‌شوند." wide>
         <div className="grid sm:grid-cols-2 gap-3" data-testid="goals-form">
           <label className="field">نام *<input className="input" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} data-testid="goals-field-name" /></label>
           <label className="field">پلتفرم *<input className="input" value={form.platform} onChange={(e) => setForm((f) => ({ ...f, platform: e.target.value }))} data-testid="goals-field-platform" /></label>

@@ -32,7 +32,7 @@ async function navLink(page: Page, group: string, name: string, exact = true) {
   await link.click()
 }
 
-test.describe('سازمان فروش فاینوپال', () => {
+test.describe('سازمان فروش فینونت', () => {
   test('داشبورد نماینده، پورسانت فارسی و گزارش تجمیعی', async ({ page }) => {
     await login(page, '09125555555', 'representative')
     await expect(page).toHaveURL(/dashboard\/representative/)

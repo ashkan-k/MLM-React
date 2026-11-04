@@ -12,7 +12,7 @@ async function paddingStart(locator: Locator) {
   return locator.evaluate((el) => parseFloat(getComputedStyle(el).paddingInlineStart))
 }
 
-test.describe('تغییرات اخیر — پاداش پیش‌فرض، جستجو، لینک فینوپال', () => {
+test.describe('تغییرات اخیر — پاداش پیش‌فرض، جستجو، لینک فینونت', () => {
   test('صفحه پاداش پیش‌فرض جدا است و آیکن جستجو روی متن نمی‌افتد', async ({ page }) => {
     await login(page, '09121111111')
     await page.goto('/dashboard/senior-manager/bonus-default')
@@ -69,7 +69,7 @@ test.describe('تغییرات اخیر — پاداش پیش‌فرض، جستج
     }
   })
 
-  test('لینک ثبت فروش فینوپال finonet_ref دارد و لینک ثبت‌نام نماینده جدا مانده', async ({ page }) => {
+  test('لینک ثبت فروش فینونت finonet_ref دارد و لینک ثبت‌نام نماینده جدا مانده', async ({ page }) => {
     await login(page, '09121111111')
     await page.goto('/dashboard/senior-manager/referrals')
     const own = page.getByTestId('referral-codes').locator('a').first()

@@ -364,7 +364,7 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
     if (!landlinePhone(form.phone)) return 'تلفن ثابت باید مانند 021-12345678 باشد.'
     if (!form.state_id || !form.city_id || form.address.trim().length < 5) return 'استان، شهر و نشانی را وارد کنید.'
     if (!form.shop_name.trim() || !/^[A-Za-z0-9][A-Za-z0-9 -]{1,60}$/.test(form.shop_name_en)) return 'نام فارسی و انگلیسی فروشگاه الزامی است.'
-    if (!form.category_id) return 'دسته‌بندی درگاه را از فهرست فینوپال انتخاب کنید.'
+    if (!form.category_id) return 'دسته‌بندی درگاه را از فهرست فینونت انتخاب کنید.'
     if (!/^https:\/\//i.test(form.website) || !/^https:\/\//i.test(form.callback_url)) return 'دامنه و آدرس بازگشت باید با https شروع شوند.'
     if (!form.server_ip.trim()) return 'IP سرور الزامی است.'
     if (!/^\d{10,14}$/.test(form.tax)) return 'کد مالیاتی باید ۱۰ تا ۱۴ رقم باشد.'
@@ -510,7 +510,7 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
         ) : null}
       </section>
 
-      {vipRefError && <p className="text-sm text-bad">فهرست استان و دسته‌بندی فینوپال بارگذاری نشد. اتصال VIP را بررسی کنید.</p>}
+      {vipRefError && <p className="text-sm text-bad">فهرست استان و دسته‌بندی فینونت بارگذاری نشد. اتصال VIP را بررسی کنید.</p>}
 
       <section className="grid gap-3">
         <div className="font-bold text-ink">هویت متقاضی</div>
@@ -651,7 +651,7 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
 
       <section className="grid md:grid-cols-2 gap-3">
         <div className="md:col-span-2 font-bold text-ink">مدارک</div>
-        <p className="md:col-span-2 text-xs text-mute">jpg، png یا pdf و حداکثر ۲ مگابایت. بدون روی کارت، پشت کارت و سلفی، فینوپال ثبت را رد می‌کند.</p>
+        <p className="md:col-span-2 text-xs text-mute">jpg، png یا pdf و حداکثر ۲ مگابایت. بدون روی کارت، پشت کارت و سلفی، فینونت ثبت را رد می‌کند.</p>
         <FileField required label="روی کارت ملی" file={docs.national_id_front} onChange={(file) => setDocs((d) => ({ ...d, national_id_front: file }))} />
         <FileField required label="پشت کارت ملی" file={docs.national_id_back} onChange={(file) => setDocs((d) => ({ ...d, national_id_back: file }))} />
         <FileField required label="سلفی احراز هویت" file={docs.selfie} onChange={(file) => setDocs((d) => ({ ...d, selfie: file }))} />

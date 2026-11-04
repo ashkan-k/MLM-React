@@ -131,7 +131,7 @@ function htmlOrgChart(nodes: OrgNode[], rows: FlatRow[]): string {
     if (!list.length) return ''
     return `<ul>${list.map((n) => `<li>${card(n)}${walk(n.children ?? [])}</li>`).join('')}</ul>`
   }
-  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>دیاگرام شبکه فاینوپال</title>
+  return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>دیاگرام شبکه فینونت</title>
   <style>
     body{margin:0;background:#f2f5f1;font-family:Vazirmatn,Tahoma,sans-serif;color:#15211b}
     h1{text-align:center;padding:24px 16px 8px;font-size:22px}
@@ -172,7 +172,7 @@ function svgOf(rows: FlatRow[]): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
   <rect width="100%" height="100%" fill="#e8eef5"/>
-  <text x="32" y="32" fill="#1e293b" font-size="18" font-weight="700" font-family="Vazirmatn, Inter, sans-serif">نمودار شبکه فروش فاینوپال</text>
+  <text x="32" y="32" fill="#1e293b" font-size="18" font-weight="700" font-family="Vazirmatn, Inter, sans-serif">نمودار شبکه فروش فینونت</text>
   ${boxes.join('')}
 </svg>`
 }

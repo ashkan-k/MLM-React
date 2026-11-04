@@ -83,8 +83,8 @@ export function jalaliDateOnly(value?: string | null) {
 const productLabelFa: Record<string, string> = {
   gateway_profit: 'سود درگاه پرداخت',
   gateway: 'سود درگاه پرداخت',
-  ticketing: 'سیستم تیکتینگ فینوپال',
-  subscription: 'اشتراک فاینوپال',
+  ticketing: 'سیستم تیکتینگ فینونت',
+  subscription: 'اشتراک فینونت',
   ghalebazar: 'قالب بازار',
   ghale_bazar: 'قالب بازار',
   monthly_bonus: 'پاداش ماهانه',
@@ -96,8 +96,8 @@ const productLabelFa: Record<string, string> = {
 const productLabelEn: Record<string, string> = {
   gateway_profit: 'Payment gateway profit',
   gateway: 'Payment gateway profit',
-  ticketing: 'Finopal ticketing',
-  subscription: 'Finopal subscription',
+  ticketing: 'Finonet ticketing',
+  subscription: 'Finonet subscription',
   ghalebazar: 'Ghalebazar',
   ghale_bazar: 'Ghalebazar',
   monthly_bonus: 'Monthly bonus',
@@ -289,7 +289,7 @@ export const permissionLabel: Record<string, string> = {
   'senior_manager.withdrawal.approve': 'مدیر ارشد / تایید برداشت',
   'senior_manager.benefit_transfer.create': 'مدیر ارشد / انتقال مزایا',
   'senior_manager.promotion.decide': 'مدیر ارشد / تصمیم ارتقاء',
-  'senior_manager.gateway.inspect': 'مدیر ارشد / تایید درگاه و ثبت کد مرچنت فاینوپال',
+  'senior_manager.gateway.inspect': 'مدیر ارشد / تایید درگاه و ثبت کد مرچنت فینونت',
   'superuser.commission_rules.update': 'مدیر سامانه / ویرایش قواعد پورسانت',
   'superuser.gateway.create': 'مدیر سامانه / ثبت فروش درگاه',
   'chat.cross_branch.message': 'چت بین‌شاخه‌ای',
@@ -433,7 +433,7 @@ export const auditLabel: Record<string, string> = {
   'benefit_transfer.all': 'انتقال کامل مزایا',
   'benefit_transfer.share': 'انتقال سهم درگاه',
   'gateway.submitted': 'ثبت درگاه برای بازرسی',
-  'gateway.approved': 'تایید درگاه با کد مرچنت فاینوپال',
+  'gateway.approved': 'تایید درگاه با کد مرچنت فینونت',
   'gateway.rejected': 'رد درگاه',
 }
 

@@ -10,6 +10,7 @@ import {
   FileBarChart,
   GitBranch,
   LayoutDashboard,
+  KeyRound,
   LogOut,
   Menu,
   MessageSquare,
@@ -36,6 +37,7 @@ import {
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { ChangePasswordModal } from '../components/ChangePasswordModal'
 import { Avatar, Kbd, Menu as DropMenu } from '../components/ui'
 import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
@@ -568,6 +570,7 @@ function ShellChrome({
   const qc = useQueryClient()
   const productOriented = useProductOriented()
   const [palette, setPalette] = useState(false)
+  const [passwordOpen, setPasswordOpen] = useState(false)
   const active = user?.active_role
   const impersonating = Boolean(user?.impersonating)
   const switchableRoles = user?.roles.filter((r) => r.is_active !== false && r.slug !== 'superuser') ?? []
@@ -701,6 +704,11 @@ function ShellChrome({
                 ),
               },
               {
+                label: t('changePassword'),
+                icon: KeyRound,
+                onClick: () => setPasswordOpen(true),
+              },
+              {
                 label: t('navNotifications'),
                 icon: Bell,
                 onClick: () => navigate(panel === 'admin' ? '/superuser/notifications' : 'notifications'),
@@ -734,6 +742,7 @@ function ShellChrome({
         </footer>
       </div>
 
+      <ChangePasswordModal open={passwordOpen} onClose={() => setPasswordOpen(false)} />
       <CommandPalette open={palette} onClose={() => setPalette(false)} flatItems={flatItems} />
     </div>
   )
