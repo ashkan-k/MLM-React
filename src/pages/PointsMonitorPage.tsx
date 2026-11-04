@@ -113,10 +113,10 @@ function PointsPill({ points }: { points: PointsInfo }) {
         {points.threshold_met ? <Badge tone="ok">حد نصاب</Badge> : <Badge tone="muted">{points.progress_pct}٪</Badge>}
       </div>
       <ProgressBar value={points.actual} max={Math.max(1, points.required)} />
-      <div className="flex flex-wrap gap-1.5 text-[10px] text-surface-500">
+      <div className="flex flex-wrap gap-1.5 text-[10px] text-mute">
         <span>درگاه {points.gateway_count}</span>
         {points.manual_points !== 0 && (
-          <span className={points.manual_points > 0 ? 'text-emerald-600' : 'text-rose-600'}>
+          <span className={points.manual_points > 0 ? 'text-ok' : 'text-bad'}>
             دستی {points.manual_points > 0 ? '+' : ''}{points.manual_points.toLocaleString(localeTag())}
           </span>
         )}
@@ -142,7 +142,7 @@ function TreeBranch({
   const Chevron = direction === 'rtl' ? ChevronLeft : ChevronRight
 
   return (
-    <ul className={depth === 0 ? 'space-y-2' : 'mt-2 space-y-2 border-s border-surface-200/80 dark:border-surface-700/80 ps-3 ms-2'}>
+    <ul className={depth === 0 ? 'space-y-2' : 'mt-2 space-y-2 border-s border-line ps-3 ms-2'}>
       {nodes.map((node) => {
         const kids = node.children ?? []
         const open = expanded.has(node.id)
@@ -153,20 +153,14 @@ function TreeBranch({
         return (
           <li key={node.id} className="relative">
             <div
-              className={`
-                group rounded-2xl border border-surface-200/90 dark:border-surface-700/80
-                bg-gradient-to-br from-white via-white to-surface-50/80
-                dark:from-surface-900 dark:via-surface-900 dark:to-surface-800/60
-                px-3 py-2.5 shadow-sm hover:shadow-md transition-shadow
-                ${node.points?.threshold_met ? 'ring-1 ring-emerald-400/40' : ''}
-              `}
+              className={`group rounded-2xl border border-line bg-gradient-to-br from-surface via-surface to-surface2 px-3 py-2.5 shadow-sm hover:shadow-md transition-shadow ${node.points?.threshold_met ? 'ring-1 ring-ok/40' : ''}`}
             >
               <div className="flex flex-wrap items-center gap-3 justify-between">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
                   {kids.length > 0 ? (
                     <button
                       type="button"
-                      className="shrink-0 rounded-lg p-1 hover:bg-surface-100 dark:hover:bg-surface-800"
+                      className="shrink-0 rounded-lg p-1 hover:bg-surface3"
                       onClick={() => toggle(node.id)}
                       aria-expanded={open}
                       aria-label={open ? 'بستن' : 'باز کردن'}
@@ -175,30 +169,30 @@ function TreeBranch({
                     </button>
                   ) : (
                     <span className="w-6 flex justify-center shrink-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-surface-300 dark:bg-surface-600" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-surface3" />
                     </span>
                   )}
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-sm text-surface-900 dark:text-surface-50 truncate leading-5">
+                      <span className="font-semibold text-sm text-ink truncate leading-5">
                         {node.user?.name ?? '—'}
                       </span>
                       <Badge tone="info">{roleLabel(node.role?.slug) || node.role?.name}</Badge>
                       {!node.user?.is_active && <Badge tone="danger">غیرفعال</Badge>}
                     </div>
                     {node.user?.mobile ? (
-                      <div className="mt-0.5 text-xs text-surface-500 leading-4">
+                      <div className="mt-0.5 text-xs text-mute leading-4">
                         <bdi className="tabular-nums tracking-wide" dir="ltr">{node.user.mobile}</bdi>
                       </div>
                     ) : null}
                     {kids.length > 0 && (
-                      <p className="text-[11px] text-surface-400 m-0 mt-1">زیرمجموعه مستقیم: {kids.length} · کل: {node.descendant_count ?? kids.length}</p>
+                      <p className="text-[11px] text-faint m-0 mt-1">زیرمجموعه مستقیم: {kids.length} · کل: {node.descendant_count ?? kids.length}</p>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
                   {node.points ? <PointsPill points={node.points} /> : (
-                    <span className="text-xs text-surface-400">بدون امتیاز نقش</span>
+                    <span className="text-xs text-faint">بدون امتیاز نقش</span>
                   )}
                   {canOpen && (
                     <button type="button" className="btn btn-soft btn-sm shrink-0" onClick={() => onOpen(uid!, slug!)}>
@@ -240,32 +234,32 @@ function DetailModal({
 
   return (
     <Modal open={open} onClose={onClose} title={detail ? `امتیاز ${detail.user.name}` : 'جزئیات امتیاز'} wide>
-      {loading && <p className="text-sm text-surface-500 p-2 m-0">در حال بارگذاری...</p>}
+      {loading && <p className="text-sm text-mute p-2 m-0">در حال بارگذاری...</p>}
       {!loading && detail && (
         <div className="space-y-5 max-h-[75vh] overflow-y-auto pe-1">
           <div className="grid sm:grid-cols-4 gap-3">
-            <div className="rounded-xl bg-surface-50 dark:bg-surface-800/50 p-3">
-              <p className="text-[11px] text-surface-500 m-0">نقش</p>
+            <div className="rounded-xl bg-surface2 p-3">
+              <p className="text-[11px] text-mute m-0">نقش</p>
               <p className="font-semibold text-sm m-0 mt-1">{roleLabel(detail.role.slug) || detail.role.name}</p>
             </div>
-            <div className="rounded-xl bg-surface-50 dark:bg-surface-800/50 p-3">
-              <p className="text-[11px] text-surface-500 m-0">ماه</p>
+            <div className="rounded-xl bg-surface2 p-3">
+              <p className="text-[11px] text-mute m-0">ماه</p>
               <p className="font-semibold text-sm m-0 mt-1"><MonthText value={detail.month} /></p>
             </div>
-            <div className="rounded-xl bg-surface-50 dark:bg-surface-800/50 p-3">
-              <p className="text-[11px] text-surface-500 m-0 mb-1">امتیاز کل</p>
+            <div className="rounded-xl bg-surface2 p-3">
+              <p className="text-[11px] text-mute m-0 mb-1">امتیاز کل</p>
               <ScorePair actual={detail.totals.actual} required={detail.totals.required} />
-              <p className="text-[10px] text-surface-400 m-0 mt-1">کسب‌شده از حد نصاب</p>
+              <p className="text-[10px] text-faint m-0 mt-1">کسب‌شده از حد نصاب</p>
             </div>
-            <div className="rounded-xl bg-surface-50 dark:bg-surface-800/50 p-3">
-              <p className="text-[11px] text-surface-500 m-0">واجد شرایط دائمی</p>
+            <div className="rounded-xl bg-surface2 p-3">
+              <p className="text-[11px] text-mute m-0">واجد شرایط دائمی</p>
               <p className="font-semibold text-sm m-0 mt-1">{detail.totals.permanent_eligible_count}</p>
             </div>
           </div>
 
           <div>
             <ProgressBar value={detail.totals.actual} max={Math.max(1, detail.totals.required)} />
-            <p className="text-xs text-surface-500 mt-1.5 m-0">
+            <p className="text-xs text-mute mt-1.5 m-0">
               درگاه: {detail.totals.gateway_points.toLocaleString(localeTag())}
               {' · '}دستی: {detail.totals.manual_points.toLocaleString(localeTag())}
               {detail.totals.threshold_met ? ' · حد نصاب تکمیل شده' : ''}
@@ -273,18 +267,18 @@ function DetailModal({
           </div>
 
           {canAdjust && detail.can_adjust && (
-            <div className="rounded-2xl border border-amber-200/80 dark:border-amber-900/50 bg-amber-50/60 dark:bg-amber-950/20 p-4 space-y-3">
-              <div className="flex items-center gap-2 text-sm font-semibold text-amber-900 dark:text-amber-100">
+            <div className="rounded-2xl border border-warn/30 bg-warnsoft p-4 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-warn">
                 <Sparkles className="w-4 h-4" />
                 ویرایش دستی امتیاز (فقط سوپریوزر)
               </div>
               <div className="flex flex-wrap gap-3 items-end">
                 <label className="text-xs space-y-1.5 block">
-                  <span className="text-surface-500">مقدار تغییر</span>
+                  <span className="text-mute">مقدار تغییر</span>
                   <input className="input w-32" type="number" min={1} value={delta} onChange={(e) => setDelta(e.target.value)} />
                 </label>
                 <label className="text-xs space-y-1.5 block flex-1 min-w-[14rem]">
-                  <span className="text-surface-500">یادداشت</span>
+                  <span className="text-mute">یادداشت</span>
                   <input
                     className="input w-full"
                     value={note}
@@ -331,7 +325,7 @@ function DetailModal({
 
           <section className="space-y-2">
             <h3 className="text-sm font-semibold flex items-center gap-2 m-0">
-              <GitBranch className="w-4 h-4 text-primary-500" />
+              <GitBranch className="w-4 h-4 text-prim" />
               درگاه‌های امتیازساز این ماه ({detail.gateways.length})
             </h3>
             {detail.gateways.length === 0 ? (
@@ -341,32 +335,32 @@ function DetailModal({
                 {detail.gateways.map((g) => (
                   <div
                     key={g.gateway_sale_id}
-                    className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 bg-white/70 dark:bg-surface-900/40"
+                    className="rounded-xl border border-line p-3 bg-surface/70"
                   >
                     <div className="flex flex-wrap justify-between gap-2">
                       <div className="space-y-0.5 min-w-0">
                         <p className="font-medium text-sm m-0 leading-snug">{g.gateway_name || `فروش #${g.gateway_sale_id}`}</p>
-                        <p className="text-xs text-surface-500 m-0">
+                        <p className="text-xs text-mute m-0">
                           <bdi dir="ltr">{g.merchant_code || '—'}</bdi>
                         </p>
-                        {g.customer_name && <p className="text-xs text-surface-500 m-0">مشتری: {g.customer_name}</p>}
+                        {g.customer_name && <p className="text-xs text-mute m-0">مشتری: {g.customer_name}</p>}
                       </div>
                       <div className="flex flex-col items-end gap-1">
                         <Badge tone="info">+{g.points} امتیاز</Badge>
                         {g.permanently_eligible && <Badge tone="ok">قفل دائمی</Badge>}
-                        {g.sold_at && <span className="text-[11px] text-surface-400"><DateTimeText value={g.sold_at} /></span>}
+                        {g.sold_at && <span className="text-[11px] text-faint"><DateTimeText value={g.sold_at} /></span>}
                       </div>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {g.sources.map((s, i) => (
-                        <span key={`${s.code}-${i}`} className="text-[11px] rounded-lg bg-surface-100 dark:bg-surface-800 px-2 py-1 text-surface-600 dark:text-surface-300">
+                        <span key={`${s.code}-${i}`} className="text-[11px] rounded-lg bg-surface3 px-2 py-1 text-mute">
                           {s.label}
                           {s.registrant?.name ? ` · ${s.registrant.name}` : ''}
                         </span>
                       ))}
                     </div>
                     {(g.registrants?.length ?? 0) > 0 && (
-                      <p className="text-[11px] text-surface-500 mt-2 m-0 leading-snug">
+                      <p className="text-[11px] text-mute mt-2 m-0 leading-snug">
                         ثبت‌کنندگان: {g.registrants!.map((r) => r.name).filter(Boolean).join('، ')}
                       </p>
                     )}
@@ -379,7 +373,7 @@ function DetailModal({
           <section className="space-y-2.5">
             <h3 className="text-sm font-semibold m-0">تعدیل‌های دستی این ماه</h3>
             {detail.adjustments.length === 0 ? (
-              <p className="text-xs text-surface-500 m-0">موردی ثبت نشده.</p>
+              <p className="text-xs text-mute m-0">موردی ثبت نشده.</p>
             ) : (
               <ul className="space-y-2.5 m-0 p-0 list-none">
                 {detail.adjustments.map((a) => {
@@ -387,32 +381,27 @@ function DetailModal({
                   return (
                     <li
                       key={a.id}
-                      className={`
-                        rounded-xl border px-3.5 py-3
-                        ${up
-                          ? 'border-emerald-200/80 dark:border-emerald-900/50 bg-emerald-50/50 dark:bg-emerald-950/20'
-                          : 'border-rose-200/80 dark:border-rose-900/50 bg-rose-50/50 dark:bg-rose-950/20'}
-                      `}
+                      className={`rounded-xl border px-3.5 py-3 ${up ? 'border-ok/30 bg-oksoft' : 'border-bad/30 bg-badsoft'}`}
                     >
                       <div className="flex items-center gap-2">
-                        <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg ${up ? 'bg-emerald-500/15 text-emerald-600' : 'bg-rose-500/15 text-rose-600'}`}>
+                        <span className={`inline-flex items-center justify-center w-7 h-7 rounded-lg ${up ? 'bg-oksoft text-ok' : 'bg-badsoft text-bad'}`}>
                           {up ? <Plus className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
                         </span>
                         <div>
-                          <p className={`m-0 font-semibold text-sm ${up ? 'text-emerald-700 dark:text-emerald-300' : 'text-rose-700 dark:text-rose-300'}`}>
+                          <p className={`m-0 font-semibold text-sm ${up ? 'text-ok' : 'text-bad'}`}>
                             <bdi dir="ltr">{up ? '+' : ''}{a.delta_points.toLocaleString(localeTag())}</bdi>
-                            <span className="text-surface-400 font-normal text-xs ms-1">امتیاز</span>
+                            <span className="text-faint font-normal text-xs ms-1">امتیاز</span>
                           </p>
-                          <p className="m-0 text-[11px] text-surface-500 mt-0.5">
+                          <p className="m-0 text-[11px] text-mute mt-0.5">
                             {a.actor ? `توسط ${a.actor.name}` : 'سوپریوزر'}
                             {a.created_at ? <> · <DateTimeText value={a.created_at} /></> : null}
                           </p>
                         </div>
                       </div>
                       {a.note ? (
-                        <div className="mt-2.5 flex gap-2 rounded-lg bg-white/70 dark:bg-surface-900/50 border border-surface-200/70 dark:border-surface-700/70 px-3 py-2">
-                          <MessageSquareText className="w-3.5 h-3.5 mt-0.5 shrink-0 text-surface-400" />
-                          <p className="m-0 text-xs text-surface-700 dark:text-surface-200 leading-relaxed">{a.note}</p>
+                        <div className="mt-2.5 flex gap-2 rounded-lg bg-surface/70 border border-line px-3 py-2">
+                          <MessageSquareText className="w-3.5 h-3.5 mt-0.5 shrink-0 text-faint" />
+                          <p className="m-0 text-xs text-ink leading-relaxed">{a.note}</p>
                         </div>
                       ) : null}
                     </li>
@@ -425,16 +414,16 @@ function DetailModal({
           <section className="space-y-2">
             <h3 className="text-sm font-semibold m-0">درگاه‌های واجد شرایط دائمی</h3>
             {detail.permanent_eligibilities.length === 0 ? (
-              <p className="text-xs text-surface-500 m-0">هنوز درگاهی قفل نشده.</p>
+              <p className="text-xs text-mute m-0">هنوز درگاهی قفل نشده.</p>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-surface-200 dark:border-surface-700">
+              <div className="overflow-x-auto rounded-xl border border-line">
                 <table className="w-full text-xs table-fixed border-collapse">
                   <colgroup>
                     <col style={{ width: '42%' }} />
                     <col style={{ width: '36%' }} />
                     <col style={{ width: '22%' }} />
                   </colgroup>
-                  <thead className="bg-surface-50 dark:bg-surface-800/60 text-surface-500">
+                  <thead className="bg-surface2 text-mute">
                     <tr>
                       <th className="text-start p-2.5 font-medium">درگاه</th>
                       <th className="text-start p-2.5 font-medium">مرچنت</th>
@@ -443,7 +432,7 @@ function DetailModal({
                   </thead>
                   <tbody>
                     {detail.permanent_eligibilities.map((e) => (
-                      <tr key={e.gateway_sale_id} className="border-t border-surface-100 dark:border-surface-800">
+                      <tr key={e.gateway_sale_id} className="border-t border-line">
                         <td className="p-2.5 text-start align-middle break-words">{e.gateway_name || `#${e.gateway_sale_id}`}</td>
                         <td className="p-2.5 text-start align-middle">
                           <bdi className="tabular-nums break-all" dir="ltr">{e.merchant_code || '—'}</bdi>
@@ -548,7 +537,7 @@ export function PointsMonitorPage() {
 
   let body: ReactNode
   if (isLoading) {
-    body = <p className="text-sm text-surface-500 p-6 m-0">در حال بارگذاری درخت امتیاز...</p>
+    body = <p className="text-sm text-mute p-6 m-0">در حال بارگذاری درخت امتیاز...</p>
   } else if (view === 'tree') {
     body = tree.length === 0 ? (
       <Empty title="گره‌ای برای نمایش نیست" />
@@ -559,10 +548,10 @@ export function PointsMonitorPage() {
     body = flat.length === 0 ? (
       <Empty title="ردیفی یافت نشد" />
     ) : (
-      <div className="overflow-x-auto rounded-2xl border border-surface-200 dark:border-surface-700">
+      <div className="overflow-x-auto rounded-2xl border border-line">
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="bg-surface-50/90 dark:bg-surface-800/60 text-xs text-surface-500">
+            <tr className="bg-surface2 text-xs text-mute">
               <th className="text-start px-5 py-3 font-medium">کاربر</th>
               <th className="text-start px-4 py-3 font-medium">نقش</th>
               <th className="text-start px-4 py-3 font-medium">امتیاز</th>
@@ -574,12 +563,12 @@ export function PointsMonitorPage() {
             {flat.map((row) => (
               <tr
                 key={`${row.user_id}-${row.role_slug}`}
-                className="border-t border-surface-100 dark:border-surface-800/80 hover:bg-surface-50/70 dark:hover:bg-surface-800/35 transition-colors"
+                className="border-t border-line/80 hover:bg-surface2 transition-colors"
               >
                 <td className="px-5 py-3 text-start align-middle">
-                  <div className="font-medium text-surface-800 dark:text-surface-100 leading-5">{row.name}</div>
+                  <div className="font-medium text-ink leading-5">{row.name}</div>
                   {row.mobile ? (
-                    <div className="mt-0.5 text-xs text-surface-400 leading-4">
+                    <div className="mt-0.5 text-xs text-faint leading-4">
                       <bdi className="tabular-nums tracking-wide" dir="ltr">{row.mobile}</bdi>
                     </div>
                   ) : null}
@@ -590,10 +579,10 @@ export function PointsMonitorPage() {
                 <td className="px-4 py-3 align-middle">
                   <div className="space-y-1">
                     <ScorePair actual={row.actual} required={row.required} compact />
-                    <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-surface-500 leading-4">
+                    <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-mute leading-4">
                       <span>درگاه {row.gateway_count.toLocaleString(localeTag())}</span>
                       {row.manual_points !== 0 && (
-                        <span className={row.manual_points > 0 ? 'text-emerald-600' : 'text-rose-600'}>
+                        <span className={row.manual_points > 0 ? 'text-ok' : 'text-bad'}>
                           دستی <bdi dir="ltr">{row.manual_points > 0 ? '+' : ''}{row.manual_points.toLocaleString(localeTag())}</bdi>
                         </span>
                       )}
@@ -602,7 +591,7 @@ export function PointsMonitorPage() {
                 </td>
                 <td className="px-4 py-3 align-middle">
                   <ProgressBar value={row.actual} max={Math.max(1, row.required)} />
-                  <p className="text-[11px] mt-1.5 m-0 text-surface-500">
+                  <p className="text-[11px] mt-1.5 m-0 text-mute">
                     {row.threshold_met ? 'حد نصاب ✓' : `${row.progress_pct}٪`}
                   </p>
                 </td>
@@ -627,10 +616,10 @@ export function PointsMonitorPage() {
       />
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard title="نقش‌های امتیازدار" value={(summary?.role_rows ?? 0).toLocaleString(localeTag())} icon={Users} color="from-sky-500 to-sky-600" />
-        <StatCard title="جمع امتیاز ماه" value={(summary?.total_points ?? 0).toLocaleString(localeTag())} icon={Target} color="from-violet-500 to-violet-600" />
-        <StatCard title="از ثبت درگاه" value={(summary?.gateway_points ?? 0).toLocaleString(localeTag())} icon={Award} color="from-emerald-500 to-emerald-600" />
-        <StatCard title="حد نصاب تکمیل" value={(summary?.qualified_nodes ?? 0).toLocaleString(localeTag())} icon={Sparkles} color="from-amber-500 to-amber-600" />
+        <StatCard title="نقش‌های امتیازدار" value={(summary?.role_rows ?? 0).toLocaleString(localeTag())} icon={Users} color="from-info to-info" />
+        <StatCard title="جمع امتیاز ماه" value={(summary?.total_points ?? 0).toLocaleString(localeTag())} icon={Target} color="from-prim to-prim2" />
+        <StatCard title="از ثبت درگاه" value={(summary?.gateway_points ?? 0).toLocaleString(localeTag())} icon={Award} color="from-ok to-ok" />
+        <StatCard title="حد نصاب تکمیل" value={(summary?.qualified_nodes ?? 0).toLocaleString(localeTag())} icon={Sparkles} color="from-warn to-acc" />
       </div>
 
       <div className="card p-4">
@@ -644,7 +633,7 @@ export function PointsMonitorPage() {
             <div className="field !gap-1.5">
               <span>جستجو</span>
               <div className="relative w-56 max-w-full">
-                <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3 w-3.5 h-3.5 text-surface-400 z-[1]" />
+                <Search className="pointer-events-none absolute top-1/2 -translate-y-1/2 start-3 w-3.5 h-3.5 text-faint z-[1]" />
                 <input
                   className="input with-icon"
                   value={searchInput}
@@ -673,20 +662,20 @@ export function PointsMonitorPage() {
                 پاک کردن فیلتر
               </button>
             )}
-            {isFetching && <span className="text-xs text-surface-400 self-end pb-2">به‌روزرسانی...</span>}
+            {isFetching && <span className="text-xs text-faint self-end pb-2">به‌روزرسانی...</span>}
           </div>
 
-          <div className="inline-flex rounded-xl border border-surface-200 dark:border-surface-700 p-0.5 bg-surface-50/80 dark:bg-surface-900/50 self-start">
+          <div className="inline-flex rounded-xl border border-line p-0.5 bg-surface2 self-start">
             <button
               type="button"
-              className={`px-3 py-2 text-xs rounded-[10px] inline-flex items-center gap-1.5 transition-colors ${view === 'tree' ? 'bg-primary-600 text-white shadow-sm' : 'text-surface-600 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800'}`}
+              className={`px-3 py-2 text-xs rounded-[10px] inline-flex items-center gap-1.5 transition-colors ${view === 'tree' ? 'bg-prim text-white shadow-sm' : 'text-mute hover:bg-surface3'}`}
               onClick={() => setView('tree')}
             >
               <TreePine className="w-3.5 h-3.5" /> درختواره
             </button>
             <button
               type="button"
-              className={`px-3 py-2 text-xs rounded-[10px] inline-flex items-center gap-1.5 transition-colors ${view === 'list' ? 'bg-primary-600 text-white shadow-sm' : 'text-surface-600 dark:text-surface-300 hover:bg-surface-100 dark:hover:bg-surface-800'}`}
+              className={`px-3 py-2 text-xs rounded-[10px] inline-flex items-center gap-1.5 transition-colors ${view === 'list' ? 'bg-prim text-white shadow-sm' : 'text-mute hover:bg-surface3'}`}
               onClick={() => setView('list')}
             >
               <List className="w-3.5 h-3.5" /> لیست نقش‌ها

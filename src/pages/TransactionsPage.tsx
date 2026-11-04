@@ -146,22 +146,22 @@ export function TransactionsPage() {
                   {productOriented && (
                     <td>
                       <ProductBadge type={row.product_type ?? 'gateway_profit'} label={row.product_label} />
-                      {row.product_code && <div className="text-[11px] text-surface-400 mt-1 font-mono dir-ltr text-left">{row.product_code}</div>}
+                      {row.product_code && <div className="text-[11px] text-faint mt-1 font-mono dir-ltr text-left">{row.product_code}</div>}
                     </td>
                   )}
                   <td>
                     <div className="font-semibold">{row.source_title ?? row.gateway?.name ?? '—'}</div>
-                    <div className="text-xs text-surface-400">
-                      <span className="text-surface-500">{t('txMerchantCode')}: </span>
+                    <div className="text-xs text-faint">
+                      <span className="text-mute">{t('txMerchantCode')}: </span>
                       <span className="font-mono dir-ltr inline-block">{row.merchant_code ?? row.gateway?.merchant_code ?? '—'}</span>
                     </div>
                   </td>
                   <td>
                     <div>{row.sale?.customer?.name ?? '—'}</div>
-                    <div className="text-xs text-surface-400">{row.sale?.customer?.mobile ?? ''}</div>
+                    <div className="text-xs text-faint">{row.sale?.customer?.mobile ?? ''}</div>
                   </td>
                   <td>{money(row.amount)}</td>
-                  <td className="font-semibold text-emerald-700 dark:text-emerald-400">{money(row.profit)}</td>
+                  <td className="font-semibold text-ok">{money(row.profit)}</td>
                   <td><Badge tone={row.status === 'failed' ? 'danger' : row.status === 'verified' || row.status === 'paid' ? 'ok' : 'warn'}>{label(row.status)}</Badge></td>
                   <td><AuthorityCell authority={row.authority} /></td>
                   <td className="text-xs font-mono dir-ltr text-left">{row.ref_id || row.order_id || '—'}</td>

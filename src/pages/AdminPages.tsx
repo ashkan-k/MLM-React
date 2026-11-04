@@ -56,12 +56,12 @@ export function AdminHome() {
   const { t } = useApp()
   const { data } = useQuery({ queryKey: ['stats'], queryFn: async () => (await api.get('/superuser/stats')).data })
   const cards = [
-    { key: 'users', value: data?.users, icon: Users, color: 'from-blue-500 to-blue-600' },
-    { key: 'active_users', value: data?.active_users, icon: Shield, color: 'from-emerald-500 to-emerald-600' },
-    { key: 'sales', value: data?.sales, icon: Repeat, color: 'from-purple-500 to-purple-600' },
-    { key: 'commission_total', value: data?.commission_total, icon: TrendingUp, color: 'from-amber-500 to-amber-600' },
+    { key: 'users', value: data?.users, icon: Users, color: 'from-info to-info' },
+    { key: 'active_users', value: data?.active_users, icon: Shield, color: 'from-ok to-ok' },
+    { key: 'sales', value: data?.sales, icon: Repeat, color: 'from-prim to-prim2' },
+    { key: 'commission_total', value: data?.commission_total, icon: TrendingUp, color: 'from-warn to-acc' },
     { key: 'wallets', value: data?.wallets, icon: Wallet, color: 'from-cyan-500 to-cyan-600' },
-    { key: 'wallet_balance', value: data?.wallet_balance, icon: BookOpen, color: 'from-rose-500 to-rose-600' },
+    { key: 'wallet_balance', value: data?.wallet_balance, icon: BookOpen, color: 'from-bad to-bad' },
   ] as const
 
   return (
@@ -294,35 +294,35 @@ export function AdminUsers() {
         action={<button className="btn btn-primary" onClick={openCreate}><UserPlus className="w-4 h-4" /> {t('adminNewUser')}</button>}
       />
       <div className="grid sm:grid-cols-2 gap-4">
-        <StatCard title={t('adminUsersAll')} value={Number(data?.total ?? rows.length).toLocaleString('fa-IR')} icon={Users} color="from-blue-500 to-blue-600" />
-        <StatCard title={t('adminUsersPage')} value={rows.length.toLocaleString('fa-IR')} icon={Shield} color="from-emerald-500 to-emerald-600" />
+        <StatCard title={t('adminUsersAll')} value={Number(data?.total ?? rows.length).toLocaleString('fa-IR')} icon={Users} color="from-info to-info" />
+        <StatCard title={t('adminUsersPage')} value={rows.length.toLocaleString('fa-IR')} icon={Shield} color="from-ok to-ok" />
       </div>
-      <div className="bg-white dark:bg-surface-800 rounded-xl p-4 border border-surface-200 dark:border-surface-700">
+      <div className="card p-4">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="relative flex-1 min-w-0">
-            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400 pointer-events-none" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-faint pointer-events-none" />
             <input
               type="text"
               placeholder={t('adminUserSearch')}
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-              className="search-inset w-full pe-3 py-2 rounded-lg bg-surface-50 dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm text-surface-800 dark:text-surface-200 outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+              className="search-inset w-full pe-3 py-2 rounded-lg bg-surface2 border border-line text-sm text-ink outline-none focus:ring-2 focus:ring-prim/20 focus:border-prim"
             />
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <select
               value={status}
               onChange={(e) => { setStatus(e.target.value); setPage(1) }}
-              className="px-3 py-2 rounded-lg bg-surface-50 dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm text-surface-700 dark:text-surface-300 outline-none"
+              className="px-3 py-2 rounded-lg bg-surface2 border border-line text-sm text-ink outline-none"
             >
               <option value="all">{t('adminAllStatus')}</option>
               <option value="active">{t('adminActive')}</option>
               <option value="inactive">{t('adminInactive')}</option>
             </select>
-            <button type="button" className="p-2 rounded-lg border border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-500" aria-label="فیلتر">
+            <button type="button" className="p-2 rounded-lg border border-line hover:bg-surface2 text-mute" aria-label="فیلتر">
               <Filter className="w-4 h-4" />
             </button>
-            <button type="button" className="p-2 rounded-lg border border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-500" aria-label="خروجی" onClick={() => exportSelected('کاربران', rows.map((u) => ({ شناسه: u.id, نام: u.name, موبایل: u.mobile, 'کد ملی': u.national_id || '', 'تاریخ تولد': jalaliDateOnly(u.birth_date) === '—' ? '' : jalaliDateOnly(u.birth_date), نقش: (u.roles ?? []).map((r) => r.name).join('، '), وضعیت: u.is_active ? 'فعال' : 'غیرفعال' })))}>
+            <button type="button" className="p-2 rounded-lg border border-line hover:bg-surface2 text-mute" aria-label="خروجی" onClick={() => exportSelected('کاربران', rows.map((u) => ({ شناسه: u.id, نام: u.name, موبایل: u.mobile, 'کد ملی': u.national_id || '', 'تاریخ تولد': jalaliDateOnly(u.birth_date) === '—' ? '' : jalaliDateOnly(u.birth_date), نقش: (u.roles ?? []).map((r) => r.name).join('، '), وضعیت: u.is_active ? 'فعال' : 'غیرفعال' })))}>
               <Download className="w-4 h-4" />
             </button>
           </div>
@@ -357,12 +357,12 @@ export function AdminUsers() {
                   <td>{u.id}</td>
                   <td>
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-primary-400 to-primary-600 text-white text-xs font-bold flex items-center justify-center">
+                      <div className="w-9 h-9 rounded-full overflow-hidden bg-gradient-to-br from-prim to-prim2 text-white text-xs font-bold flex items-center justify-center">
                         {u.avatar_url ? <img src={u.avatar_url} alt="" className="w-full h-full object-cover" /> : u.name.charAt(0)}
                       </div>
                       <div>
                         <div className="font-medium">{u.name}</div>
-                        {u.email && <div className="text-xs text-surface-400">{u.email}</div>}
+                        {u.email && <div className="text-xs text-faint">{u.email}</div>}
                       </div>
                     </div>
                   </td>
@@ -397,7 +397,7 @@ export function AdminUsers() {
         <form className="grid gap-3" data-testid="user-form" onSubmit={async (e) => { e.preventDefault(); try { await save() } catch { toast.error('ثبت کاربر ناموفق بود') } }}>
           <label className="field">آواتار (اختیاری)
             <div className="flex items-center gap-3">
-              <div className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-primary-400 to-primary-600 text-white flex items-center justify-center text-lg font-bold shrink-0">
+              <div className="w-14 h-14 rounded-full overflow-hidden bg-gradient-to-br from-prim to-prim2 text-white flex items-center justify-center text-lg font-bold shrink-0">
                 {avatarPreview ? <img src={avatarPreview} alt="" className="w-full h-full object-cover" /> : (form.name.charAt(0) || '؟')}
               </div>
               <input
@@ -448,28 +448,28 @@ export function AdminUsers() {
       <Modal open={Boolean(detail)} title={detail?.name ?? ''} onClose={() => setDetail(null)}>
         {detail && (
           <div className="space-y-3">
-            <div className="text-center border-b border-surface-200 dark:border-surface-700 pb-4">
-              <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-xl font-bold mx-auto mb-3">
+            <div className="text-center border-b border-line pb-4">
+              <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-prim to-prim2 flex items-center justify-center text-white text-xl font-bold mx-auto mb-3">
                 {detail.avatar_url ? <img src={detail.avatar_url} alt="" className="w-full h-full object-cover" /> : detail.name.charAt(0)}
               </div>
               <Badge tone={detail.is_active ? 'ok' : 'danger'}>{detail.is_active ? t('adminActive') : t('blocked')}</Badge>
             </div>
-            <div className="flex items-center gap-3 text-sm"><Mail className="w-4 h-4 text-surface-400" /><span>{detail.email || '—'}</span></div>
-            <div className="flex items-center gap-3 text-sm"><Phone className="w-4 h-4 text-surface-400" /><span>{detail.mobile}</span></div>
+            <div className="flex items-center gap-3 text-sm"><Mail className="w-4 h-4 text-faint" /><span>{detail.email || '—'}</span></div>
+            <div className="flex items-center gap-3 text-sm"><Phone className="w-4 h-4 text-faint" /><span>{detail.mobile}</span></div>
             {detail.national_id && (
               <div className="flex items-center gap-3 text-sm">
-                <IdCard className="w-4 h-4 text-surface-400 shrink-0" />
+                <IdCard className="w-4 h-4 text-faint shrink-0" />
                 <span>{t('kycNationalId')}: <bdi className="font-mono" dir="ltr">{detail.national_id}</bdi></span>
               </div>
             )}
             {detail.birth_date && (
               <div className="flex items-center gap-3 text-sm">
-                <CalendarDays className="w-4 h-4 text-surface-400 shrink-0" />
+                <CalendarDays className="w-4 h-4 text-faint shrink-0" />
                 <span>{t('kycBirthDate')}: <DateOnlyText value={detail.birth_date} shamsi /></span>
               </div>
             )}
-            <div className="flex items-center gap-3 text-sm"><Shield className="w-4 h-4 text-surface-400" /><span>نقش‌ها: {detail.roles?.map((r) => r.name).join('، ') || '—'}</span></div>
-            <div className="flex items-center gap-3 text-sm"><Users className="w-4 h-4 text-surface-400" /><span>شناسه {detail.id}</span></div>
+            <div className="flex items-center gap-3 text-sm"><Shield className="w-4 h-4 text-faint" /><span>نقش‌ها: {detail.roles?.map((r) => r.name).join('، ') || '—'}</span></div>
+            <div className="flex items-center gap-3 text-sm"><Users className="w-4 h-4 text-faint" /><span>شناسه {detail.id}</span></div>
             {detail.is_active && (detail.roles?.length ?? 0) > 0 && (
               <button type="button" className="btn btn-primary w-full" data-testid="impersonate-from-detail" onClick={() => { setDetail(null); startImpersonate(detail) }}>
                 {t('impersonateEnter')}
@@ -566,16 +566,16 @@ export function AdminPermissions() {
       <table className="table perm-table">
         <thead>
           <tr>
-            <th className="min-w-56 sticky start-0 bg-surface-50 dark:bg-surface-900 z-10">دسترسی</th>
+            <th className="min-w-56 sticky start-0 bg-surface2 z-10">دسترسی</th>
             {orgRoles.map((r: RoleRow) => <th key={r.id} className="text-center whitespace-nowrap">{r.name}</th>)}
           </tr>
         </thead>
         <tbody>
           {items.map((p) => (
             <tr key={p.id} data-testid={`perm-${p.slug}`}>
-              <td className="sticky start-0 bg-white dark:bg-surface-800 z-10">
-                <div className="font-medium text-surface-800 dark:text-surface-100">{permissionLabel[p.slug] ?? p.name}</div>
-                <div className="text-xs text-surface-400">{p.slug}</div>
+              <td className="sticky start-0 bg-surface z-10">
+                <div className="font-medium text-ink">{permissionLabel[p.slug] ?? p.name}</div>
+                <div className="text-xs text-faint">{p.slug}</div>
               </td>
               {orgRoles.map((r: RoleRow) => {
                 const allowed = isGranted(r, p.id)
@@ -616,11 +616,11 @@ export function AdminPermissions() {
         {tab === 'all' && (
           <div className="grid gap-6">
             <div>
-              <div className="px-3 pt-2 font-bold text-surface-800 dark:text-surface-100">{t('adminPermPages')}</div>
+              <div className="px-3 pt-2 font-bold text-ink">{t('adminPermPages')}</div>
               {renderMatrix(pagePerms)}
             </div>
             <div>
-              <div className="px-3 pt-2 font-bold text-surface-800 dark:text-surface-100">{t('adminPermOps')}</div>
+              <div className="px-3 pt-2 font-bold text-ink">{t('adminPermOps')}</div>
               {renderMatrix(actionPerms)}
             </div>
           </div>
@@ -629,7 +629,7 @@ export function AdminPermissions() {
         {tab === 'ops' && renderMatrix(actionPerms)}
         {tab === 'role' && selectedRole && (
           <div className="p-3 grid gap-4">
-            <p className="text-sm text-surface-500 m-0">{t('adminPermPickRole')}</p>
+            <p className="text-sm text-mute m-0">{t('adminPermPickRole')}</p>
             <div className="flex flex-wrap gap-2">
               {orgRoles.map((r: RoleRow) => (
                 <button key={r.id} type="button" className={`btn ${selectedRole.id === r.id ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setRoleId(r.id)}>
@@ -638,11 +638,11 @@ export function AdminPermissions() {
               ))}
             </div>
             {[{ title: t('adminPermPages'), items: pagePerms }, { title: t('adminPermOps'), items: actionPerms }].map((group) => (
-              <div key={group.title} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
-                <div className="font-bold mb-3 text-surface-800 dark:text-surface-100">{group.title} · {selectedRole.name}</div>
+              <div key={group.title} className="rounded-xl border border-line p-3">
+                <div className="font-bold mb-3 text-ink">{group.title} · {selectedRole.name}</div>
                 <div className="grid sm:grid-cols-2 gap-2">
                   {group.items.map((p) => (
-                    <label key={p.id} className="flex items-start gap-2 rounded-lg p-2 hover:bg-surface-50 dark:hover:bg-surface-900">
+                    <label key={p.id} className="flex items-start gap-2 rounded-lg p-2 hover:bg-surface2">
                       <input
                         type="checkbox"
                         className="mt-1"
@@ -652,7 +652,7 @@ export function AdminPermissions() {
                       />
                       <span>
                         <span className="block font-medium">{permissionLabel[p.slug] ?? p.name}</span>
-                        <span className="block text-xs text-surface-400">{p.slug}</span>
+                        <span className="block text-xs text-faint">{p.slug}</span>
                       </span>
                     </label>
                   ))}
@@ -695,7 +695,7 @@ export function AdminRules() {
               <div className="rule-card-head">
                 <div>
                   <div className="font-extrabold">{r.name}</div>
-                  <div className="text-xs text-surface-400">نسخه جاری {current?.version ?? 1} · پایه {percent(current?.percent ?? r.default_percent)}</div>
+                  <div className="text-xs text-faint">نسخه جاری {current?.version ?? 1} · پایه {percent(current?.percent ?? r.default_percent)}</div>
                 </div>
                 <button className="btn btn-primary" type="submit">ذخیره</button>
               </div>
@@ -766,7 +766,7 @@ export function AdminCourses() {
                 <td><CheckBox checked={courseSel.selected.includes(c.id)} onChange={() => courseSel.toggle(c.id)} label={`انتخاب ${c.title}`} /></td>
                 <td>
                   <div className="font-extrabold">{c.title}</div>
-                  <div className="text-sm text-surface-500 line-clamp-2">{stripHtml(c.description) || 'بدون شرح'}</div>
+                  <div className="text-sm text-mute line-clamp-2">{stripHtml(c.description) || 'بدون شرح'}</div>
                 </td>
                 <td><div className="flex gap-2 flex-wrap">{c.roles?.map((r) => <Badge key={r.name}>{r.name}</Badge>)}</div></td>
                 <td className="text-sm">{c.levels?.map((l) => `${l.title} (${(l.chapters?.length ?? 0).toLocaleString('fa-IR')} فصل · قبولی ${l.passing_score})`).join('، ') || '—'}</td>
@@ -855,11 +855,11 @@ function SettingsEditor({
               {groups.map((group) => (
                 <div
                   key={group.label || 'default'}
-                  className={group.label ? 'rounded-xl border border-surface-200 dark:border-surface-700 p-4 space-y-3' : 'space-y-3'}
+                  className={group.label ? 'rounded-xl border border-line p-4 space-y-3' : 'space-y-3'}
                 >
                   {group.label && (
                     <div>
-                      <div className="font-semibold text-surface-800 dark:text-surface-100">{group.label}</div>
+                      <div className="font-semibold text-ink">{group.label}</div>
                       {group.hint && <FieldHint>{group.hint}</FieldHint>}
                     </div>
                   )}
@@ -869,7 +869,7 @@ function SettingsEditor({
                         <label key={field.key} className="field flex flex-row items-center gap-3 cursor-pointer">
                           <input
                             type="checkbox"
-                            className="w-4 h-4 accent-primary-600"
+                            className="w-4 h-4 accent-prim"
                             checked={Boolean(current[field.key])}
                             onChange={(e) => setEdits({ ...edits, [s.key]: { ...current, [field.key]: e.target.checked } })}
                           />

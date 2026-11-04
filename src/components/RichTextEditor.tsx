@@ -219,7 +219,7 @@ export function RichTextEditor({ value, onChange, placeholder, minHeight = 180, 
 
   return (
     <div
-      className={`rich-text-editor rounded-xl border border-surface-200 dark:border-surface-700 overflow-hidden bg-white dark:bg-surface-900 ${disabled ? 'opacity-60 pointer-events-none' : ''}`}
+      className={`rich-text-editor rounded-xl border border-line overflow-hidden bg-surface ${disabled ? 'opacity-60 pointer-events-none' : ''}`}
       style={{ ['--rte-min-height' as string]: `${minHeight}px` }}
       data-testid="rich-text-editor"
     >
@@ -269,11 +269,11 @@ export function RichHtml({ html, className = '' }: { html?: string | null; class
   if (!html?.trim()) return null
   const looksHtml = /<\/?[a-z][\s\S]*>/i.test(html)
   if (!looksHtml) {
-    return <p className={`text-sm text-surface-600 dark:text-surface-300 whitespace-pre-wrap m-0 leading-7 ${className}`}>{html}</p>
+    return <p className={`text-sm text-mute whitespace-pre-wrap m-0 leading-7 ${className}`}>{html}</p>
   }
   return (
     <div
-      className={`rich-html text-sm text-surface-700 dark:text-surface-200 leading-7 ${className}`}
+      className={`rich-html text-sm text-ink leading-7 ${className}`}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   )

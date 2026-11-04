@@ -235,7 +235,7 @@ export function CourseFormPage() {
   }
 
   if (editingId && (courseLoading || !ready)) {
-    return <div className="card p-8 text-center text-surface-500">در حال بارگذاری دوره…</div>
+    return <div className="card p-8 text-center text-mute">در حال بارگذاری دوره…</div>
   }
 
   return (
@@ -315,11 +315,11 @@ export function CourseFormPage() {
 
           {form.levels.map((level, i) => (
             <div key={level.id ?? `level-${i}`} className="card p-5 grid gap-4" data-testid={`course-level-${i}`}>
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-surface-200 dark:border-surface-700 pb-3">
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-3">
                 <div className="font-extrabold text-base">سطح {i + 1}</div>
                 <button
                   type="button"
-                  className="btn btn-ghost text-red-600 inline-flex items-center gap-1"
+                  className="btn btn-ghost text-bad inline-flex items-center gap-1"
                   disabled={form.levels.length <= 1}
                   onClick={() => setForm({ ...form, levels: form.levels.filter((_, idx) => idx !== i) })}
                 >
@@ -354,14 +354,14 @@ export function CourseFormPage() {
                 {(level.chapters ?? []).map((chapter, ci) => (
                   <div
                     key={chapter.client_key}
-                    className="rounded-2xl border border-surface-200 dark:border-surface-700 p-4 grid gap-3 bg-surface-50/70 dark:bg-surface-800/40"
+                    className="rounded-2xl border border-line p-4 grid gap-3 bg-surface2/70 /40"
                     data-testid={`course-chapter-${i}-${ci}`}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="font-semibold text-sm">فصل {ci + 1}</div>
                       <button
                         type="button"
-                        className="btn btn-ghost text-sm text-red-600"
+                        className="btn btn-ghost text-sm text-bad"
                         disabled={(level.chapters ?? []).length <= 1}
                         onClick={() => {
                           delete chapterFilesRef.current[chapter.client_key]
@@ -419,11 +419,11 @@ export function CourseFormPage() {
                         />
                       </label>
                       {chapter.pending_file_name ? (
-                        <div className="text-sm text-emerald-700 dark:text-emerald-400">
+                        <div className="text-sm text-ok">
                           فایل انتخاب‌شده: <span className="font-semibold">{chapter.pending_file_name}</span>
                         </div>
                       ) : chapter.attachment_url ? (
-                        <a className="text-sm text-primary-600 font-semibold w-fit" href={chapter.attachment_url} target="_blank" rel="noreferrer">
+                        <a className="text-sm text-prim font-semibold w-fit" href={chapter.attachment_url} target="_blank" rel="noreferrer">
                           فایل فعلی: {chapter.attachment_name || 'دانلود / باز کردن'}
                         </a>
                       ) : null}

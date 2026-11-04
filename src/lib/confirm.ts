@@ -28,7 +28,7 @@ export async function confirmAction({
     focusCancel: true,
     confirmButtonText: confirmText,
     cancelButtonText: cancelText,
-    confirmButtonColor: danger ? '#ef4444' : '#2563eb',
+    confirmButtonColor: danger ? '#cd4a3e' : '#0e8467',
     cancelButtonColor: '#64748b',
     customClass: { popup: 'swal-finopal' },
   })
@@ -57,7 +57,7 @@ export async function promptAction({
     focusCancel: true,
     confirmButtonText: confirmText,
     cancelButtonText: cancelText,
-    confirmButtonColor: danger ? '#ef4444' : '#2563eb',
+    confirmButtonColor: danger ? '#cd4a3e' : '#0e8467',
     cancelButtonColor: '#64748b',
     customClass: { popup: 'swal-finopal' },
     inputValidator: (value) => {

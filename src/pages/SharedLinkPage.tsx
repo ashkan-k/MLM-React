@@ -70,7 +70,7 @@ export function SharedLinkPage() {
     return (
       <div className="min-h-screen flex items-center justify-center p-6">
         <div className="card p-6 max-w-md text-center space-y-3">
-          <div className="font-bold text-surface-800 dark:text-surface-100">{error}</div>
+          <div className="font-bold text-ink">{error}</div>
           <button type="button" className="btn btn-primary" onClick={() => navigate('/login', { replace: true })}>
             ورود به سامانه
           </button>
@@ -79,5 +79,5 @@ export function SharedLinkPage() {
     )
   }
 
-  return <div className="p-8 text-center text-surface-500">در حال انتقال...</div>
+  return <div className="p-8 text-center text-mute">در حال انتقال...</div>
 }

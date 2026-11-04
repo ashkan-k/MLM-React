@@ -155,9 +155,9 @@ function TeamTable({
   return (
     <div className="card overflow-auto">
       <div className="px-4 pt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div className="font-semibold text-surface-800 dark:text-surface-200">{t('teamTitle')}</div>
+        <div className="font-semibold text-ink">{t('teamTitle')}</div>
         <input
-          className="w-full sm:w-72 ps-3 pe-3 py-2 rounded-lg bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm outline-none focus:ring-2 focus:ring-primary-500/20"
+          className="w-full sm:w-72 ps-3 pe-3 py-2 rounded-lg bg-surface border border-line text-sm outline-none focus:ring-2 focus:ring-prim/20"
           placeholder={t('orgSearch')}
           value={search}
           onChange={(e) => onSearch(e.target.value)}
@@ -181,7 +181,7 @@ function TeamTable({
             <tr key={u.id}>
               <td>
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-white text-xs font-bold flex items-center justify-center">{u.name.charAt(0)}</div>
+                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-prim to-prim2 text-white text-xs font-bold flex items-center justify-center">{u.name.charAt(0)}</div>
                   <span className="font-medium">{u.name}</span>
                 </div>
               </td>
@@ -324,16 +324,16 @@ function GatewayTable({
               {productOriented && (
                 <td>
                   <ProductBadge type={row.product_type ?? 'gateway_profit'} label={row.product_label} />
-                  {row.product_code && <div className="text-[11px] text-surface-400 mt-1 font-mono dir-ltr text-left">{row.product_code}</div>}
+                  {row.product_code && <div className="text-[11px] text-faint mt-1 font-mono dir-ltr text-left">{row.product_code}</div>}
                 </td>
               )}
               <td>
                 <div className="font-semibold">{row.gateway?.name ?? row.title ?? t('gateway')}</div>
-                <div className="text-xs text-surface-400">{row.gateway?.external_id ?? (productOriented ? (row.sale_kind ?? '') : '')}</div>
+                <div className="text-xs text-faint">{row.gateway?.external_id ?? (productOriented ? (row.sale_kind ?? '') : '')}</div>
               </td>
               <td>{row.customer?.name ?? '—'}</td>
               <td>{row.representatives?.map((r) => `${r.user?.name} (${percent(r.share_percent)})`).join('، ') || '—'}</td>
-              <td className="font-semibold text-emerald-700 dark:text-emerald-400">{money(row.my_commission_total ?? 0)}</td>
+              <td className="font-semibold text-ok">{money(row.my_commission_total ?? 0)}</td>
               <td><Badge tone={gatewayTone(row.status)}>{label(row.status)}</Badge></td>
               <td><DateTimeText value={row.sold_at} /></td>
               <td>
@@ -368,9 +368,9 @@ function reviewTone(stage: string, decision: string): 'ok' | 'warn' | 'info' | '
 function KycItem({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null
   return (
-    <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40 p-3">
-      <div className="text-xs text-surface-500 mb-1">{label}</div>
-      <div className="font-medium text-surface-800 dark:text-surface-100 break-all">{value}</div>
+    <div className="rounded-xl border border-line bg-surface2/40 p-3">
+      <div className="text-xs text-mute mb-1">{label}</div>
+      <div className="font-medium text-ink break-all">{value}</div>
     </div>
   )
 }
@@ -520,9 +520,9 @@ function GatewayReviewModal({
               {docs.map(([key, url]) => {
                 const caption = docLabels[key] ?? key
                 return (
-                  <a key={key} href={url ?? '#'} target="_blank" rel="noreferrer" className="block rounded-xl overflow-hidden border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900/40">
-                    <div className="px-3 py-2 text-sm font-semibold text-surface-800 dark:text-surface-100 border-b border-surface-200 dark:border-surface-700">{caption}</div>
-                    <img src={url ?? ''} alt={caption} className="w-full h-36 object-cover bg-surface-100 dark:bg-surface-800" />
+                  <a key={key} href={url ?? '#'} target="_blank" rel="noreferrer" className="block rounded-xl overflow-hidden border border-line bg-surface2/40">
+                    <div className="px-3 py-2 text-sm font-semibold text-ink border-b border-line">{caption}</div>
+                    <img src={url ?? ''} alt={caption} className="w-full h-36 object-cover bg-surface3" />
                   </a>
                 )
               })}
@@ -530,7 +530,7 @@ function GatewayReviewModal({
           </div>
         )}
 
-        <div className="rounded-xl border border-surface-200 dark:border-surface-700 p-4 space-y-3" data-testid="gateway-parties">
+        <div className="rounded-xl border border-line p-4 space-y-3" data-testid="gateway-parties">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="font-semibold">{t('gwPartiesTitle')}</div>
             {canEditParties && !editing && (
@@ -540,11 +540,11 @@ function GatewayReviewModal({
           {!editing ? (
             <div className="grid sm:grid-cols-2 gap-3 text-sm">
               <div>
-                <div className="text-xs text-surface-500 mb-1">{t('reps')}</div>
+                <div className="text-xs text-mute mb-1">{t('reps')}</div>
                 <div>{sale.representatives?.map((r) => `${r.user?.name} (${percent(r.share_percent)})`).join('، ') || '—'}</div>
               </div>
               <div>
-                <div className="text-xs text-surface-500 mb-1">{t('gwManagers')}</div>
+                <div className="text-xs text-mute mb-1">{t('gwManagers')}</div>
                 <div>{sale.managers?.map((m) => `${m.role?.name ?? '—'}: ${m.user?.name ?? '—'}`).join('، ') || '—'}</div>
               </div>
             </div>
@@ -604,38 +604,28 @@ function GatewayReviewModal({
             {reviews.map((review, index) => (
               <li key={review.id} className="flex gap-3">
                 <div className="flex flex-col items-center">
-                  <span className={`w-8 h-8 shrink-0 rounded-full text-xs font-bold flex items-center justify-center ${
-                    review.decision === 'rejected' || review.stage === 'rejected'
-                      ? 'bg-red-500 text-white'
-                      : review.decision === 'approved' || review.stage === 'commission_posted' || review.stage === 'shaparak_confirmed'
-                        ? 'bg-emerald-500 text-white'
-                        : 'bg-sky-500 text-white'
-                  }`}>{index + 1}</span>
-                  {index < reviews.length - 1 && <span className="w-px flex-1 min-h-[1.25rem] bg-surface-200 dark:bg-surface-700 my-1" />}
+                  <span className={`w-8 h-8 shrink-0 rounded-full text-xs font-bold flex items-center justify-center ${ review.decision === 'rejected' || review.stage === 'rejected' ? 'bg-bad text-white' : review.decision === 'approved' || review.stage === 'commission_posted' || review.stage === 'shaparak_confirmed' ? 'bg-ok text-white' : 'bg-info text-white' }`}>{index + 1}</span>
+                  {index < reviews.length - 1 && <span className="w-px flex-1 min-h-[1.25rem] bg-surface3 my-1" />}
                 </div>
                 <div className="flex-1 pb-4">
-                  <div className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 space-y-2">
+                  <div className="rounded-xl border border-line p-3 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge tone={reviewTone(review.stage, review.decision)}>{label(review.stage)}</Badge>
                       <Badge tone={review.decision === 'rejected' ? 'danger' : review.decision === 'approved' ? 'ok' : 'info'}>{label(review.decision)}</Badge>
                     </div>
-                    <div className="flex flex-wrap justify-between gap-2 text-sm text-surface-500">
+                    <div className="flex flex-wrap justify-between gap-2 text-sm text-mute">
                       <span>{t('gwPostedBy')}: {review.actor?.name ?? t('gwSystemActor')}</span>
                       <DateTimeText value={review.created_at} />
                     </div>
                     {review.note && (
-                      <div className={`rounded-lg px-3 py-2 text-sm ${
-                        review.decision === 'rejected' || review.stage === 'rejected'
-                          ? 'bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200'
-                          : 'bg-surface-50 dark:bg-surface-800/60 text-surface-700 dark:text-surface-200'
-                      }`}>
+                      <div className={`rounded-lg px-3 py-2 text-sm ${ review.decision === 'rejected' || review.stage === 'rejected' ? 'bg-badsoft border border-bad/30 text-bad' : 'bg-surface2 text-ink' }`}>
                         <div className="text-xs font-semibold mb-1 opacity-80">
                           {review.decision === 'rejected' || review.stage === 'rejected' ? t('gwRejectReason') : t('gwReviewNote')}
                         </div>
                         <div className="leading-relaxed whitespace-pre-wrap">{review.note}</div>
                       </div>
                     )}
-                    {review.reference && <div className="text-xs text-surface-400">{t('gwMerchantCode')}: {review.reference}</div>}
+                    {review.reference && <div className="text-xs text-faint">{t('gwMerchantCode')}: {review.reference}</div>}
                   </div>
                 </div>
               </li>
@@ -647,43 +637,43 @@ function GatewayReviewModal({
             <div className="font-semibold mb-2">{t('gwCommissionsPosted')}</div>
             <div className="grid sm:grid-cols-2 gap-2 text-sm">
               {(sale.commissions ?? []).map((row) => (
-                <div key={row.id} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 flex justify-between gap-3">
+                <div key={row.id} className="rounded-xl border border-line p-3 flex justify-between gap-3">
                   <span className="font-medium">{row.role?.name}</span>
                   <span className="text-end">
-                    <span className="block font-semibold text-emerald-700 dark:text-emerald-400">{moneyHeader(t('gwCommissionAmount'))}: {money(row.commission_amount)}</span>
-                    <span className="block text-xs text-surface-500 mt-0.5">{t('gwCommissionRate')}: {percent(row.commission_percent)}</span>
+                    <span className="block font-semibold text-ok">{moneyHeader(t('gwCommissionAmount'))}: {money(row.commission_amount)}</span>
+                    <span className="block text-xs text-mute mt-0.5">{t('gwCommissionRate')}: {percent(row.commission_percent)}</span>
                   </span>
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          <p className="text-sm text-amber-700 dark:text-amber-400 m-0">{t('gwNoCommissionYet')}</p>
+          <p className="text-sm text-warn m-0">{t('gwNoCommissionYet')}</p>
         )}
         {(sale.gateway?.transactions?.length ?? 0) > 0 && (
           <div>
             <div className="font-semibold mb-2">{t('gwTransactions')}</div>
             <div className="grid sm:grid-cols-2 gap-2 text-sm">
               {(sale.gateway?.transactions ?? []).map((row) => (
-                <div key={row.id} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 space-y-1">
+                <div key={row.id} className="rounded-xl border border-line p-3 space-y-1">
                   <div className="flex justify-between gap-2">
                     <span>{label(row.status)}</span>
                     <span>{moneyHeader(t('txProfit'))}: {money(row.profit)}</span>
                   </div>
-                  <div className="text-xs text-surface-400">{t('gwTxAmount')}: {money(row.amount)}</div>
-                  {row.authority && <div className="text-xs text-surface-400">{row.authority}</div>}
+                  <div className="text-xs text-faint">{t('gwTxAmount')}: {money(row.amount)}</div>
+                  {row.authority && <div className="text-xs text-faint">{row.authority}</div>}
                 </div>
               ))}
             </div>
           </div>
         )}
         {sale.rejection_note && (
-          <div className="rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/40 px-4 py-3 flex items-start gap-3">
-            <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold">!</span>
+          <div className="rounded-xl border border-bad/30 bg-badsoft px-4 py-3 flex items-start gap-3">
+            <span className="mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-bad text-white text-xs font-bold">!</span>
             <div className="min-w-0">
-              <div className="text-sm font-semibold text-red-800 dark:text-red-200">{t('gwRejectedBanner')}</div>
-              <div className="text-xs font-medium text-red-700/80 dark:text-red-300/80 mt-0.5 mb-1">{t('gwRejectReason')}</div>
-              <div className="text-sm text-red-800 dark:text-red-200 leading-relaxed whitespace-pre-wrap">{sale.rejection_note}</div>
+              <div className="text-sm font-semibold text-bad">{t('gwRejectedBanner')}</div>
+              <div className="text-xs font-medium text-bad/80 mt-0.5 mb-1">{t('gwRejectReason')}</div>
+              <div className="text-sm text-bad leading-relaxed whitespace-pre-wrap">{sale.rejection_note}</div>
             </div>
           </div>
         )}
@@ -717,23 +707,23 @@ function ProductSaleReviewModal({ sale, onClose }: { sale: GatewaySaleRow; onClo
           <KycItem label={t('soldAt')} value={sale.sold_at ? undefined : '—'} />
         </div>
         {sale.sold_at && (
-          <div className="text-sm text-surface-500">
+          <div className="text-sm text-mute">
             {t('soldAt')}: <DateTimeText value={sale.sold_at} />
           </div>
         )}
-        <div className="rounded-xl border border-surface-200 dark:border-surface-700 p-4 space-y-3">
+        <div className="rounded-xl border border-line p-4 space-y-3">
           <div className="font-semibold">{t('gwPartiesTitle')}</div>
           <div className="grid sm:grid-cols-2 gap-3 text-sm">
             <div>
-              <div className="text-xs text-surface-500 mb-1">{t('productSaleOwners')}</div>
+              <div className="text-xs text-mute mb-1">{t('productSaleOwners')}</div>
               <div>{sale.representatives?.map((r) => `${r.user?.name} (${percent(r.share_percent)})`).join('، ') || '—'}</div>
             </div>
             <div>
-              <div className="text-xs text-surface-500 mb-1">{t('productSaleReferrers')}</div>
+              <div className="text-xs text-mute mb-1">{t('productSaleReferrers')}</div>
               <div>{sale.referrers?.map((r) => `${r.user?.name}${r.share_percent ? ` (${percent(r.share_percent)})` : ''}`).join('، ') || '—'}</div>
             </div>
             <div className="sm:col-span-2">
-              <div className="text-xs text-surface-500 mb-1">{t('gwManagers')}</div>
+              <div className="text-xs text-mute mb-1">{t('gwManagers')}</div>
               <div>{sale.managers?.map((m) => `${m.role?.name ?? '—'}: ${m.user?.name ?? '—'}`).join('، ') || '—'}</div>
             </div>
           </div>
@@ -743,31 +733,31 @@ function ProductSaleReviewModal({ sale, onClose }: { sale: GatewaySaleRow; onClo
             <div className="font-semibold mb-2">{t('gwCommissionsPosted')}</div>
             <div className="grid sm:grid-cols-2 gap-2 text-sm">
               {(sale.commissions ?? []).map((row) => (
-                <div key={row.id} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 flex justify-between gap-3">
+                <div key={row.id} className="rounded-xl border border-line p-3 flex justify-between gap-3">
                   <span className="font-medium">{row.role?.name}</span>
                   <span className="text-end">
-                    <span className="block font-semibold text-emerald-700 dark:text-emerald-400">{moneyHeader(t('gwCommissionAmount'))}: {money(row.commission_amount)}</span>
-                    <span className="block text-xs text-surface-500 mt-0.5">{t('gwCommissionRate')}: {percent(row.commission_percent)}</span>
+                    <span className="block font-semibold text-ok">{moneyHeader(t('gwCommissionAmount'))}: {money(row.commission_amount)}</span>
+                    <span className="block text-xs text-mute mt-0.5">{t('gwCommissionRate')}: {percent(row.commission_percent)}</span>
                   </span>
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          <p className="text-sm text-amber-700 dark:text-amber-400 m-0">{t('gwNoCommissionYet')}</p>
+          <p className="text-sm text-warn m-0">{t('gwNoCommissionYet')}</p>
         )}
         {txs.length > 0 && (
           <div>
             <div className="font-semibold mb-2">{t('gwTransactions')}</div>
             <div className="grid sm:grid-cols-2 gap-2 text-sm">
               {txs.map((row) => (
-                <div key={row.id} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 space-y-1">
+                <div key={row.id} className="rounded-xl border border-line p-3 space-y-1">
                   <div className="flex justify-between gap-2">
                     <span>{label(row.status)}</span>
                     <span>{money(row.profit)}</span>
                   </div>
-                  <div className="text-xs text-surface-400">{t('gwTxAmount')}: {money(row.amount)}</div>
-                  {row.authority && <div className="text-xs text-surface-400 dir-ltr text-left">{row.authority}</div>}
+                  <div className="text-xs text-faint">{t('gwTxAmount')}: {money(row.amount)}</div>
+                  {row.authority && <div className="text-xs text-faint dir-ltr text-left">{row.authority}</div>}
                 </div>
               ))}
             </div>
@@ -927,10 +917,10 @@ export function GatewaysPage() {
         />
       )}
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title={t('gwCount')} value={(data?.total ?? rows.length).toLocaleString(localeTag())} icon={CreditCard} color="from-blue-500 to-blue-600" />
-        <StatCard title={t('gwSuccessful')} value={successCount.toLocaleString(localeTag())} icon={TrendingUp} color="from-emerald-500 to-emerald-600" />
-        <StatCard title={moneyHeader(t('gwMyProfit'))} value={money(myProfitTotal)} icon={Wallet} color="from-teal-500 to-emerald-600" />
-        <StatCard title={t('gwQueueInspect')} value={inspectCount.toLocaleString(localeTag())} icon={CreditCard} color="from-amber-500 to-amber-600" />
+        <StatCard title={t('gwCount')} value={(data?.total ?? rows.length).toLocaleString(localeTag())} icon={CreditCard} color="from-info to-info" />
+        <StatCard title={t('gwSuccessful')} value={successCount.toLocaleString(localeTag())} icon={TrendingUp} color="from-ok to-ok" />
+        <StatCard title={moneyHeader(t('gwMyProfit'))} value={money(myProfitTotal)} icon={Wallet} color="from-prim to-ok" />
+        <StatCard title={t('gwQueueInspect')} value={inspectCount.toLocaleString(localeTag())} icon={CreditCard} color="from-warn to-acc" />
       </div>
       <form
         className="card p-4 grid md:grid-cols-5 gap-3 items-end"
@@ -1072,14 +1062,14 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
             return (
               <tr
                 key={row.id}
-                className={isBonus ? 'bg-violet-50/60 dark:bg-violet-950/25' : undefined}
+                className={isBonus ? 'bg-primsoft/60' : undefined}
                 data-commission-kind={kind}
               >
                 {productOriented && (
                   <td>
                     <ProductBadge type={pType} label={row.product_label ?? productLabel(pType)} />
                     {(row.product_code || row.product_sale?.product_code) && (
-                      <div className="text-[11px] text-surface-400 mt-1 font-mono dir-ltr text-left">
+                      <div className="text-[11px] text-faint mt-1 font-mono dir-ltr text-left">
                         {row.product_code || row.product_sale?.product_code}
                       </div>
                     )}
@@ -1088,15 +1078,15 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
                 <td>
                   {isBonus ? (
                     <div className="space-y-0.5">
-                      <div className="font-medium text-surface-800 dark:text-surface-100 leading-5">
+                      <div className="font-medium text-ink leading-5">
                         {kind === 'monthly_bonus_residual' ? t('commKindBonusResidual') : t('commKindBonus')}
                       </div>
                       {month ? (
-                        <div className="text-xs text-surface-500 leading-4">
+                        <div className="text-xs text-mute leading-4">
                           {t('bonusMonth')}: <MonthText value={month} />
                         </div>
                       ) : (
-                        <div className="text-xs text-surface-400 leading-4">{t('commNoGateway')}</div>
+                        <div className="text-xs text-faint leading-4">{t('commNoGateway')}</div>
                       )}
                     </div>
                   ) : (
@@ -1114,7 +1104,7 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
                 <td>
                   {isBonus ? (
                     <span className="inline-flex items-center gap-1.5">
-                      <Award className="w-3.5 h-3.5 text-violet-500 shrink-0" />
+                      <Award className="w-3.5 h-3.5 text-prim shrink-0" />
                       <Badge tone="warn">
                         {kind === 'monthly_bonus_residual' ? t('commKindBonusResidual') : t('commKindBonus')}
                       </Badge>
@@ -1124,7 +1114,7 @@ function CommissionTable({ rows, isLoading, footer }: { rows: Array<{
                   )}
                 </td>
                 <td data-percent={row.commission_percent}>{percent(row.commission_percent)} <span className="sr-only">{row.commission_percent}</span></td>
-                <td className={isBonus ? 'font-semibold text-violet-700 dark:text-violet-300' : undefined}>{money(row.commission_amount)}</td>
+                <td className={isBonus ? 'font-semibold text-prim' : undefined}>{money(row.commission_amount)}</td>
                 <td>{money(row.base_amount)}</td>
                 <td><Badge tone="ok">{label(row.status)}</Badge></td>
                 <td><DateTimeText value={row.created_at} /></td>
@@ -1229,9 +1219,9 @@ export function CommissionsPage() {
         <button type="submit" className="btn btn-primary" data-testid="commission-filter-apply">{t('applyFilters')}</button>
       </form>
       <div className="grid sm:grid-cols-3 gap-4">
-        <StatCard title={t('commCount')} value={(data?.total ?? rows.length).toLocaleString(localeTag())} icon={TrendingUp} color="from-blue-500 to-blue-600" />
-        <StatCard title={moneyHeader(t('sumCommission'))} value={money(total)} icon={Wallet} color="from-emerald-500 to-emerald-600" />
-        <StatCard title={moneyHeader(t('avgEach'))} value={money(rows.length ? total / rows.length : 0)} icon={Users} color="from-amber-500 to-amber-600" />
+        <StatCard title={t('commCount')} value={(data?.total ?? rows.length).toLocaleString(localeTag())} icon={TrendingUp} color="from-info to-info" />
+        <StatCard title={moneyHeader(t('sumCommission'))} value={money(total)} icon={Wallet} color="from-ok to-ok" />
+        <StatCard title={moneyHeader(t('avgEach'))} value={money(rows.length ? total / rows.length : 0)} icon={Users} color="from-warn to-acc" />
       </div>
       <CommissionTable
         rows={rows}
@@ -1275,17 +1265,17 @@ export function WalletPage() {
           const residual = w.kind === 'bonus_residual'
           return (
           <div className="card p-5 overflow-hidden" key={w.id} data-testid={residual ? 'residual-wallet' : 'role-wallet'}>
-            <div className={`h-1 rounded-full mb-4 ${residual ? 'bg-gradient-to-r from-rose-500 to-orange-400' : 'bg-gradient-to-r from-blue-500 to-emerald-500'}`} />
-            <div className="text-sm text-surface-500">{residual ? t('walletResidualTitle') : w.role?.name}</div>
-            {residual && <div className="text-xs text-surface-400 mt-1">{t('walletResidualHint')}</div>}
-            <div className="text-2xl font-extrabold my-2 text-surface-800 dark:text-surface-100">{money(w.balance)} <span className="text-sm font-medium">{t('toman')}</span></div>
-            <div className="text-sm text-surface-600 dark:text-surface-400">{t('held')}: {money(w.held_balance)} {t('toman')} · {t('withdrawable')}: {money(Number(w.balance) - Number(w.held_balance))} {t('toman')}</div>
+            <div className={`h-1 rounded-full mb-4 ${residual ? 'bg-gradient-to-r from-bad to-acc' : 'bg-gradient-to-r from-info to-ok'}`} />
+            <div className="text-sm text-mute">{residual ? t('walletResidualTitle') : w.role?.name}</div>
+            {residual && <div className="text-xs text-faint mt-1">{t('walletResidualHint')}</div>}
+            <div className="text-2xl font-extrabold my-2 text-ink">{money(w.balance)} <span className="text-sm font-medium">{t('toman')}</span></div>
+            <div className="text-sm text-mute">{t('held')}: {money(w.held_balance)} {t('toman')} · {t('withdrawable')}: {money(Number(w.balance) - Number(w.held_balance))} {t('toman')}</div>
           </div>
           )
         })}
       </div>
       <div className="card overflow-hidden">
-        <div className="px-4 pt-4 font-semibold text-surface-800 dark:text-surface-200">{t('walletLedger')}</div>
+        <div className="px-4 pt-4 font-semibold text-ink">{t('walletLedger')}</div>
         <div className="overflow-auto">
         <table className="table">
           <thead><tr>{showWalletColumn && <th>{t('walletLedgerWallet')}</th>}<th>{t('type')}</th><th>{moneyHeader()}</th><th>{moneyHeader(t('balanceAfter'))}</th><th>{t('date')}</th></tr></thead>
@@ -1294,7 +1284,7 @@ export function WalletPage() {
               <tr key={row.id}>
                 {showWalletColumn && (
                   <td>
-                    <span className={row.wallet?.kind === 'bonus_residual' ? 'text-rose-600 dark:text-rose-300' : ''}>
+                    <span className={row.wallet?.kind === 'bonus_residual' ? 'text-bad' : ''}>
                       {walletName(row)}
                     </span>
                   </td>
@@ -1330,14 +1320,14 @@ export function FinancePage() {
     <div className="space-y-4">
       <PageHeader title={t('financeTitle')} subtitle={t('financeSub')} />
       <div className="card p-5" data-testid="aggregate-finance">
-        <p className="text-sm text-surface-500 mb-4">{data?.note}</p>
+        <p className="text-sm text-mute mb-4">{data?.note}</p>
         {(data?.by_role ?? []).map((w: { id: number; kind?: string; role?: { name: string }; balance: string; held_balance: string }) => (
-          <div key={w.id} className="flex justify-between py-3 border-b border-surface-100 dark:border-surface-700">
+          <div key={w.id} className="flex justify-between py-3 border-b border-line">
             <span>{w.kind === 'bonus_residual' ? t('walletResidualTitle') : w.role?.name}</span>
-            <strong>{money(w.balance)} {t('toman')} <span className="text-xs font-normal text-surface-400">{t('held')} {money(w.held_balance)} {t('toman')}</span></strong>
+            <strong>{money(w.balance)} {t('toman')} <span className="text-xs font-normal text-faint">{t('held')} {money(w.held_balance)} {t('toman')}</span></strong>
           </div>
         ))}
-        <div className="flex justify-between pt-4 font-extrabold text-surface-800 dark:text-surface-100">
+        <div className="flex justify-between pt-4 font-extrabold text-ink">
           <span>{t('financeTotal')}</span>
           <span>{money(data?.total_balance)} {t('toman')}</span>
         </div>
@@ -1434,53 +1424,53 @@ export function WithdrawalsPage() {
     <div className="space-y-4">
       <PageHeader title={t('withdrawTitle')} subtitle={t('withdrawSub')} action={<button className="btn btn-primary" data-testid="withdraw-open" onClick={() => setOpen(true)}>{t('withdrawOpen')}</button>} />
       <div className="grid sm:grid-cols-2 gap-4">
-        <StatCard title={t('withdrawCount')} value={(data?.total ?? rows.length).toLocaleString(localeTag())} icon={Repeat} color="from-amber-500 to-amber-600" />
-        <StatCard title={moneyHeader(t('sumAmount'))} value={money(rows.reduce((sum, row) => sum + Number(row.amount ?? 0), 0))} icon={Wallet} color="from-blue-500 to-blue-600" />
+        <StatCard title={t('withdrawCount')} value={(data?.total ?? rows.length).toLocaleString(localeTag())} icon={Repeat} color="from-warn to-acc" />
+        <StatCard title={moneyHeader(t('sumAmount'))} value={money(rows.reduce((sum, row) => sum + Number(row.amount ?? 0), 0))} icon={Wallet} color="from-info to-info" />
       </div>
       <Modal open={open} title={t('withdrawModal')} subtitle={t('withdrawModalSub')} onClose={() => setOpen(false)}>
         <div className="grid gap-3">
           {multiRole && (
             <div className="grid gap-2">
-              <div className="text-sm font-medium text-surface-700 dark:text-surface-200">{t('withdrawScopeLabel')}</div>
-              <label className="flex items-start gap-2 rounded-xl border border-surface-200 dark:border-surface-700 p-3 cursor-pointer">
+              <div className="text-sm font-medium text-ink">{t('withdrawScopeLabel')}</div>
+              <label className="flex items-start gap-2 rounded-xl border border-line p-3 cursor-pointer">
                 <input type="radio" name="wd-scope" className="mt-1" checked={scope === 'active_role'} onChange={() => setScope('active_role')} />
                 <span>
                   <span className="font-medium block">{t('withdrawScopeActive')}</span>
-                  <span className="text-xs text-surface-500">{t('dashWallet')}: {money(activeAvailable)} {t('toman')}</span>
+                  <span className="text-xs text-mute">{t('dashWallet')}: {money(activeAvailable)} {t('toman')}</span>
                 </span>
               </label>
-              <label className="flex items-start gap-2 rounded-xl border border-surface-200 dark:border-surface-700 p-3 cursor-pointer">
+              <label className="flex items-start gap-2 rounded-xl border border-line p-3 cursor-pointer">
                 <input type="radio" name="wd-scope" className="mt-1" checked={scope === 'all_roles'} onChange={() => setScope('all_roles')} />
                 <span>
                   <span className="font-medium block">{t('withdrawScopeAll')}</span>
-                  <span className="text-xs text-surface-500">{t('withdrawTotalAll')}: {money(totalAvailable)} {t('toman')}</span>
+                  <span className="text-xs text-mute">{t('withdrawTotalAll')}: {money(totalAvailable)} {t('toman')}</span>
                 </span>
               </label>
             </div>
           )}
           {scope === 'active_role' && walletRows.length > 1 && (
             <div className="grid gap-2">
-              <div className="text-sm font-medium text-surface-700 dark:text-surface-200">{t('withdrawScopeLabel')}</div>
+              <div className="text-sm font-medium text-ink">{t('withdrawScopeLabel')}</div>
               {walletRows.map((w) => (
-                <label key={w.id} className="flex items-start gap-2 rounded-xl border border-surface-200 dark:border-surface-700 p-3 cursor-pointer">
+                <label key={w.id} className="flex items-start gap-2 rounded-xl border border-line p-3 cursor-pointer">
                   <input type="radio" name="wd-wallet" className="mt-1" checked={picked?.id === w.id} onChange={() => setPickedWalletId(w.id)} />
                   <span>
                     <span className="font-medium block">{w.kind === 'bonus_residual' ? t('walletResidualTitle') : (w.role?.name ?? t('withdrawScopeActive'))}</span>
-                    <span className="text-xs text-surface-500">{money(Math.max(0, availableOf(w)))} {t('toman')}</span>
+                    <span className="text-xs text-mute">{money(Math.max(0, availableOf(w)))} {t('toman')}</span>
                   </span>
                 </label>
               ))}
             </div>
           )}
-          <div className="rounded-xl border border-surface-200 dark:border-surface-700 p-3 text-sm space-y-2">
+          <div className="rounded-xl border border-line p-3 text-sm space-y-2">
             <div className="flex justify-between gap-2">
-              <span className="text-surface-500">{scope === 'all_roles' ? t('withdrawTotalAll') : t('dashWallet')}</span>
+              <span className="text-mute">{scope === 'all_roles' ? t('withdrawTotalAll') : t('dashWallet')}</span>
               <span className="font-semibold">{money(available)} {t('toman')}</span>
             </div>
             {scope === 'all_roles' && roleWallets.length > 0 && (
-              <div className="space-y-1 pt-1 border-t border-surface-100 dark:border-surface-800">
+              <div className="space-y-1 pt-1 border-t border-line">
                 {roleWallets.map((w) => (
-                  <div key={w.id} className="flex justify-between gap-2 text-xs text-surface-500">
+                  <div key={w.id} className="flex justify-between gap-2 text-xs text-mute">
                     <span>{w.role?.name ?? '—'}</span>
                     <span>{money(Math.max(0, availableOf(w)))}</span>
                   </div>
@@ -1509,7 +1499,7 @@ export function WithdrawalsPage() {
       <div className="card overflow-hidden">
         <div className="overflow-auto">
         <table className="table">
-          <thead><tr><th><CheckBox checked={sel.allSelected} onChange={sel.toggleAll} label={t('selectAll')} /></th><th>{t('withdrawRequester')}</th><th>{moneyHeader()}</th><th>{t('status')}</th><th>{t('date')}</th><th className="text-center">{t('actions')}</th></tr></thead>
+          <thead><tr><th><CheckBox checked={sel.allSelected} onChange={sel.toggleAll} label={t('selectAll')} /></th><th>{t('withdrawRequester')}</th><th>{moneyHeader()}</th><th>{t('status')}</th><th>{t('date')}</th>{canDecide && <th className="text-center">{t('actions')}</th>}</tr></thead>
           <tbody>
             {rows.map((row) => (
               <tr key={row.id}>
@@ -1517,9 +1507,9 @@ export function WithdrawalsPage() {
                 <td>
                   <div>{row.user?.name ?? t('you')}</div>
                   {row.wallet_allocations && row.wallet_allocations.length > 1 ? (
-                    <div className="text-xs text-surface-400 mt-0.5">{t('withdrawMultiWallet')}</div>
+                    <div className="text-xs text-faint mt-0.5">{t('withdrawMultiWallet')}</div>
                   ) : row.wallet?.role?.name ? (
-                    <div className="text-xs text-surface-400 mt-0.5">{row.wallet.role.name}</div>
+                    <div className="text-xs text-faint mt-0.5">{row.wallet.role.name}</div>
                   ) : null}
                 </td>
                 <td>{money(row.amount)}</td>
@@ -1528,18 +1518,20 @@ export function WithdrawalsPage() {
                   <span data-testid="withdraw-status" className="sr-only">{row.status}</span>
                 </td>
                 <td><DateTimeText value={row.requested_at} /></td>
-                <td>
-                  {canDecide && (canApprove(row.status) || canReject(row.status)) && (
-                    <RowActions>
-                      {canApprove(row.status) && (
-                        <ApproveAction onClick={async () => { if (await confirmAction({ title: t('withdrawConfirm'), text: t('withdrawConfirmText'), danger: false, confirmText: t('confirmYes') })) decide.mutate({ id: row.id, decision: 'approved' }) }} />
-                      )}
-                      {canReject(row.status) && (
-                        <IconAction label={t('reject')} tone="delete" icon={X} onClick={async () => { if (await confirmAction({ title: t('withdrawRejectTitle'), text: t('withdrawRejectText'), confirmText: t('rejectYes') })) decide.mutate({ id: row.id, decision: 'rejected' }) }} />
-                      )}
-                    </RowActions>
-                  )}
-                </td>
+                {canDecide && (
+                  <td>
+                    {(canApprove(row.status) || canReject(row.status)) && (
+                      <RowActions>
+                        {canApprove(row.status) && (
+                          <ApproveAction onClick={async () => { if (await confirmAction({ title: t('withdrawConfirm'), text: t('withdrawConfirmText'), danger: false, confirmText: t('confirmYes') })) decide.mutate({ id: row.id, decision: 'approved' }) }} />
+                        )}
+                        {canReject(row.status) && (
+                          <IconAction label={t('reject')} tone="delete" icon={X} onClick={async () => { if (await confirmAction({ title: t('withdrawRejectTitle'), text: t('withdrawRejectText'), confirmText: t('rejectYes') })) decide.mutate({ id: row.id, decision: 'rejected' }) }} />
+                        )}
+                      </RowActions>
+                    )}
+                  </td>
+                )}
               </tr>
             ))}
           </tbody>
@@ -1567,8 +1559,8 @@ function SignupLinks({ codes }: { codes: Array<{ id: number; code: string; finop
 
   return (
     <div className="card p-5" data-testid="finopal-signup-links">
-      <div className="font-semibold mb-1 text-surface-800 dark:text-surface-200">{t('refFinopalTitle')}</div>
-      <p className="text-xs text-surface-500 m-0 mb-3 leading-6">{t('refFinopalHint')}</p>
+      <div className="font-semibold mb-1 text-ink">{t('refFinopalTitle')}</div>
+      <p className="text-xs text-mute m-0 mb-3 leading-6">{t('refFinopalHint')}</p>
       {choices.length > 0 && (
         <label className="field max-w-xs mb-2">محصول
           <select className="input" data-testid="signup-product" value={selected} onChange={(e) => setProduct(e.target.value)}>
@@ -1579,8 +1571,8 @@ function SignupLinks({ codes }: { codes: Array<{ id: number; code: string; finop
       {codes.map((c) => {
         const link = c.signup_links?.find((item) => item.product_type === selected)?.url || c.finopal_signup_url
         return (
-          <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 border-b border-surface-100 dark:border-surface-700 last:border-0">
-            <code className="font-bold text-primary-700 dark:text-primary-400 shrink-0">{c.code}</code>
+          <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 border-b border-line last:border-0">
+            <code className="font-bold text-prim shrink-0">{c.code}</code>
             {link && <CopyLink value={link} href={link} />}
           </div>
         )
@@ -1594,7 +1586,7 @@ function CopyLink({ value, href }: { value: string; href?: string }) {
   const { t } = useApp()
   return (
     <div className="flex flex-wrap items-center gap-2">
-      {href ? <a className="text-sm text-primary-600 break-all" href={href} target="_blank" rel="noreferrer">{href}</a> : <code className="text-sm">{value}</code>}
+      {href ? <a className="text-sm text-prim break-all" href={href} target="_blank" rel="noreferrer">{href}</a> : <code className="text-sm">{value}</code>}
       <button type="button" className="btn btn-ghost text-xs px-2 py-1" onClick={async () => { await navigator.clipboard.writeText(href || value); toast.success(t('copied')) }}>
         <Copy className="w-3.5 h-3.5" /> {t('copy')}
       </button>
@@ -1683,23 +1675,23 @@ export function ReferralsPage() {
         action={anyShareOn ? <button className="btn btn-primary" onClick={openCreateModal}>{t('refNew')}</button> : undefined}
       />
       {!anyShareOn && (
-        <div className="card p-4 text-sm text-amber-800 dark:text-amber-100 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+        <div className="card p-4 text-sm text-warn bg-warnsoft border border-warn/30">
           {t('shareFeaturesOff')}
         </div>
       )}
       {showReferralCode && (
         <>
           <div className="grid sm:grid-cols-2 gap-4">
-            <StatCard title={t('refCodes')} value={(codes ?? []).length.toLocaleString(localeTag())} icon={Users} color="from-blue-500 to-blue-600" />
-            <StatCard title={t('refReferred')} value={(referrals ?? []).length.toLocaleString(localeTag())} icon={Network} color="from-emerald-500 to-emerald-600" />
+            <StatCard title={t('refCodes')} value={(codes ?? []).length.toLocaleString(localeTag())} icon={Users} color="from-info to-info" />
+            <StatCard title={t('refReferred')} value={(referrals ?? []).length.toLocaleString(localeTag())} icon={Network} color="from-ok to-ok" />
           </div>
           <div className="card p-5" data-testid="referral-codes">
-            <div className="font-semibold mb-2 text-surface-800 dark:text-surface-200">{t('refCodeTitle')}</div>
+            <div className="font-semibold mb-2 text-ink">{t('refCodeTitle')}</div>
             {(codes ?? []).map((c: { id: number; code: string }) => {
               const href = `${window.location.origin}/register?ref=${c.code}`
               return (
-                <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 border-b border-surface-100 dark:border-surface-700 last:border-0">
-                  <code data-testid="referral-code" className="font-bold text-primary-700 dark:text-primary-400">{c.code}</code>
+                <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 border-b border-line last:border-0">
+                  <code data-testid="referral-code" className="font-bold text-prim">{c.code}</code>
                   <CopyLink value={href} href={href} />
                 </div>
               )
@@ -1708,11 +1700,11 @@ export function ReferralsPage() {
           </div>
           <SignupLinks codes={codes ?? []} />
           <div className="card p-5">
-            <div className="font-semibold mb-3 text-surface-800 dark:text-surface-200">{t('refReferred')}</div>
+            <div className="font-semibold mb-3 text-ink">{t('refReferred')}</div>
             {(referrals ?? []).length === 0 && <Empty text={t('refEmpty')} />}
             {(referrals ?? []).map((r: { id: number; referred?: { name: string; mobile: string } }) => (
-              <div key={r.id} className="flex items-center gap-3 py-2 border-b border-surface-100 dark:border-surface-700 last:border-0">
-                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-white text-xs font-bold flex items-center justify-center">{(r.referred?.name ?? '?').charAt(0)}</div>
+              <div key={r.id} className="flex items-center gap-3 py-2 border-b border-line last:border-0">
+                <div className="w-9 h-9 rounded-full bg-gradient-to-br from-prim to-prim2 text-white text-xs font-bold flex items-center justify-center">{(r.referred?.name ?? '?').charAt(0)}</div>
                 <div>{r.referred?.name} · {r.referred?.mobile}</div>
               </div>
             ))}
@@ -1729,11 +1721,11 @@ export function ReferralsPage() {
               </select>
             </label>
           ) : (
-            <div className="text-sm font-semibold text-surface-700 dark:text-surface-200">
+            <div className="text-sm font-semibold text-ink">
               {shareType === 'referral' ? t('shareTypeReferral') : t('shareTypeGateway')}
             </div>
           )}
-          <p className="text-xs text-surface-500 m-0">{shareType === 'referral' ? t('shareTypeReferralHint') : t('shareTypeGatewayHint')}</p>
+          <p className="text-xs text-mute m-0">{shareType === 'referral' ? t('shareTypeReferralHint') : t('shareTypeGatewayHint')}</p>
           <div className="font-semibold text-sm">{t('shareMembers')}</div>
           {members.map((member, index) => (
             <div key={index} className="grid sm:grid-cols-[1fr_120px_auto] gap-2 items-end">
@@ -1761,22 +1753,22 @@ export function ReferralsPage() {
             </div>
           ))}
           <button type="button" className="btn btn-ghost" onClick={() => setMembers((prev) => [...prev, { user_id: '', share_percent: '0' }])}>{t('addMember')}</button>
-          <div className="text-xs text-surface-500">{t('shareSum')} · {members.reduce((sum, m) => sum + Number(m.share_percent || 0), 0)}</div>
+          <div className="text-xs text-mute">{t('shareSum')} · {members.reduce((sum, m) => sum + Number(m.share_percent || 0), 0)}</div>
           <button className="btn btn-primary" disabled={members.filter((m) => m.user_id).length < 2} onClick={() => create.mutate()}>{t('shareSubmit')}</button>
         </div>
       </Modal>
       <div className="card p-5" data-testid="shared-links">
-        <div className="font-semibold mb-3 text-surface-800 dark:text-surface-200">{t('shareLinks')}</div>
+        <div className="font-semibold mb-3 text-ink">{t('shareLinks')}</div>
         {(links ?? []).map((l: { id: number; token: string; type?: string; status: string; members?: Array<{ user_id?: number; user?: { id?: number; name: string }; share_percent: string; approved: boolean | number }> }) => {
           const mine = l.members?.find((m) => Number(m.user_id ?? m.user?.id) === Number(user?.id))
           const myPending = Boolean(mine) && !mine?.approved
           const href = linkHref(l)
           return (
-          <div key={l.id} className="py-3 border-b border-surface-100 dark:border-surface-700 last:border-0 flex justify-between gap-3">
+          <div key={l.id} className="py-3 border-b border-line last:border-0 flex justify-between gap-3">
             <div className="min-w-0 flex-1">
               <CopyLink value={href} href={href} />
-              <div className="text-xs text-surface-500 mt-1">{l.type === 'gateway_sale' ? t('shareTypeGateway') : t('shareTypeReferral')} · {label(l.status)}</div>
-              <div className="text-sm text-surface-400">
+              <div className="text-xs text-mute mt-1">{l.type === 'gateway_sale' ? t('shareTypeGateway') : t('shareTypeReferral')} · {label(l.status)}</div>
+              <div className="text-sm text-faint">
                 {l.members?.map((m) => `${m.user?.name} ${percent(m.share_percent)} ${m.approved ? t('approved') : t('awaiting')}`).join(' · ')}
               </div>
             </div>
@@ -1821,13 +1813,13 @@ function TenureRow({ actual, required, passed, boxed }: { actual: number; requir
   const { t } = useApp()
   return (
     <div dir="rtl" className={boxed
-      ? 'rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/70 dark:bg-surface-900/40 p-3 text-right'
-      : 'py-3 border-b border-surface-100 dark:border-surface-700 last:border-0 text-right'}>
+      ? 'rounded-xl border border-line bg-surface2/70 /40 p-3 text-right'
+      : 'py-3 border-b border-line last:border-0 text-right'}>
       <div className="flex items-center justify-between gap-3">
-        <span className="font-medium text-surface-800 dark:text-surface-100">{criterionLabel.tenure_years}</span>
+        <span className="font-medium text-ink">{criterionLabel.tenure_years}</span>
         {passed ? <Badge tone="ok">{t('promoPass')}</Badge> : <Badge tone="warn">{t('promoFail')}</Badge>}
       </div>
-      <p className="m-0 mt-1.5 text-sm leading-7 text-surface-700 dark:text-surface-200">{tenureSentence(actual, required)}</p>
+      <p className="m-0 mt-1.5 text-sm leading-7 text-ink">{tenureSentence(actual, required)}</p>
     </div>
   )
 }
@@ -1866,15 +1858,15 @@ function PromotionList({
         <div key={p.id} className="card p-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
             {canDecide && <CheckBox checked={sel.selected.includes(p.id)} onChange={() => sel.toggle(p.id)} label={`${t('navPromotions')} ${p.id}`} />}
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 text-white text-sm font-bold flex items-center justify-center">{(p.user?.name ?? '?').charAt(0)}</div>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-prim to-prim2 text-white text-sm font-bold flex items-center justify-center">{(p.user?.name ?? '?').charAt(0)}</div>
             <div>
-              <div className="font-semibold text-surface-800 dark:text-surface-100">{p.user?.name}</div>
-              <div className="text-sm text-surface-500 mt-0.5">
+              <div className="font-semibold text-ink">{p.user?.name}</div>
+              <div className="text-sm text-mute mt-0.5">
                 {t('promoFromTo', { from: p.from_role?.name ?? t('role'), to: p.target_role?.name ?? t('role') })}
                 <span> · {label(p.status)}</span>
               </div>
               {p.status === 'rejected' && p.feedback?.find((f) => f.decision === 'rejected')?.note && (
-                <div className="text-xs text-red-600 mt-1" data-testid="promo-reject-reason">{t('dashPromoRejected')}: {p.feedback.find((f) => f.decision === 'rejected')?.note}</div>
+                <div className="text-xs text-bad mt-1" data-testid="promo-reject-reason">{t('dashPromoRejected')}: {p.feedback.find((f) => f.decision === 'rejected')?.note}</div>
               )}
             </div>
           </div>
@@ -1910,10 +1902,10 @@ function PromotionList({
                   c.criterion_code === 'tenure_years'
                     ? <TenureRow key={c.id} actual={Number(c.actual_value)} required={Number(c.required_value)} passed={c.passed} boxed />
                     : (
-                      <div key={c.id} className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/70 dark:bg-surface-900/40 p-3 flex items-start justify-between gap-3">
+                      <div key={c.id} className="rounded-xl border border-line bg-surface2/70 /40 p-3 flex items-start justify-between gap-3">
                         <span className="min-w-0 break-words leading-6">
                           {criterionLabel[c.criterion_code] ?? c.criterion_code}
-                          {criterionHint[c.criterion_code] && <span className="block text-xs font-normal text-surface-500 mt-1 leading-5">{criterionHint[c.criterion_code]}</span>}
+                          {criterionHint[c.criterion_code] && <span className="block text-xs font-normal text-mute mt-1 leading-5">{criterionHint[c.criterion_code]}</span>}
                         </span>
                         <span className="shrink-0 flex items-center gap-2">
                           {c.kind === 'boolean' || isBooleanCriterion(c.criterion_code)
@@ -1934,10 +1926,10 @@ function PromotionList({
               <div className="font-semibold">{t('navTraining')}</div>
               {(file.training ?? []).length === 0 && <Empty text={t('noItems')} />}
               {(file.training ?? []).map((c: { id: number; title: string; done: number; total: number; levels: Array<{ id: number; title: string; status?: string }> }) => (
-                <div key={c.id} className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/70 dark:bg-surface-900/40 p-3 space-y-2">
+                <div key={c.id} className="rounded-xl border border-line bg-surface2/70 /40 p-3 space-y-2">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="font-medium text-surface-800 dark:text-surface-100 min-w-0 break-words leading-6">{c.title}</div>
-                    <span className="shrink-0 text-xs font-semibold px-2 py-1 rounded-lg bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700">{c.done}/{c.total}</span>
+                    <div className="font-medium text-ink min-w-0 break-words leading-6">{c.title}</div>
+                    <span className="shrink-0 text-xs font-semibold px-2 py-1 rounded-lg bg-surface border border-line">{c.done}/{c.total}</span>
                   </div>
                   <ProgressBar value={Number(c.done)} max={Number(c.total) || 1} />
                   <div className="flex flex-wrap gap-1.5">
@@ -1952,10 +1944,10 @@ function PromotionList({
               <div className="font-semibold">{t('refReferred')}</div>
               {(file.referrals ?? []).length === 0 && <Empty text={t('refEmpty')} />}
               {(file.referrals ?? []).map((r: { id: number; referred?: { name: string; mobile: string } }) => (
-                <div key={r.id} className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/70 dark:bg-surface-900/40 p-3 flex items-center justify-between gap-3">
+                <div key={r.id} className="rounded-xl border border-line bg-surface2/70 /40 p-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-medium text-surface-800 dark:text-surface-100 break-words">{r.referred?.name ?? '—'}</div>
-                    <div className="text-xs text-surface-500 mt-0.5" dir="ltr">{r.referred?.mobile}</div>
+                    <div className="font-medium text-ink break-words">{r.referred?.name ?? '—'}</div>
+                    <div className="text-xs text-mute mt-0.5" dir="ltr">{r.referred?.mobile}</div>
                   </div>
                 </div>
               ))}
@@ -1964,10 +1956,10 @@ function PromotionList({
               <div className="font-semibold">{t('navCommissions')}</div>
               {(file.commissions ?? []).length === 0 && <Empty text={t('commEmpty')} />}
               {(file.commissions ?? []).map((c: { id: number; commission_amount: string; status: string; role?: { name: string } }) => (
-                <div key={c.id} className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/70 dark:bg-surface-900/40 p-3 flex items-start justify-between gap-3">
+                <div key={c.id} className="rounded-xl border border-line bg-surface2/70 /40 p-3 flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-medium text-surface-800 dark:text-surface-100">{c.role?.name ?? '—'}</div>
-                    <div className="text-xs text-surface-500 mt-0.5">{label(c.status)}</div>
+                    <div className="font-medium text-ink">{c.role?.name ?? '—'}</div>
+                    <div className="text-xs text-mute mt-0.5">{label(c.status)}</div>
                   </div>
                   <span className="shrink-0 text-sm font-semibold">{money(c.commission_amount)}</span>
                 </div>
@@ -1977,12 +1969,12 @@ function PromotionList({
               <div className="font-semibold">{t('promoActivities')}</div>
               {(file.activities ?? []).length === 0 && <Empty text={t('noItems')} />}
               {(file.activities ?? []).map((a: { id: number; action: string; created_at: string; actor?: { name: string } }) => (
-                <div key={a.id} className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/70 dark:bg-surface-900/40 p-3 flex items-start justify-between gap-3">
+                <div key={a.id} className="rounded-xl border border-line bg-surface2/70 /40 p-3 flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="font-medium text-surface-800 dark:text-surface-100 break-words leading-6">{label(a.action)}</div>
-                    <div className="text-xs text-surface-500 mt-0.5">{a.actor?.name}</div>
+                    <div className="font-medium text-ink break-words leading-6">{label(a.action)}</div>
+                    <div className="text-xs text-mute mt-0.5">{a.actor?.name}</div>
                   </div>
-                  <span className="shrink-0 text-xs text-surface-400"><DateTimeText value={a.created_at} /></span>
+                  <span className="shrink-0 text-xs text-faint"><DateTimeText value={a.created_at} /></span>
                 </div>
               ))}
             </div>
@@ -2029,19 +2021,19 @@ export function PromotionsPage() {
     <div className="space-y-4">
       <PageHeader title={t('promoTitle')} subtitle={t('promoSub')} />
       <div className="card p-5" data-testid="promotion-criteria">
-        <p className="text-sm text-surface-600 dark:text-surface-400 mb-4">{t('promoAutoNote')}</p>
+        <p className="text-sm text-mute mb-4">{t('promoAutoNote')}</p>
         {!topRole && (
           <>
-            <div className="font-semibold mb-3 text-surface-800 dark:text-surface-200">{t('promoCriteria', { role: targetName })}</div>
+            <div className="font-semibold mb-3 text-ink">{t('promoCriteria', { role: targetName })}</div>
             {(eligibility ?? []).filter((c: { code: string }) => !HIDDEN_CRITERIA.has(c.code)).map((c: { code: string; actual: number; required: number; passed: boolean }) => (
               c.code === 'tenure_years'
                 ? <TenureRow key={c.code} actual={Number(c.actual)} required={Number(c.required)} passed={c.passed} />
                 : (
-                  <div key={c.code} className="py-3 border-b border-surface-100 dark:border-surface-700 last:border-0">
+                  <div key={c.code} className="py-3 border-b border-line last:border-0">
                     <div className="flex justify-between mb-2 gap-3">
                       <span className="min-w-0">
                         {criterionLabel[c.code] ?? c.code}
-                        {criterionHint[c.code] && <span className="block text-xs font-normal text-surface-500 mt-1 leading-5">{criterionHint[c.code]}</span>}
+                        {criterionHint[c.code] && <span className="block text-xs font-normal text-mute mt-1 leading-5">{criterionHint[c.code]}</span>}
                       </span>
                       {isBooleanCriterion(c.code)
                         ? <CriterionFlag code={c.code} passed={c.passed} />
@@ -2059,7 +2051,7 @@ export function PromotionsPage() {
             <button className="btn btn-primary mt-4" onClick={() => request.mutate()}>{t('promoManual')}</button>
           </>
         )}
-        {topRole && <div className="text-sm text-surface-500">{t('promoQueue')}</div>}
+        {topRole && <div className="text-sm text-mute">{t('promoQueue')}</div>}
       </div>
       <PromotionList items={data ?? []} canDecide={Boolean(canDecide)} onDecide={(id, decision, note) => decide.mutate({ id, decision, note })} />
     </div>
@@ -2125,7 +2117,7 @@ function TrainingMedia({ item }: { item: Pick<TrainingChapter, 'title' | 'conten
         <video className="w-full rounded-xl bg-black" src={item.content_url} controls playsInline preload="metadata" />
       ) : item.content_url && linkKind === 'image' ? (
         <button type="button" className="relative group block w-full text-start" onClick={() => setPreview(item.content_url!)} title={t('trainZoomHint')}>
-          <img className="w-full max-h-[28rem] object-contain rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900" src={item.content_url} alt={item.title} />
+          <img className="w-full max-h-[28rem] object-contain rounded-xl border border-line bg-surface2" src={item.content_url} alt={item.title} />
           <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-lg bg-black/60 text-white text-xs px-2 py-1 opacity-90 group-hover:opacity-100">
             <ZoomIn className="w-3.5 h-3.5" /> {t('trainZoomHint')}
           </span>
@@ -2142,7 +2134,7 @@ function TrainingMedia({ item }: { item: Pick<TrainingChapter, 'title' | 'conten
       {item.attachment_url && fileKind === 'image' && (
         <button type="button" className="relative group block w-full text-start" onClick={() => setPreview(item.attachment_url!)} title={t('trainZoomHint')}>
           <img
-            className="w-full max-h-[28rem] object-contain rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50 dark:bg-surface-900 cursor-zoom-in"
+            className="w-full max-h-[28rem] object-contain rounded-xl border border-line bg-surface2 cursor-zoom-in"
             src={item.attachment_url}
             alt={item.attachment_name || item.title}
           />
@@ -2174,7 +2166,7 @@ function TrainingMedia({ item }: { item: Pick<TrainingChapter, 'title' | 'conten
         >
           <button
             type="button"
-            className="absolute top-4 left-4 p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white"
+            className="absolute top-4 left-4 p-2 rounded-lg bg-surface/10 hover:bg-surface/20 text-white"
             onClick={() => setPreview(null)}
             aria-label={t('trainClosePreview')}
           >
@@ -2225,7 +2217,7 @@ export function TrainingPage() {
       <PageHeader title={t('trainTitle')} subtitle={t('trainSub')} />
       <div className="card p-5">
         <div className="font-semibold mb-2">{t('trainHowTitle')}</div>
-        <p className="text-sm text-surface-600 dark:text-surface-400 m-0 leading-7">{t('trainHowBody')}</p>
+        <p className="text-sm text-mute m-0 leading-7">{t('trainHowBody')}</p>
       </div>
       {(data as TrainingCourse[] | undefined ?? []).map((c) => {
         const done = c.levels.filter((l) => l.progress?.status === 'completed').length
@@ -2233,11 +2225,11 @@ export function TrainingPage() {
           <div key={c.id} className={`card p-5 ${c.locked ? 'opacity-80' : ''}`} data-testid={`training-course-${c.id}`}>
             <div className="flex justify-between gap-3">
               <div>
-                <div className="font-extrabold text-lg text-surface-800 dark:text-surface-100 flex items-center gap-2">
-                  {c.locked && <Lock className="w-4 h-4 text-surface-400" />}
+                <div className="font-extrabold text-lg text-ink flex items-center gap-2">
+                  {c.locked && <Lock className="w-4 h-4 text-faint" />}
                   {c.title}
                 </div>
-                <div className="text-sm text-surface-500 mt-1">
+                <div className="text-sm text-mute mt-1">
                   {c.description ? <RichHtml html={c.description} /> : t('noDesc')}
                 </div>
                 <div className="mt-2 flex gap-2 flex-wrap">
@@ -2247,7 +2239,7 @@ export function TrainingPage() {
                 </div>
               </div>
               <div className="text-end">
-                <div className="text-sm text-surface-500 whitespace-nowrap">{done.toLocaleString(localeTag())} / {c.levels.length.toLocaleString(localeTag())} {t('trainLevel')}</div>
+                <div className="text-sm text-mute whitespace-nowrap">{done.toLocaleString(localeTag())} / {c.levels.length.toLocaleString(localeTag())} {t('trainLevel')}</div>
               </div>
             </div>
             <div className="mt-3"><ProgressBar value={done} max={c.levels.length || 1} /></div>
@@ -2256,11 +2248,11 @@ export function TrainingPage() {
                 const chapters = l.chapters ?? []
                 const chaptersDone = chapters.filter((ch) => ch.progress?.status === 'completed').length
                 return (
-                  <div key={l.id} className={`border border-surface-200 dark:border-surface-700 rounded-xl p-3 grid gap-3 ${l.locked ? 'bg-surface-50/60 dark:bg-surface-800/30' : ''}`}>
+                  <div key={l.id} className={`border border-line rounded-xl p-3 grid gap-3 ${l.locked ? 'bg-surface2/60 /30' : ''}`}>
                     <div className="flex flex-wrap justify-between gap-3 items-center">
                       <div>
                         <div className="font-bold flex items-center gap-2">
-                          {l.locked && <Lock className="w-3.5 h-3.5 text-surface-400" />}
+                          {l.locked && <Lock className="w-3.5 h-3.5 text-faint" />}
                           {t('trainLevel')} {index + 1}: {l.title}
                         </div>
                         <div className="text-sm mt-1 flex flex-wrap gap-2">
@@ -2270,7 +2262,7 @@ export function TrainingPage() {
                               ? <Badge tone="muted">{t('trainLocked')}</Badge>
                               : <Badge tone="muted">{t('trainNotStarted')}</Badge>}
                           {chapters.length > 0 && (
-                            <span className="text-xs text-surface-500">
+                            <span className="text-xs text-mute">
                               {chaptersDone.toLocaleString(localeTag())}/{chapters.length.toLocaleString(localeTag())} {t('trainChapter')}
                             </span>
                           )}
@@ -2284,13 +2276,13 @@ export function TrainingPage() {
                           return (
                             <div
                               key={ch.id ?? `legacy-${ci}`}
-                              className={`rounded-xl border border-surface-200 dark:border-surface-700 p-3 grid gap-3 ${ch.locked ? 'opacity-70' : 'bg-white/60 dark:bg-surface-900/30'}`}
+                              className={`rounded-xl border border-line p-3 grid gap-3 ${ch.locked ? 'opacity-70' : 'bg-surface/60 /30'}`}
                               data-testid={`training-chapter-${l.id}-${ci}`}
                             >
                               <div className="flex flex-wrap justify-between gap-3 items-center">
                                 <div>
                                   <div className="font-semibold text-sm flex items-center gap-2">
-                                    {ch.locked && <Lock className="w-3.5 h-3.5 text-surface-400" />}
+                                    {ch.locked && <Lock className="w-3.5 h-3.5 text-faint" />}
                                     {t('trainChapter')} {ci + 1}: {ch.title}
                                   </div>
                                   <div className="mt-1">
@@ -2313,14 +2305,14 @@ export function TrainingPage() {
                               </div>
                               {!ch.locked && <TrainingMedia item={ch} />}
                               {ch.locked && (
-                                <p className="text-xs text-surface-500 m-0">{t('trainLockedHint')}</p>
+                                <p className="text-xs text-mute m-0">{t('trainLockedHint')}</p>
                               )}
                             </div>
                           )
                         })}
                       </div>
                     )}
-                    {l.locked && <p className="text-xs text-surface-500 m-0">{t('trainLockedHint')}</p>}
+                    {l.locked && <p className="text-xs text-mute m-0">{t('trainLockedHint')}</p>}
                   </div>
                 )
               })}
@@ -2330,7 +2322,7 @@ export function TrainingPage() {
       })}
       {canMonitor && (
         <div className="space-y-3" data-testid="training-monitor">
-          <div className="px-1 font-semibold text-surface-800 dark:text-surface-100">{t('trainMonitor')}</div>
+          <div className="px-1 font-semibold text-ink">{t('trainMonitor')}</div>
           <div className="grid gap-3">
             {(teamProgress ?? []).map((u: { id: number; name: string; mobile: string; courses: Array<{ id?: number; title: string; done: number; total: number; levels: Array<{ id?: number; title: string; status?: string; chapters_done?: number; chapters_total?: number }> }> }) => {
               const done = u.courses.reduce((sum, c) => sum + c.done, 0)
@@ -2339,18 +2331,18 @@ export function TrainingPage() {
                 <div key={u.id} className="card p-4">
                   <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                     <div>
-                      <div className="font-bold text-surface-800 dark:text-surface-100">{u.name}</div>
-                      <div className="text-sm text-surface-500" dir="ltr">{u.mobile}</div>
+                      <div className="font-bold text-ink">{u.name}</div>
+                      <div className="text-sm text-mute" dir="ltr">{u.mobile}</div>
                     </div>
                     <Badge tone={done === total && total > 0 ? 'ok' : done ? 'warn' : 'muted'}>{done}/{total} {t('trainLevel')}</Badge>
                   </div>
                   <ProgressBar value={done} max={total || 1} />
                   <div className="mt-3 grid md:grid-cols-2 gap-3">
                     {u.courses.map((c) => (
-                      <div key={c.id ?? c.title} className="rounded-xl border border-surface-200 dark:border-surface-700 p-3">
+                      <div key={c.id ?? c.title} className="rounded-xl border border-line p-3">
                         <div className="flex justify-between gap-2 mb-2">
                           <div className="font-medium text-sm">{c.title}</div>
-                          <span className="text-xs text-surface-500">{c.done}/{c.total}</span>
+                          <span className="text-xs text-mute">{c.done}/{c.total}</span>
                         </div>
                         <div className="flex flex-wrap gap-1.5">
                           {c.levels.map((l) => (
@@ -2407,7 +2399,7 @@ export function NotificationsPage() {
   return (
     <div className="space-y-4" data-testid="notifications">
       <PageHeader title={t('notifications')} action={<button className="btn btn-ghost" onClick={() => readAll.mutate()}>{t('notifReadAll')}</button>} />
-      <StatCard title={t('notifUnread')} value={unread.toLocaleString(localeTag())} icon={Users} color="from-amber-500 to-amber-600" />
+      <StatCard title={t('notifUnread')} value={unread.toLocaleString(localeTag())} icon={Users} color="from-warn to-acc" />
       <div className="flex flex-wrap gap-2" data-testid="notif-filter">
         {([
           ['all', t('notifFilterAll')],
@@ -2429,21 +2421,21 @@ export function NotificationsPage() {
         <BulkButton tone="ok" onClick={async () => { for (const id of nSel.selected) await read.mutateAsync(id); nSel.clear() }}>{t('notifReadSelected')}</BulkButton>
       </BulkBar>
       <div className="card overflow-hidden">
-        <div className="divide-y divide-surface-100 dark:divide-surface-700">
+        <div className="divide-y divide-line">
           {visible.map((n) => {
             const href = notificationHref(n, user?.active_role?.slug, user?.is_superuser)
             const unreadItem = !n.read_at
             return (
-            <div key={n.id} className={`p-4 flex justify-between gap-3 ${unreadItem ? 'bg-primary-50/80 dark:bg-primary-900/25' : 'hover:bg-surface-50 dark:hover:bg-surface-700/30 opacity-80'}`}>
+            <div key={n.id} className={`p-4 flex justify-between gap-3 ${unreadItem ? 'bg-primsoft/80' : 'hover:bg-surface2/30 opacity-80'}`}>
               <div className="flex items-start gap-3">
                 <CheckBox checked={nSel.selected.includes(n.id)} onChange={() => nSel.toggle(n.id)} label={notificationTitle(n)} />
-                <div className={`w-2.5 h-2.5 rounded-full mt-2 flex-shrink-0 ${unreadItem ? 'bg-primary-500' : 'bg-surface-300'}`} />
+                <div className={`w-2.5 h-2.5 rounded-full mt-2 flex-shrink-0 ${unreadItem ? 'bg-prim' : 'bg-surface3'}`} />
                 <div>
-                  <div className={`${unreadItem ? 'font-bold text-surface-900 dark:text-white' : 'font-medium text-surface-600 dark:text-surface-400'}`}>{notificationTitle(n)}</div>
-                  <div className={`text-sm mt-0.5 ${unreadItem ? 'text-surface-700 dark:text-surface-200' : 'text-surface-500'}`}>{notificationBody(n)}</div>
-                  <div className="text-xs text-surface-400 mt-1"><DateTimeText value={n.created_at} /></div>
+                  <div className={`${unreadItem ? 'font-bold text-ink' : 'font-medium text-mute'}`}>{notificationTitle(n)}</div>
+                  <div className={`text-sm mt-0.5 ${unreadItem ? 'text-ink' : 'text-mute'}`}>{notificationBody(n)}</div>
+                  <div className="text-xs text-faint mt-1"><DateTimeText value={n.created_at} /></div>
                   {href && (
-                    <Link data-testid="notif-link" to={href} className="inline-flex items-center gap-1 text-sm text-primary-600 mt-2 font-semibold" onClick={() => { if (unreadItem) read.mutate(n.id) }}>
+                    <Link data-testid="notif-link" to={href} className="inline-flex items-center gap-1 text-sm text-prim mt-2 font-semibold" onClick={() => { if (unreadItem) read.mutate(n.id) }}>
                       {t('notifOpen')}
                     </Link>
                   )}

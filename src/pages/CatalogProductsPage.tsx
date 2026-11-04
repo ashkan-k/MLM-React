@@ -123,24 +123,24 @@ export function CatalogProductsPage() {
         subtitle="هر محصولی که اینجا فعال باشد در وب‌هوک، فیلتر تراکنش‌ها و لینک ثبت فروش استفاده می‌شود."
         action={<button type="button" className="btn btn-primary" data-testid="catalog-product-open" onClick={() => openForm()}><Plus className="w-4 h-4" /> محصول جدید</button>}
       />
-      {isLoading && <div className="text-sm text-surface-500">در حال بارگذاری...</div>}
+      {isLoading && <div className="text-sm text-mute">در حال بارگذاری...</div>}
       <div className="grid gap-3">
         {rows.map((product) => (
           <article key={product.id} data-testid="catalog-product-row" className="card p-4 flex items-start justify-between gap-3 min-w-0">
             <div className="min-w-0">
-              <div className="font-semibold text-surface-800 dark:text-surface-100 wrap-anywhere">{product.label}</div>
-              <div className="text-xs text-surface-500 mt-1 wrap-anywhere" dir="ltr">{product.type}</div>
+              <div className="font-semibold text-ink wrap-anywhere">{product.label}</div>
+              <div className="text-xs text-mute mt-1 wrap-anywhere" dir="ltr">{product.type}</div>
               <div className="flex flex-wrap gap-1 mt-2">
                 <Badge tone={product.is_active ? 'ok' : 'muted'}>{product.is_active ? 'فعال' : 'غیرفعال'}</Badge>
                 <Badge tone="info">{product.requires_merchant ? 'با مرچنت' : 'با مالک'}</Badge>
                 {product.is_system && <Badge tone="muted">سیستمی</Badge>}
               </div>
-              {product.signup_url && <div className="text-xs text-primary-700 dark:text-primary-300 mt-2 wrap-anywhere" dir="ltr">{product.signup_url}</div>}
+              {product.signup_url && <div className="text-xs text-prim mt-2 wrap-anywhere" dir="ltr">{product.signup_url}</div>}
             </div>
             <div className="flex items-center shrink-0">
-              <button type="button" className="w-8 h-8 rounded-lg inline-flex items-center justify-center text-surface-400 hover:text-primary-600" aria-label="ویرایش محصول" onClick={() => openForm(product)}><Pencil className="w-4 h-4" /></button>
+              <button type="button" className="w-8 h-8 rounded-lg inline-flex items-center justify-center text-faint hover:text-prim2" aria-label="ویرایش محصول" onClick={() => openForm(product)}><Pencil className="w-4 h-4" /></button>
               {!product.is_system && (
-                <button type="button" className="w-8 h-8 rounded-lg inline-flex items-center justify-center text-surface-400 hover:text-rose-600" aria-label="حذف محصول" onClick={() => askRemove(product)}><Trash2 className="w-4 h-4" /></button>
+                <button type="button" className="w-8 h-8 rounded-lg inline-flex items-center justify-center text-faint hover:text-bad" aria-label="حذف محصول" onClick={() => askRemove(product)}><Trash2 className="w-4 h-4" /></button>
               )}
             </div>
           </article>

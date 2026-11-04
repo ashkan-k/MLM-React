@@ -309,6 +309,9 @@ export const permissionLabel: Record<string, string> = {
   'page.courses_manage': 'صفحه / مدیریت دوره‌ها',
   'page.chat': 'صفحه / گفتگو',
   'page.notifications': 'صفحه / اعلان‌ها',
+  'page.transactions': 'صفحه / تراکنش‌ها',
+  'page.reports': 'صفحه / گزارشات شبکه',
+  'page.goals_bank': 'صفحه / بانک اهداف',
 }
 
 const criterionLabelFa: Record<string, string> = {

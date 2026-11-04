@@ -125,12 +125,12 @@ export function MonthlyBonusPage() {
         />
 
         <div className="grid sm:grid-cols-3 gap-3">
-          <StatCard title={t('bonusMonitorDownline')} value={(summary?.downline_users ?? 0).toLocaleString(localeTag())} icon={Users} color="from-blue-500 to-blue-600" />
-          <StatCard title={t('bonusMonitorPosted')} value={(summary?.bonuses_posted ?? 0).toLocaleString(localeTag())} icon={Award} color="from-violet-500 to-violet-600" />
-          <StatCard title={t('bonusMonitorAmount')} value={money(summary?.bonuses_amount)} icon={Wallet} color="from-emerald-500 to-emerald-600" />
+          <StatCard title={t('bonusMonitorDownline')} value={(summary?.downline_users ?? 0).toLocaleString(localeTag())} icon={Users} color="from-info to-info" />
+          <StatCard title={t('bonusMonitorPosted')} value={(summary?.bonuses_posted ?? 0).toLocaleString(localeTag())} icon={Award} color="from-prim to-prim2" />
+          <StatCard title={t('bonusMonitorAmount')} value={money(summary?.bonuses_amount)} icon={Wallet} color="from-ok to-ok" />
         </div>
         {(search || roleFilter) && (
-          <div className="text-xs text-surface-500 -mt-2">
+          <div className="text-xs text-mute -mt-2">
             {t('bonusMonitorFilteredHint')}
           </div>
         )}
@@ -181,21 +181,21 @@ export function MonthlyBonusPage() {
 
         <div className="card overflow-hidden" data-testid="monthly-bonus-monitor">
           <div className="px-5 pt-5 pb-3 flex flex-wrap items-center justify-between gap-2">
-            <div className="font-semibold text-surface-800 dark:text-surface-100">{t('bonusMonitorList')}</div>
+            <div className="font-semibold text-ink">{t('bonusMonitorList')}</div>
             {summary?.month && (
-              <div className="text-xs text-surface-500">
+              <div className="text-xs text-mute">
                 {t('bonusMonth')}: <MonthText value={summary.month} />
               </div>
             )}
           </div>
           {isLoading ? (
-            <div className="p-5 text-sm text-surface-500">…</div>
+            <div className="p-5 text-sm text-mute">…</div>
           ) : rows.length === 0 ? (
             <div className="px-5 pb-5"><Empty text={t('bonusMonitorEmpty')} /></div>
           ) : (
             <div className="overflow-auto">
               <table className="w-full text-sm">
-                <thead className="bg-surface-50 dark:bg-surface-800/60 text-surface-500">
+                <thead className="bg-surface2 text-mute">
                   <tr>
                     <th className="text-start font-medium px-5 py-3">{t('name')}</th>
                     <th className="text-start font-medium px-5 py-3">{t('roles')}</th>
@@ -210,18 +210,18 @@ export function MonthlyBonusPage() {
                     const key = `${row.user_id}:${row.role_slug}`
                     const canPay = Boolean(row.payable ?? (row.qualified && !row.bonus_posted && Number(row.bonus_amount) > 0 && Number(row.profit_sum) > 0))
                     return (
-                      <tr key={key} className="border-t border-surface-100 dark:border-surface-700">
+                      <tr key={key} className="border-t border-line">
                         <td className="px-5 py-3 text-start">
-                          <div className="font-medium text-surface-800 dark:text-surface-100 leading-5">{row.name}</div>
+                          <div className="font-medium text-ink leading-5">{row.name}</div>
                           {row.mobile ? (
-                            <div className="mt-0.5 text-xs text-surface-400 leading-4">
+                            <div className="mt-0.5 text-xs text-faint leading-4">
                               <bdi className="tabular-nums tracking-wide" dir="ltr">{row.mobile}</bdi>
                             </div>
                           ) : null}
                         </td>
                         <td className="px-5 py-3">{row.role_name}</td>
                         <td className="px-5 py-3">
-                          <div className="text-xs text-surface-500 mb-0.5">{row.metric_label}</div>
+                          <div className="text-xs text-mute mb-0.5">{row.metric_label}</div>
                           <ScorePair actual={Number(row.actual)} required={Number(row.required)} unit={row.unit} compact />
                         </td>
                         <td className="px-5 py-3">
@@ -238,17 +238,17 @@ export function MonthlyBonusPage() {
                               ) : row.qualified && row.pay_blocked_reason ? (
                                 <>
                                   {row.bonus_default ? null : <Badge tone="muted">{t('bonusQualifiedNoPay')}</Badge>}
-                                  <div className="text-[11px] leading-4 text-amber-600 dark:text-amber-400">{row.pay_blocked_reason}</div>
+                                  <div className="text-[11px] leading-4 text-warn">{row.pay_blocked_reason}</div>
                                 </>
                               ) : row.bonus_default ? (
-                                <div className="text-[11px] leading-4 text-surface-500">{t('bonusDefaultNoSale')}</div>
+                                <div className="text-[11px] leading-4 text-mute">{t('bonusDefaultNoSale')}</div>
                               ) : (
                                 <Badge tone="muted">{t('dashBonusWaiting')}</Badge>
                               )}
                             </div>
                           )}
                         </td>
-                        <td className="px-5 py-3 font-bold text-emerald-600">{money(row.bonus_amount)}</td>
+                        <td className="px-5 py-3 font-bold text-ok">{money(row.bonus_amount)}</td>
                         <td className="px-5 py-3">
                           {canPay ? (
                             <button
@@ -272,7 +272,7 @@ export function MonthlyBonusPage() {
                               {payingKey === key ? '…' : t('bonusPay')}
                             </button>
                           ) : (
-                            <span className="text-xs text-surface-400">—</span>
+                            <span className="text-xs text-faint">—</span>
                           )}
                         </td>
                       </tr>
@@ -308,29 +308,29 @@ export function MonthlyBonusPage() {
 
       <div className="card p-5 space-y-4" data-testid="monthly-bonus-current">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <div className="font-semibold text-surface-800 dark:text-surface-100">{t('bonusCurrent')}</div>
+          <div className="font-semibold text-ink">{t('bonusCurrent')}</div>
           {current?.month && (
-            <div className="text-xs text-surface-500">
+            <div className="text-xs text-mute">
               {t('bonusMonth')}: <MonthText value={current.month} />
             </div>
           )}
         </div>
         {!eligible || required <= 0 ? (
-          <div className="text-sm text-surface-500">{t('bonusNoRole')}</div>
+          <div className="text-sm text-mute">{t('bonusNoRole')}</div>
         ) : (
           <>
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div className="space-y-1">
-                <div className="text-sm font-medium text-surface-700 dark:text-surface-200">{metricLabel}</div>
-                <div className="text-sm text-surface-500">
+                <div className="text-sm font-medium text-ink">{metricLabel}</div>
+                <div className="text-sm text-mute">
                   <ScorePair actual={actual} required={required} unit={unit || undefined} />
                 </div>
               </div>
               <div className="space-y-1 text-end">
                 {current?.bonus_default ? (
-                  <div className="text-sm font-medium text-emerald-600">{t('bonusDefaultActive')}</div>
+                  <div className="text-sm font-medium text-ok">{t('bonusDefaultActive')}</div>
                 ) : null}
-                <div className={`text-sm font-medium ${current?.qualified ? 'text-emerald-600' : 'text-amber-600'}`}>
+                <div className={`text-sm font-medium ${current?.qualified ? 'text-ok' : 'text-warn'}`}>
                   {current?.bonus_default && !current?.qualified
                     ? t('bonusDefaultNoSale')
                     : current?.qualified
@@ -342,14 +342,14 @@ export function MonthlyBonusPage() {
             <ProgressBar value={actual} max={required || 1} />
 
             {guide.length > 0 && (
-              <div className="rounded-xl border border-surface-200 dark:border-surface-700 bg-surface-50/80 dark:bg-surface-800/40 p-4 space-y-2" data-testid="monthly-bonus-guide">
-                <div className="text-sm font-semibold text-surface-800 dark:text-surface-100">{t('bonusHowTo')}</div>
+              <div className="rounded-xl border border-line bg-surface2/80 /40 p-4 space-y-2" data-testid="monthly-bonus-guide">
+                <div className="text-sm font-semibold text-ink">{t('bonusHowTo')}</div>
                 {current?.points_per_full_sale ? (
-                  <div className="text-sm text-surface-600 dark:text-surface-300">
+                  <div className="text-sm text-mute">
                     {t('bonusPointsPerSale')}: <strong dir="ltr" className="datetime-ltr">{Number(current.points_per_full_sale).toLocaleString(localeTag())}</strong>
                   </div>
                 ) : null}
-                <ul className="list-disc ps-5 space-y-1.5 text-sm text-surface-600 dark:text-surface-300">
+                <ul className="list-disc ps-5 space-y-1.5 text-sm text-mute">
                   {guide.map((line) => (
                     <li key={line}>{line}</li>
                   ))}
@@ -358,24 +358,24 @@ export function MonthlyBonusPage() {
             )}
 
             <div className="grid sm:grid-cols-3 gap-3">
-              <StatCard title={t('dashBonusProfit')} value={money(current?.profit_sum)} icon={TrendingUp} color="from-blue-500 to-blue-600" />
-              <StatCard title={t('dashBonusPercent')} value={percent(current?.bonus_percent)} icon={Award} color="from-violet-500 to-violet-600" />
-              <StatCard title={t('dashBonusAmount')} value={money(current?.bonus_amount)} icon={Wallet} color="from-emerald-500 to-emerald-600" />
+              <StatCard title={t('dashBonusProfit')} value={money(current?.profit_sum)} icon={TrendingUp} color="from-info to-info" />
+              <StatCard title={t('dashBonusPercent')} value={percent(current?.bonus_percent)} icon={Award} color="from-prim to-prim2" />
+              <StatCard title={t('dashBonusAmount')} value={money(current?.bonus_amount)} icon={Wallet} color="from-ok to-ok" />
             </div>
           </>
         )}
       </div>
 
       <div className="card overflow-hidden" data-testid="monthly-bonus-history">
-        <div className="px-5 pt-5 pb-3 font-semibold text-surface-800 dark:text-surface-100">{t('bonusHistory')}</div>
+        <div className="px-5 pt-5 pb-3 font-semibold text-ink">{t('bonusHistory')}</div>
         {isLoading ? (
-          <div className="p-5 text-sm text-surface-500">…</div>
+          <div className="p-5 text-sm text-mute">…</div>
         ) : history.length === 0 ? (
           <div className="px-5 pb-5"><Empty text={t('bonusHistoryEmpty')} /></div>
         ) : (
           <div className="overflow-auto">
             <table className="w-full text-sm">
-              <thead className="bg-surface-50 dark:bg-surface-800/60 text-surface-500">
+              <thead className="bg-surface2 text-mute">
                 <tr>
                   <th className="text-start font-medium px-5 py-3">{t('bonusMonth')}</th>
                   <th className="text-start font-medium px-5 py-3">{t('dashBonusPercent')}</th>
@@ -387,19 +387,19 @@ export function MonthlyBonusPage() {
               </thead>
               <tbody>
                 {history.map((row) => (
-                  <tr key={row.id} className="border-t border-surface-100 dark:border-surface-700">
-                    <td className="px-5 py-3 font-medium text-surface-800 dark:text-surface-100">
+                  <tr key={row.id} className="border-t border-line">
+                    <td className="px-5 py-3 font-medium text-ink">
                       <MonthText value={row.month} />
                     </td>
                     <td className="px-5 py-3">{percent(row.bonus_percent)}</td>
                     <td className="px-5 py-3">{money(row.profit_sum)}</td>
-                    <td className="px-5 py-3 font-bold text-emerald-600">{money(row.bonus_amount)}</td>
+                    <td className="px-5 py-3 font-bold text-ok">{money(row.bonus_amount)}</td>
                     <td className="px-5 py-3">
                       <Badge tone={row.status === 'posted' ? 'ok' : 'danger'}>
                         {row.status === 'posted' ? t('bonusStatusPosted') : row.status === 'reversed' ? t('bonusStatusReversed') : (statusLabel[row.status] ?? row.status)}
                       </Badge>
                     </td>
-                    <td className="px-5 py-3 text-surface-500"><DateTimeText value={row.created_at} /></td>
+                    <td className="px-5 py-3 text-mute"><DateTimeText value={row.created_at} /></td>
                   </tr>
                 ))}
               </tbody>

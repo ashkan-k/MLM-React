@@ -110,10 +110,10 @@ test.describe('پوشش کامل پنل‌ها و باگ‌های گزارش‌�
     await expect(page.getByTestId('org-export-excel')).toBeVisible()
     await expect(page.getByTestId('org-export-tree')).toBeVisible()
     await expect(page.getByTestId('org-export-diagram')).toBeVisible()
-    const firstName = (await page.locator('[data-testid="org-tree"] .text-sm.font-medium').first().textContent()) ?? ''
+    const firstName = (await page.locator('[data-testid="org-tree"] .org-node-name').first().textContent()) ?? ''
     if (firstName.trim()) {
       await page.getByTestId('org-search').fill(firstName.trim().slice(0, 2))
-      await expect(page.locator('[data-testid="org-tree"] .text-sm.font-medium').first()).toBeVisible()
+      await expect(page.locator('[data-testid="org-tree"] .org-node-name').first()).toBeVisible()
     }
     await page.getByTestId('org-search').fill('zzzz-not-found')
     await expect(page.getByTestId('org-tree')).toContainText(/زیرمجموعه‌ای|No downline/)

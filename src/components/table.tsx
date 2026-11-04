@@ -28,7 +28,7 @@ export function IconAction({
   to?: string
   testId?: string
 }) {
-  const className = `p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 ${actionClass[tone]}`
+  const className = `p-1.5 rounded-lg hover:bg-surface3 text-faint ${actionClass[tone]}`
   if (to) {
     return <Link to={to} aria-label={label} data-testid={testId} className={className}><Icon className="w-4 h-4" /></Link>
   }
@@ -78,7 +78,7 @@ export function CheckBox({ checked, onChange, label }: { checked: boolean; onCha
       aria-label={label}
       checked={checked}
       onChange={onChange}
-      className="rounded border-surface-300 accent-primary-600"
+      className="rounded border-line accent-[var(--prim)]"
     />
   )
 }
@@ -98,8 +98,8 @@ export function BulkBar({ count, children }: { count: number; children: ReactNod
   const { t, locale } = useApp()
   if (count === 0) return null
   return (
-    <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-surface-200 dark:border-surface-700" data-testid="bulk-bar">
-      <span className="text-xs text-surface-500">{t('selectedCount', { count: count.toLocaleString(locale === 'en' ? 'en-US' : 'fa-IR') })}</span>
+    <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-line" data-testid="bulk-bar">
+      <span className="text-xs text-mute">{t('selectedCount', { count: count.toLocaleString(locale === 'en' ? 'en-US' : 'fa-IR') })}</span>
       {children}
     </div>
   )
@@ -115,10 +115,10 @@ export function BulkButton({
   children: ReactNode
 }) {
   const tones = {
-    danger: 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40',
-    warn: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40',
-    ok: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/40',
-    info: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40',
+    danger: 'bg-badsoft text-bad hover:opacity-90',
+    warn: 'bg-warnsoft text-warn hover:opacity-90',
+    ok: 'bg-oksoft text-ok hover:opacity-90',
+    info: 'bg-infosoft text-info hover:opacity-90',
   }
   return (
     <button type="button" className={`text-xs px-2 py-1 rounded cursor-pointer ${tones[tone]}`} onClick={onClick}>
@@ -129,7 +129,7 @@ export function BulkButton({
 
 export function IconTool({ label, icon: Icon, onClick }: { label: string; icon: LucideIcon; onClick: () => void }) {
   return (
-    <button type="button" aria-label={label} title={label} onClick={onClick} className="p-2 rounded-lg border border-surface-200 dark:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700 text-surface-500">
+    <button type="button" aria-label={label} title={label} onClick={onClick} className="icon-btn">
       <Icon className="w-4 h-4" />
     </button>
   )
@@ -174,15 +174,15 @@ export function TablePager({
     : `نمایش ${n(from ?? 1)} تا ${n(to ?? total)} از ${n(total)} مورد`
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-t border-surface-200 dark:border-surface-700">
-      <span className="text-xs text-surface-500">{summary}</span>
+    <div className="flex flex-wrap items-center justify-between gap-3 p-4 border-t border-line">
+      <span className="text-xs text-mute">{summary}</span>
       {last > 1 && (
         <div className="flex items-center gap-1">
           <button
             type="button"
             disabled={disabled || page <= 1}
             onClick={() => onPage(page - 1)}
-            className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 disabled:opacity-40"
+            className="p-1.5 rounded-lg hover:bg-surface3 text-faint disabled:opacity-40"
             aria-label={t('prev')}
           >
             <ChevronRight className="w-4 h-4" />
@@ -193,7 +193,7 @@ export function TablePager({
               type="button"
               disabled={disabled}
               onClick={() => onPage(p)}
-              className={`w-8 h-8 rounded-lg text-xs font-medium ${p === page ? 'bg-primary-600 text-white' : 'text-surface-500 hover:bg-surface-100 dark:hover:bg-surface-700'}`}
+              className={`w-8 h-8 rounded-lg text-xs font-medium ${p === page ? 'bg-prim text-white' : 'text-mute hover:bg-surface3'}`}
             >
               {n(p)}
             </button>
@@ -202,7 +202,7 @@ export function TablePager({
             type="button"
             disabled={disabled || page >= last}
             onClick={() => onPage(page + 1)}
-            className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400 disabled:opacity-40"
+            className="p-1.5 rounded-lg hover:bg-surface3 text-faint disabled:opacity-40"
             aria-label={t('next')}
           >
             <ChevronLeft className="w-4 h-4" />

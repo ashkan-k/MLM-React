@@ -98,8 +98,8 @@ export function ManagerReassignCard() {
   return (
     <div className="card p-4 space-y-4" data-testid="manager-reassign">
       <div>
-        <div className="font-semibold text-surface-800 dark:text-surface-100">{t('reassignTitle')}</div>
-        <p className="text-sm text-surface-500 m-0 mt-1">{mode === 'appoint' ? t('appointSub') : t('reassignSub')}</p>
+        <div className="font-semibold text-ink">{t('reassignTitle')}</div>
+        <p className="text-sm text-mute m-0 mt-1">{mode === 'appoint' ? t('appointSub') : t('reassignSub')}</p>
       </div>
 
       <div className="flex flex-wrap gap-2">

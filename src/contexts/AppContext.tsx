@@ -42,9 +42,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const direction: 'rtl' | 'ltr' = locale === 'fa' ? 'rtl' : 'ltr'
 
   useEffect(() => {
-    document.documentElement.classList.toggle('dark', darkMode)
-    document.documentElement.classList.toggle('light', !darkMode)
-    document.documentElement.style.colorScheme = darkMode ? 'dark' : 'light'
+    const root = document.documentElement
+    root.dataset.theme = darkMode ? 'dark' : 'light'
+    root.classList.toggle('dark', darkMode)
+    root.classList.toggle('light', !darkMode)
+    root.style.colorScheme = darkMode ? 'dark' : 'light'
     localStorage.setItem('finopal.theme', darkMode ? 'dark' : 'light')
   }, [darkMode])
 

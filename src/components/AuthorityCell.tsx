@@ -24,7 +24,7 @@ export function AuthorityCell({
   authority?: string | null
   secondary?: string | null
 }) {
-  if (!authority) return <span className="text-surface-400">—</span>
+  if (!authority) return <span className="text-faint">—</span>
 
   return (
     <div className="min-w-0" data-testid="authority-cell">
@@ -35,7 +35,7 @@ export function AuthorityCell({
         {truncateMiddle(authority)}
       </span>
       {secondary && (
-        <div className="text-[11px] text-surface-400 mt-0.5 font-mono dir-ltr text-left truncate" title={secondary}>
+        <div className="text-[11px] text-faint mt-0.5 font-mono dir-ltr text-left truncate" title={secondary}>
           {secondary}
         </div>
       )}
@@ -52,7 +52,7 @@ export function AuthorityActions({
   txHref?: string | null
 }) {
   const { t } = useApp()
-  if (!authority) return <span className="text-surface-400">—</span>
+  if (!authority) return <span className="text-faint">—</span>
 
   const copy = async () => {
     try {
@@ -63,7 +63,7 @@ export function AuthorityActions({
     }
   }
 
-  const btn = 'p-1.5 rounded-md hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-500 hover:text-primary-600 dark:hover:text-primary-400 shrink-0 inline-flex'
+  const btn = 'p-1.5 rounded-md hover:bg-surface3 text-mute hover:text-prim2 hover:text-prim shrink-0 inline-flex'
 
   return (
     <div className="flex items-center gap-0.5" data-testid="authority-actions">

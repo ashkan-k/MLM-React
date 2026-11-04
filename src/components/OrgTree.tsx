@@ -133,7 +133,7 @@ function htmlOrgChart(nodes: OrgNode[], rows: FlatRow[]): string {
   }
   return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>دیاگرام شبکه فاینوپال</title>
   <style>
-    body{margin:0;background:#e8eef5;font-family:Vazirmatn,Tahoma,sans-serif;color:#0f172a}
+    body{margin:0;background:#f2f5f1;font-family:Vazirmatn,Tahoma,sans-serif;color:#15211b}
     h1{text-align:center;padding:24px 16px 8px;font-size:22px}
     .tree{overflow:auto;padding:16px 24px 48px}
     .tree ul{display:flex;justify-content:center;padding-top:20px;position:relative}
@@ -147,7 +147,7 @@ function htmlOrgChart(nodes: OrgNode[], rows: FlatRow[]): string {
     .tree li:last-child::before{border-inline-end:2px solid #93c5fd;border-radius:0 0 8px 0}
     .tree li:first-child::after{border-inline-start:2px solid #93c5fd;border-radius:0 0 0 8px}
     .tree ul ul::before{content:"";position:absolute;top:0;inset-inline-start:50%;border-inline-start:2px solid #93c5fd;width:0;height:20px}
-    .node{min-width:180px;max-width:240px;background:#2563eb;color:#fff;border-radius:16px;padding:12px 14px;text-align:center;box-shadow:0 10px 24px rgba(37,99,235,.25)}
+    .node{min-width:180px;max-width:240px;background:#0e8467;color:#fff;border-radius:14px;padding:12px 14px;text-align:center;box-shadow:0 10px 24px rgba(14,132,103,.25)}
     .node strong{display:block;font-size:15px;margin-bottom:4px}
     .node span,.node small{display:block;opacity:.92;font-size:12px;line-height:1.6}
   </style></head>
@@ -162,8 +162,8 @@ function svgOf(rows: FlatRow[]): string {
     const y = 56 + index * 92
     return `
       <g>
-        <rect x="${x}" y="${y}" rx="14" width="520" height="78" fill="#ffffff" stroke="#2563eb" stroke-width="1.5"/>
-        <rect x="${x}" y="${y}" width="8" height="78" rx="4" fill="#2563eb"/>
+        <rect x="${x}" y="${y}" rx="14" width="520" height="78" fill="#ffffff" stroke="#0e8467" stroke-width="1.5"/>
+        <rect x="${x}" y="${y}" width="8" height="78" rx="4" fill="#0e8467"/>
         <text x="${x + 22}" y="${y + 24}" fill="#0f172a" font-size="15" font-weight="700" font-family="Vazirmatn, Inter, sans-serif">${escapeXml(row.name)}</text>
         <text x="${x + 22}" y="${y + 44}" fill="#334155" font-size="12" font-family="Vazirmatn, Inter, sans-serif">${escapeXml(row.role || '—')} · ${escapeXml(row.mobile || '—')}</text>
         <text x="${x + 22}" y="${y + 64}" fill="#64748b" font-size="11" font-family="Vazirmatn, Inter, sans-serif">سطح ${row.level} · مافوق ${escapeXml(row.parent)} · مستقیم ${row.direct} · کل زیرمجموعه ${row.total}</text>
@@ -186,7 +186,7 @@ function htmlTree(rows: FlatRow[]) {
       <p style="margin:6px 0 0;color:#94a3b8;font-size:12px">مسیر: ${escapeXml(row.path)}</p>
     </article>`).join('')
   return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>خروجی درختی شبکه</title>
-  <style>body{font-family:Vazirmatn,Tahoma,sans-serif;background:#e8eef5;margin:0;padding:24px;color:#0f172a}</style></head>
+  <style>body{font-family:Vazirmatn,Tahoma,sans-serif;background:#f2f5f1;margin:0;padding:24px;color:#15211b}</style></head>
   <body><h1>خروجی درختی شبکه و زیرمجموعه‌ها</h1>${items}</body></html>`
 }
 
@@ -241,41 +241,72 @@ function NodeRow({
     }
   }
 
+  const team = downline({ ...node, children: kids })
+  const avColors = ['#12a07c', '#e9b44c', '#5ea5d6', '#c9705f', '#7fb5ae', '#8d7ac9']
+  const av = avColors[name.split('').reduce((a, c) => a + c.charCodeAt(0), 0) % avColors.length]
+
   return (
-    <div className={depth > 0 ? 'ms-6 lg:ms-10 border-s-2 border-surface-200 dark:border-surface-700 ps-4' : ''}>
-      <div className="flex items-center gap-3 p-3 rounded-xl bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 mb-2 hover:shadow-md transition-shadow">
-        {hasChildren ? (
-          <button type="button" className="p-1 rounded hover:bg-surface-100 dark:hover:bg-surface-700" onClick={() => void toggle()}>
-            {shown ? <ChevronUp className="w-4 h-4 text-surface-400" /> : <ChevronDown className="w-4 h-4 text-surface-400" />}
-          </button>
-        ) : <div className="w-6" />}
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center text-white text-sm font-bold">
-          {name.charAt(0)}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <div className="text-sm font-medium text-surface-800 dark:text-surface-200">{name}</div>
-            {node.user?.is_active === false && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">{t('blocked')}</span>
+    <div className="min-w-max">
+      <div className="flex items-stretch gap-0">
+        <div className="flex flex-col items-center">
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => { if (hasChildren) void toggle(); else onView(node) }}
+            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (hasChildren) void toggle(); else onView(node) } }}
+            className={`card card-hover p-3 w-[196px] text-start ${hasChildren ? 'cursor-pointer' : 'cursor-default'}`}
+          >
+            <div className="flex items-center gap-2">
+              <span
+                className="relative inline-flex items-center justify-center rounded-full font-bold text-white shrink-0"
+                style={{ width: 30, height: 30, background: av, fontSize: 11 }}
+              >
+                {name.charAt(0)}
+              </span>
+              <div className="min-w-0">
+                <p className="org-node-name text-sm font-bold truncate m-0 text-ink" style={{ fontSize: '0.8rem' }}>{name}</p>
+                <p className="text-[0.64rem] text-faint font-code m-0">{node.user?.mobile || `N-${node.id}`}</p>
+              </div>
+            </div>
+            <div className="flex items-center justify-between mt-2 gap-1">
+              <span className="badge tone-prim truncate max-w-[110px]">{node.role?.name || (depth === 0 ? t('orgRoot') : `${t('orgLevel')} ${depth}`)}</span>
+              <span className="text-[0.64rem] text-mute num shrink-0">{t('orgDownline')} {team.toLocaleString(nf)}</span>
+            </div>
+            <div className="flex items-center justify-between mt-1.5 text-[0.68rem]">
+              {node.user?.is_active === false
+                ? <span className="badge tone-bad">{t('blocked')}</span>
+                : <span className="badge tone-ok">{t('adminActive') || 'فعال'}</span>}
+              <button
+                type="button"
+                aria-label={t('details')}
+                className="icon-btn icon-btn-sm"
+                onClick={(e) => { e.stopPropagation(); onView(node) }}
+              >
+                <Eye size={14} />
+              </button>
+            </div>
+            {hasChildren && (
+              <span className="flex items-center justify-center gap-1 mt-2 pt-2 border-t border-line text-[0.66rem] font-bold text-prim">
+                {shown ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                {(kids.length || team).toLocaleString(nf)} {t('orgDownline')}
+                {loading ? ' …' : ''}
+              </span>
             )}
           </div>
-          <div className="text-xs text-surface-400">{t('orgLevel')} {depth} • {downline({ ...node, children: kids }).toLocaleString(nf)} {t('orgDownline')}{node.user?.mobile ? ` • ${node.user.mobile}` : ''}{loading ? ' …' : ''}</div>
         </div>
-        <div className="flex items-center gap-2">
-          {node.role?.name && (
-            <span className="text-xs px-2 py-1 rounded-full bg-surface-100 text-surface-600 dark:bg-surface-700 dark:text-surface-300">{node.role.name}</span>
-          )}
-          <span className="text-xs px-2 py-1 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-400">
-            {depth === 0 ? t('orgRoot') : `${t('orgLevel')} ${depth}`}
-          </span>
-          <button type="button" aria-label={t('details')} className="p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-700 text-surface-400" onClick={() => onView(node)}>
-            <Eye className="w-4 h-4" />
-          </button>
-        </div>
+        {hasChildren && shown && (
+          <div className="flex flex-col justify-center ms-0">
+            <div className="flex items-center">
+              <span className="w-6 h-px bg-line2 shrink-0" />
+              <div className="tree-line ps-6 py-2 flex flex-col gap-3">
+                {kids.map((child) => (
+                  <NodeRow key={child.id} node={child} depth={depth + 1} forceOpen={forceOpen} onView={onView} locale={locale} t={t} lazy={lazy} onLoadChildren={onLoadChildren} />
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-      {hasChildren && shown && kids.map((child) => (
-        <NodeRow key={child.id} node={child} depth={depth + 1} forceOpen={forceOpen} onView={onView} locale={locale} t={t} lazy={lazy} onLoadChildren={onLoadChildren} />
-      ))}
     </div>
   )
 }
@@ -381,64 +412,68 @@ export function OrgTree({
       <div className={`flex flex-col lg:flex-row items-start lg:items-center gap-4 ${hideTitle ? 'justify-end' : 'justify-between'}`}>
         {!hideTitle && (
           <div>
-            <h3 className="text-xl font-bold text-surface-800 dark:text-surface-100 m-0">{heading}</h3>
-            <p className="text-sm text-surface-500 mt-1 mb-0">{sub}</p>
+            <h3 className="text-[1.3rem] font-extrabold tracking-tight text-ink m-0">{heading}</h3>
+            <p className="text-sm text-mute mt-1 mb-0 leading-6">{sub}</p>
           </div>
         )}
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" data-testid="org-export-excel" onClick={exportExcel} className="px-3 py-2 rounded-lg border border-surface-200 dark:border-surface-600 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-50 dark:hover:bg-surface-700">
-            <Download className="w-4 h-4 inline ms-1" />
+          <button type="button" data-testid="org-export-excel" onClick={exportExcel} className="btn btn-outline btn-sm">
+            <Download className="w-4 h-4" />
             {t('exportExcel')}
           </button>
-          <button type="button" data-testid="org-export-tree" onClick={exportTree} className="px-3 py-2 rounded-lg border border-surface-200 dark:border-surface-600 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-50 dark:hover:bg-surface-700">
-            <Download className="w-4 h-4 inline ms-1" />
+          <button type="button" data-testid="org-export-tree" onClick={exportTree} className="btn btn-outline btn-sm">
+            <Download className="w-4 h-4" />
             {t('exportTree')}
           </button>
-          <button type="button" data-testid="org-export-diagram" onClick={exportDiagram} className="px-3 py-2 rounded-lg border border-surface-200 dark:border-surface-600 text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-50 dark:hover:bg-surface-700">
-            <Download className="w-4 h-4 inline ms-1" />
+          <button type="button" data-testid="org-export-diagram" onClick={exportDiagram} className="btn btn-outline btn-sm">
+            <Download className="w-4 h-4" />
             {t('exportDiagram')}
           </button>
         </div>
       </div>
       <input
         data-testid="org-search"
-        className="w-full sm:w-96 ps-3 pe-3 py-2 rounded-lg bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-sm outline-none focus:ring-2 focus:ring-primary-500/20 text-surface-800 dark:text-surface-200"
+        className="input w-full sm:w-96"
         placeholder={t('orgSearch')}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
       />
       {searchLoading && (
-        <div className="text-xs text-surface-500">{locale === 'en' ? 'Searching network…' : 'در حال جستجوی شبکه…'}</div>
+        <div className="text-xs text-faint">{locale === 'en' ? 'Searching network…' : 'در حال جستجوی شبکه…'}</div>
       )}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger">
         {[
-          { label: t('orgDepth'), value: depth.toLocaleString(nf), icon: Network },
-          { label: t('orgBranches'), value: total.toLocaleString(nf), icon: TrendingUp },
-          { label: t('orgMax'), value: widest.toLocaleString(nf), icon: Users },
+          { label: t('orgDepth'), value: depth.toLocaleString(nf), icon: Network, tone: 'prim' as const },
+          { label: t('orgBranches'), value: total.toLocaleString(nf), icon: TrendingUp, tone: 'acc' as const },
+          { label: t('orgMax'), value: widest.toLocaleString(nf), icon: Users, tone: 'info' as const },
         ].map((stat) => (
-          <div key={stat.label} className="bg-white dark:bg-surface-800 rounded-xl p-4 border border-surface-200 dark:border-surface-700 flex items-center gap-3">
-            <stat.icon className="w-5 h-5 text-primary-500" />
+          <div key={stat.label} className="card card-hover p-4 flex items-center gap-3">
+            <span className={`badge tone-${stat.tone} !p-2.5 !rounded-xl`}><stat.icon className="w-5 h-5" /></span>
             <div>
-              <div className="text-lg font-bold text-surface-800 dark:text-surface-100">{stat.value}</div>
-              <div className="text-xs text-surface-500">{stat.label}</div>
+              <div className="text-lg font-extrabold text-ink num">{stat.value}</div>
+              <div className="text-xs text-mute font-semibold">{stat.label}</div>
             </div>
           </div>
         ))}
       </div>
-      <div className="bg-white/70 dark:bg-surface-900/50 rounded-xl p-4 border border-surface-200 dark:border-surface-700" data-testid={testId}>
-        {visible.length > 0 ? visible.map((n) => (
-          <NodeRow
-            key={searching ? `search-${n.id}` : n.id}
-            node={n}
-            depth={0}
-            forceOpen={searching}
-            onView={setDetail}
-            locale={locale}
-            t={t}
-            lazy={lazy && !searching}
-            onLoadChildren={loadChildren}
-          />
-        )) : <Empty text={searchLoading || (searching && searchNodes === null) ? (locale === 'en' ? 'Searching…' : 'در حال جستجو…') : t('orgEmpty')} />}
+      <div className="card p-4 overflow-x-auto scroll-slim" data-testid={testId}>
+        {visible.length > 0 ? (
+          <div className="flex flex-col gap-4 min-w-max">
+            {visible.map((n) => (
+              <NodeRow
+                key={searching ? `search-${n.id}` : n.id}
+                node={n}
+                depth={0}
+                forceOpen={searching}
+                onView={setDetail}
+                locale={locale}
+                t={t}
+                lazy={lazy && !searching}
+                onLoadChildren={loadChildren}
+              />
+            ))}
+          </div>
+        ) : <Empty text={searchLoading || (searching && searchNodes === null) ? (locale === 'en' ? 'Searching…' : 'در حال جستجو…') : t('orgEmpty')} />}
       </div>
       <Modal open={Boolean(detail)} title={detail?.user?.name ?? t('details')} onClose={() => setDetail(null)}>
         {detail && (

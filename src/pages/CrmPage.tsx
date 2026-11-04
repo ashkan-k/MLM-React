@@ -169,24 +169,24 @@ function IconBtn({ label, tone = 'edit', onClick, children }: {
   children: ReactNode
 }) {
   const toneClass = tone === 'danger'
-    ? 'hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10'
-    : 'hover:bg-primary-50 hover:text-primary-700 dark:hover:bg-primary-900/30'
+    ? 'hover:bg-badsoft hover:text-bad'
+    : 'hover:bg-primsoft hover:text-prim2'
   return (
-    <button type="button" aria-label={label} onClick={onClick} className={`w-8 h-8 rounded-lg inline-flex items-center justify-center text-surface-400 shrink-0 ${toneClass}`}>
+    <button type="button" aria-label={label} onClick={onClick} className={`w-8 h-8 rounded-lg inline-flex items-center justify-center text-faint shrink-0 ${toneClass}`}>
       {children}
     </button>
   )
 }
 
 function MetaChip({ children }: { children: ReactNode }) {
-  return <span className="inline-flex items-center gap-1 max-w-full min-w-0 overflow-hidden rounded-lg bg-surface-50 dark:bg-surface-900/70 px-2 py-1 text-xs text-surface-600 dark:text-surface-300">{children}</span>
+  return <span className="inline-flex items-center gap-1 max-w-full min-w-0 overflow-hidden rounded-lg bg-surface2/70 px-2 py-1 text-xs text-mute">{children}</span>
 }
 
 function ClampBox({ text, empty, label, onOpen }: { text?: string | null; empty: string; label: string; onOpen: () => void }) {
   const value = text?.trim() ?? ''
   return (
-    <button type="button" aria-label={label} onClick={onOpen} className="mx-4 mb-4 block w-[calc(100%-2rem)] rounded-xl bg-surface-50 px-3 py-2.5 text-start text-sm hover:bg-surface-100 dark:bg-surface-900/60 dark:hover:bg-surface-900">
-      <span className={`line-clamp-2 min-h-12 leading-6 break-words ${value ? 'text-surface-700 dark:text-surface-200' : 'text-surface-400'}`}>{value || empty}</span>
+    <button type="button" aria-label={label} onClick={onOpen} className="mx-4 mb-4 block w-[calc(100%-2rem)] rounded-xl bg-surface2 px-3 py-2.5 text-start text-sm hover:bg-surface3/60">
+      <span className={`line-clamp-2 min-h-12 leading-6 break-words ${value ? 'text-ink' : 'text-faint'}`}>{value || empty}</span>
     </button>
   )
 }
@@ -194,8 +194,8 @@ function ClampBox({ text, empty, label, onOpen }: { text?: string | null; empty:
 function DetailRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-2 text-sm min-w-0">
-      <div className="text-surface-400">{label}</div>
-      <div className="wrap-anywhere text-surface-800 dark:text-surface-100">{children}</div>
+      <div className="text-faint">{label}</div>
+      <div className="wrap-anywhere text-ink">{children}</div>
     </div>
   )
 }
@@ -293,18 +293,18 @@ export function CrmActivitiesPage() {
         action={<button type="button" className="btn btn-primary w-full sm:w-auto" data-testid="crm-visit-open" onClick={() => openForm()}><Plus className="w-4 h-4" /> ثبت جدید</button>}
       />
       <FilterBar q={q} onQ={setQ} placeholder="جستجوی مخاطب، موبایل، کد ملی یا مکان" testId="crm-visit-filter" filter={filter} onFilter={setFilter} />
-      {isLoading && <div className="text-sm text-surface-500">در حال بارگذاری...</div>}
-      {!isLoading && visits.length === 0 && <div className="card p-8 text-center text-sm text-surface-500">هنوز موردی ثبت نشده است.</div>}
+      {isLoading && <div className="text-sm text-mute">در حال بارگذاری...</div>}
+      {!isLoading && visits.length === 0 && <div className="card p-8 text-center text-sm text-mute">هنوز موردی ثبت نشده است.</div>}
       <div className="grid md:grid-cols-2 gap-3 min-w-0 items-stretch">
         {visits.map((visit) => (
           <article key={visit.id} data-testid="crm-visit-row" className="card overflow-hidden h-full flex flex-col">
             <div className="flex items-start gap-3 p-4 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300 inline-flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-primsoft text-prim inline-flex items-center justify-center shrink-0">
                 {visit.activity_type === 'call' ? <Phone className="w-4 h-4" /> : visit.activity_type === 'meeting' ? <CalendarDays className="w-4 h-4" /> : <MapPin className="w-4 h-4" />}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
-                  <button type="button" className="block min-w-0 flex-1 text-start font-semibold leading-6 line-clamp-1 break-all text-surface-800 dark:text-surface-100" onClick={() => openDetail(visit.id)}>{visit.person_name}</button>
+                  <button type="button" className="block min-w-0 flex-1 text-start font-semibold leading-6 line-clamp-1 break-all text-ink" onClick={() => openDetail(visit.id)}>{visit.person_name}</button>
                   <div className="flex items-center shrink-0">
                     <IconBtn label="مشاهده فعالیت" onClick={() => openDetail(visit.id)}><Eye className="w-4 h-4" /></IconBtn>
                     <IconBtn label="ویرایش فعالیت" onClick={() => openForm(visit)}><Pencil className="w-4 h-4" /></IconBtn>
@@ -326,7 +326,7 @@ export function CrmActivitiesPage() {
             </div>
             <ClampBox text={visit.result} empty="نتیجه‌ای ثبت نشده" label="مشاهده نتیجه" onOpen={() => openDetail(visit.id)} />
             {visit.remind_at && (
-              <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-surface-100 dark:border-surface-700 bg-primary-50/70 dark:bg-primary-900/25 px-4 py-2.5 text-xs text-primary-800 dark:text-primary-200 min-w-0">
+              <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-line bg-primsoft/70 px-4 py-2.5 text-xs text-prim min-w-0">
                 {visit.notify_sms ? <MessageSquare className="w-3.5 h-3.5 shrink-0" /> : <Bell className="w-3.5 h-3.5 shrink-0" />}
                 <ReminderLine at={visit.remind_at} inApp={visit.notify_in_app} sms={visit.notify_sms} sent={visit.reminded_at} />
               </div>
@@ -477,8 +477,8 @@ export function CrmActivityDetailPage() {
   return (
     <div className="space-y-4" data-testid="crm-activity-page">
       <button type="button" className="btn btn-ghost" data-testid="crm-activity-back" onClick={() => navigate(listPath)}>بازگشت به فهرست</button>
-      {query.isLoading && <div className="text-sm text-surface-500">در حال بارگذاری...</div>}
-      {query.isError && <div className="card p-8 text-center text-sm text-surface-500">این مورد پیدا نشد.</div>}
+      {query.isLoading && <div className="text-sm text-mute">در حال بارگذاری...</div>}
+      {query.isError && <div className="card p-8 text-center text-sm text-mute">این مورد پیدا نشد.</div>}
       {visit && (
         <>
           <PageHeader
@@ -487,7 +487,7 @@ export function CrmActivityDetailPage() {
             action={(
               <div className="flex gap-2">
                 <button type="button" className="btn btn-ghost" aria-label="ویرایش فعالیت" onClick={openForm}><Pencil className="w-4 h-4" /> ویرایش</button>
-                <button type="button" className="btn btn-ghost text-rose-600" aria-label="حذف فعالیت" onClick={askRemove}><Trash2 className="w-4 h-4" /> حذف</button>
+                <button type="button" className="btn btn-ghost text-bad" aria-label="حذف فعالیت" onClick={askRemove}><Trash2 className="w-4 h-4" /> حذف</button>
               </div>
             )}
           />
@@ -503,19 +503,19 @@ export function CrmActivityDetailPage() {
             {visit.remind_at && <DetailRow label="یادآور"><ReminderLine at={visit.remind_at} inApp={visit.notify_in_app} sms={visit.notify_sms} sent={visit.reminded_at} /></DetailRow>}
           </article>
           <section className="card p-4 space-y-3 min-w-0">
-            <div className="font-semibold text-surface-800 dark:text-surface-100">گزارش‌های پیگیری</div>
-            <p className="text-xs text-surface-500 m-0">هر بار که پرزنت را ادامه می‌دهید، یک گزارش جدید بنویسید؛ مثلاً ورود به مرحلهٔ بعد.</p>
+            <div className="font-semibold text-ink">گزارش‌های پیگیری</div>
+            <p className="text-xs text-mute m-0">هر بار که پرزنت را ادامه می‌دهید، یک گزارش جدید بنویسید؛ مثلاً ورود به مرحلهٔ بعد.</p>
             <textarea className="input min-h-24" data-testid="crm-log-body" placeholder="مثلاً وارد مرحله ۲ شد" value={note} onChange={(e) => setNote(e.target.value)} />
             <button type="button" className="btn btn-primary" data-testid="crm-log-save" disabled={addLog.isPending || note.trim() === ''} onClick={() => addLog.mutate()}>ثبت گزارش</button>
-            {(visit.logs ?? []).length === 0 && <div className="text-sm text-surface-500">هنوز گزارشی ثبت نشده است.</div>}
+            {(visit.logs ?? []).length === 0 && <div className="text-sm text-mute">هنوز گزارشی ثبت نشده است.</div>}
             <div className="grid gap-2">
               {(visit.logs ?? []).map((log) => (
-                <div key={log.id} data-testid="crm-log-row" className="rounded-xl bg-surface-50 dark:bg-surface-900/60 px-3 py-2.5 min-w-0">
+                <div key={log.id} data-testid="crm-log-row" className="rounded-xl bg-surface2/60 px-3 py-2.5 min-w-0">
                   <div className="flex items-start justify-between gap-2">
-                    <p className="text-sm leading-6 m-0 wrap-anywhere text-surface-700 dark:text-surface-200 whitespace-pre-wrap">{log.body}</p>
+                    <p className="text-sm leading-6 m-0 wrap-anywhere text-ink whitespace-pre-wrap">{log.body}</p>
                     <IconBtn label="حذف گزارش" tone="danger" onClick={() => askRemoveLog(log)}><Trash2 className="w-4 h-4" /></IconBtn>
                   </div>
-                  {log.created_at && <div className="text-xs text-surface-400 mt-1"><span className="datetime-ltr" dir="ltr">{dateTime(log.created_at)}</span></div>}
+                  {log.created_at && <div className="text-xs text-faint mt-1"><span className="datetime-ltr" dir="ltr">{dateTime(log.created_at)}</span></div>}
                 </div>
               ))}
             </div>
@@ -643,18 +643,18 @@ export function CrmTasksPage() {
         action={<button type="button" className="btn btn-primary w-full sm:w-auto" data-testid="crm-task-open" onClick={() => openForm()}><Plus className="w-4 h-4" /> وظیفه جدید</button>}
       />
       <FilterBar q={q} onQ={setQ} placeholder="جستجوی عنوان یا توضیح وظیفه" testId="crm-task-filter" filter={filter} onFilter={setFilter} openCount={data?.open_tasks ?? 0} />
-      {isLoading && <div className="text-sm text-surface-500">در حال بارگذاری...</div>}
-      {!isLoading && tasks.length === 0 && <div className="card p-8 text-center text-sm text-surface-500">وظیفه‌ای در این فهرست نیست.</div>}
+      {isLoading && <div className="text-sm text-mute">در حال بارگذاری...</div>}
+      {!isLoading && tasks.length === 0 && <div className="card p-8 text-center text-sm text-mute">وظیفه‌ای در این فهرست نیست.</div>}
       <div className="grid md:grid-cols-2 gap-3 min-w-0 items-stretch">
         {tasks.map((task) => (
           <article key={task.id} data-testid="crm-task-row" className="card overflow-hidden h-full flex flex-col">
             <div className="flex items-start gap-3 p-4 min-w-0">
-              <button type="button" data-testid="crm-task-done" className={`mt-1 w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 ${task.completed_at ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-surface-300 dark:border-surface-600'}`} aria-label="انجام وظیفه" onClick={() => toggle.mutate(task)}>
+              <button type="button" data-testid="crm-task-done" className={`mt-1 w-6 h-6 rounded-lg border flex items-center justify-center shrink-0 ${task.completed_at ? 'bg-ok border-ok text-white' : 'border-line2 '}`} aria-label="انجام وظیفه" onClick={() => toggle.mutate(task)}>
                 {task.completed_at && <Check className="w-3.5 h-3.5" />}
               </button>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
-                  <button type="button" className={`block min-w-0 flex-1 text-start font-semibold leading-6 line-clamp-1 break-all ${task.completed_at ? 'line-through text-surface-400' : 'text-surface-800 dark:text-surface-100'}`} onClick={() => openForm(task)}>{task.title}</button>
+                  <button type="button" className={`block min-w-0 flex-1 text-start font-semibold leading-6 line-clamp-1 break-all ${task.completed_at ? 'line-through text-faint' : 'text-ink'}`} onClick={() => openForm(task)}>{task.title}</button>
                   <div className="flex items-center shrink-0">
                     <IconBtn label="مشاهده وظیفه" onClick={() => setDetail(task)}><Eye className="w-4 h-4" /></IconBtn>
                     <IconBtn label="ویرایش وظیفه" onClick={() => openForm(task)}><Pencil className="w-4 h-4" /></IconBtn>
@@ -669,7 +669,7 @@ export function CrmTasksPage() {
             </div>
             <ClampBox text={task.notes} empty="توضیحی ثبت نشده" label="مشاهده توضیح" onOpen={() => setDetail(task)} />
             {task.due_at && (
-              <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-surface-100 dark:border-surface-700 bg-primary-50/70 dark:bg-primary-900/25 px-4 py-2.5 text-xs text-primary-800 dark:text-primary-200 min-w-0">
+              <div className="mt-auto flex flex-wrap items-center gap-2 border-t border-line bg-primsoft/70 px-4 py-2.5 text-xs text-prim min-w-0">
                 {task.notify_sms ? <MessageSquare className="w-3.5 h-3.5 shrink-0" /> : <Bell className="w-3.5 h-3.5 shrink-0" />}
                 <ReminderLine at={task.due_at} inApp={task.notify_in_app} sms={task.notify_sms} sent={task.reminded_at} />
               </div>

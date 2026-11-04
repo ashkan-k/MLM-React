@@ -135,7 +135,7 @@ export function AdminSmsDebugPage() {
               <RefreshCw className={`w-4 h-4 ms-1 ${isFetching ? 'animate-spin' : ''}`} />
               {t('smsRefresh')}
             </button>
-            <button type="button" className="btn btn-outline text-rose-600 border-rose-300" onClick={() => void clearLogs()} disabled={clearMut.isPending}>
+            <button type="button" className="btn btn-outline text-bad border-bad/40" onClick={() => void clearLogs()} disabled={clearMut.isPending}>
               <Trash2 className="w-4 h-4 ms-1" />
               {t('smsClear')}
             </button>
@@ -143,7 +143,7 @@ export function AdminSmsDebugPage() {
         )}
       />
 
-      <div className="rounded-xl border border-sky-200 bg-sky-50 dark:bg-sky-950/30 dark:border-sky-900 px-4 py-3 text-sm text-sky-900 dark:text-sky-100">
+      <div className="rounded-xl border border-info/30 bg-infosoft px-4 py-3 text-sm text-info">
         {t('smsDebugHint')}
         {data?.log_path && (
           <div className="mt-1 font-mono text-xs dir-ltr text-left opacity-80">{data.log_path}</div>
@@ -154,16 +154,16 @@ export function AdminSmsDebugPage() {
       </div>
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title={t('smsStatTotal')} value={data?.stats.total ?? 0} icon={MessageSquare} color="from-blue-500 to-blue-600" />
-        <StatCard title={t('smsStatOk')} value={data?.stats.success ?? 0} icon={CheckCircle2} color="from-emerald-500 to-emerald-600" />
-        <StatCard title={t('smsStatFail')} value={data?.stats.failed ?? 0} icon={XCircle} color="from-rose-500 to-rose-600" />
-        <StatCard title={t('smsStatFailToday')} value={data?.stats.failed_today ?? 0} icon={AlertTriangle} color="from-amber-500 to-amber-600" />
+        <StatCard title={t('smsStatTotal')} value={data?.stats.total ?? 0} icon={MessageSquare} color="from-info to-info" />
+        <StatCard title={t('smsStatOk')} value={data?.stats.success ?? 0} icon={CheckCircle2} color="from-ok to-ok" />
+        <StatCard title={t('smsStatFail')} value={data?.stats.failed ?? 0} icon={XCircle} color="from-bad to-bad" />
+        <StatCard title={t('smsStatFailToday')} value={data?.stats.failed_today ?? 0} icon={AlertTriangle} color="from-warn to-acc" />
       </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="space-y-4 lg:col-span-1">
           <div className="card p-4 space-y-3">
-            <div className="font-semibold text-surface-800 dark:text-surface-100">{t('smsTestTitle')}</div>
+            <div className="font-semibold text-ink">{t('smsTestTitle')}</div>
             <label className="field">
               {t('smsPhone')}
               <input className="input" dir="ltr" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="0912xxxxxxx" />
@@ -176,17 +176,17 @@ export function AdminSmsDebugPage() {
               <Send className="w-4 h-4 ms-1" />
               {t('smsTestChain')}
             </button>
-            <p className="text-xs text-amber-700 dark:text-amber-300">{t('smsTestWarn')}</p>
+            <p className="text-xs text-warn">{t('smsTestWarn')}</p>
           </div>
 
           <div className="card p-4 space-y-3">
-            <div className="font-semibold text-surface-800 dark:text-surface-100">{t('smsProviders')}</div>
+            <div className="font-semibold text-ink">{t('smsProviders')}</div>
             <div className="space-y-2">
               {(data?.providers ?? []).map((p) => (
-                <div key={p.key} className="flex items-center justify-between gap-2 rounded-lg border border-surface-200 dark:border-surface-700 px-3 py-2">
+                <div key={p.key} className="flex items-center justify-between gap-2 rounded-lg border border-line px-3 py-2">
                   <div>
                     <div className="text-sm font-medium">{p.label}</div>
-                    <div className="text-xs text-surface-500 font-mono dir-ltr text-left">{p.key}</div>
+                    <div className="text-xs text-mute font-mono dir-ltr text-left">{p.key}</div>
                   </div>
                   <div className="flex gap-1">
                     <Badge tone={p.enabled ? 'ok' : 'danger'}>{p.enabled ? t('smsActive') : t('smsInactive')}</Badge>
@@ -213,7 +213,7 @@ export function AdminSmsDebugPage() {
 
         <div className="card overflow-hidden lg:col-span-2">
           <div className="px-4 pt-4 pb-3 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-            <div className="font-semibold text-surface-800 dark:text-surface-100">{t('smsLogTitle')}</div>
+            <div className="font-semibold text-ink">{t('smsLogTitle')}</div>
             <div className="flex flex-wrap gap-2">
               <input
                 className="input w-full sm:w-56"
@@ -277,36 +277,36 @@ export function AdminSmsDebugPage() {
             </div>
             <div>
               <div className="font-medium mb-1">{t('smsMessagePreview')}</div>
-              <pre className="rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-950 p-4 whitespace-pre-wrap text-sm leading-7 text-surface-800 dark:text-surface-100">
+              <pre className="rounded-xl border border-line bg-surface p-4 whitespace-pre-wrap text-sm leading-7 text-ink">
                 {detail.message?.trim() || '—'}
               </pre>
             </div>
             <div>
               <div className="font-medium mb-1">{t('smsColReason')}</div>
-              <pre className="rounded-lg bg-surface-50 dark:bg-surface-900 p-3 whitespace-pre-wrap text-xs dir-ltr text-left">{detail.reason || '—'}</pre>
+              <pre className="rounded-lg bg-surface2 p-3 whitespace-pre-wrap text-xs dir-ltr text-left">{detail.reason || '—'}</pre>
             </div>
             {detail.response && (
               <div>
                 <div className="font-medium mb-1">{t('smsResponse')}</div>
-                <pre className="rounded-lg bg-surface-50 dark:bg-surface-900 p-3 whitespace-pre-wrap text-xs dir-ltr text-left">{detail.response}</pre>
+                <pre className="rounded-lg bg-surface2 p-3 whitespace-pre-wrap text-xs dir-ltr text-left">{detail.response}</pre>
               </div>
             )}
             <div>
               <div className="font-medium mb-1">{t('smsAttempts')}</div>
               <div className="space-y-2">
                 {(detail.attempts ?? []).map((a, i) => (
-                  <div key={i} className="rounded-lg border border-surface-200 dark:border-surface-700 p-3">
+                  <div key={i} className="rounded-lg border border-line p-3">
                     <div className="flex items-center justify-between gap-2 mb-1">
                       <strong>{a.provider || a.provider_key || '—'}</strong>
                       <Badge tone={a.success ? 'ok' : a.skipped ? 'warn' : 'danger'}>
                         {a.success ? t('smsStatOk') : a.skipped ? t('smsSkipped') : t('smsStatFail')}
                       </Badge>
                     </div>
-                    <div className="text-xs text-surface-500">{a.reason || '—'}</div>
+                    <div className="text-xs text-mute">{a.reason || '—'}</div>
                     {a.response && <pre className="mt-2 text-xs whitespace-pre-wrap dir-ltr text-left opacity-80">{a.response}</pre>}
                   </div>
                 ))}
-                {(detail.attempts ?? []).length === 0 && <div className="text-surface-500">—</div>}
+                {(detail.attempts ?? []).length === 0 && <div className="text-mute">—</div>}
               </div>
             </div>
           </div>

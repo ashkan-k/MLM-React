@@ -95,13 +95,13 @@ function FileField({
       {file && (
         <div className="flex items-center gap-3 mt-1">
           {preview ? (
-            <img src={preview} alt="" className="w-20 h-20 object-cover rounded-lg border border-surface-200 dark:border-surface-600" />
+            <img src={preview} alt="" className="w-20 h-20 object-cover rounded-lg border border-line" />
           ) : (
-            <div className="w-20 h-20 rounded-lg border border-surface-200 dark:border-surface-600 flex items-center justify-center text-[11px] text-surface-400">PDF</div>
+            <div className="w-20 h-20 rounded-lg border border-line flex items-center justify-center text-[11px] text-faint">PDF</div>
           )}
-          <div className="min-w-0 text-xs text-surface-500">
-            <div className="truncate font-medium text-surface-700 dark:text-surface-200">{file.name}</div>
-            <button type="button" className="text-red-500 mt-1" onClick={() => onChange(null)}>حذف فایل</button>
+          <div className="min-w-0 text-xs text-mute">
+            <div className="truncate font-medium text-ink">{file.name}</div>
+            <button type="button" className="text-bad mt-1" onClick={() => onChange(null)}>حذف فایل</button>
           </div>
         </div>
       )}
@@ -296,8 +296,8 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
   }
 
   const err = (key: string) => fieldErrors[key]
-  const fieldClass = (key: string) => `input${err(key) ? ' border-red-500 focus:border-red-500' : ''}`
-  const ErrText = ({ k }: { k: string }) => (err(k) ? <span className="text-xs text-red-600 mt-1">{err(k)}</span> : null)
+  const fieldClass = (key: string) => `input${err(key) ? ' border-bad focus:border-bad' : ''}`
+  const ErrText = ({ k }: { k: string }) => (err(k) ? <span className="text-xs text-bad mt-1">{err(k)}</span> : null)
 
   useEffect(() => {
     if (!initialSharedToken || !links || !gatewayShareEnabled) return
@@ -510,10 +510,10 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
         ) : null}
       </section>
 
-      {vipRefError && <p className="text-sm text-red-600">فهرست استان و دسته‌بندی فینوپال بارگذاری نشد. اتصال VIP را بررسی کنید.</p>}
+      {vipRefError && <p className="text-sm text-bad">فهرست استان و دسته‌بندی فینوپال بارگذاری نشد. اتصال VIP را بررسی کنید.</p>}
 
       <section className="grid gap-3">
-        <div className="font-bold text-surface-800 dark:text-surface-100">هویت متقاضی</div>
+        <div className="font-bold text-ink">هویت متقاضی</div>
         <div className="grid md:grid-cols-2 gap-3">
           <label className="field">نوع شخص
             <select className="input" value={form.person_type} onChange={(e) => set('person_type', e.target.value)}>
@@ -565,7 +565,7 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
       </section>
 
       <section className="grid md:grid-cols-2 gap-3">
-        <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">آدرس</div>
+        <div className="md:col-span-2 font-bold text-ink">آدرس</div>
         <label className="field"><FieldLabel required>کد پستی</FieldLabel>
           <div className="flex gap-2">
             <input className={fieldClass('customer.postal_code')} inputMode="numeric" maxLength={10} value={form.postal_code} onChange={(e) => set('postal_code', e.target.value.replace(/\D/g, '').slice(0, 10))} required />
@@ -612,19 +612,19 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
 
       {isLegal && (
         <section className="grid md:grid-cols-2 gap-3">
-          <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">شرکت و صاحبان امضا</div>
+          <div className="md:col-span-2 font-bold text-ink">شرکت و صاحبان امضا</div>
           <label className="field"><FieldLabel required>نام شرکت</FieldLabel><input className="input" value={form.company_name} onChange={(e) => setFa('company_name', 'company_name_en', e.target.value)} required /></label>
           <label className="field"><FieldLabel required>نام انگلیسی شرکت</FieldLabel><input className="input" dir="ltr" value={form.company_name_en} onChange={(e) => setEn('company_name_en', e.target.value)} required /></label>
           <label className="field"><FieldLabel required>شناسه ملی شرکت</FieldLabel><input className="input" inputMode="numeric" maxLength={11} value={form.legal_national_id} onChange={(e) => set('legal_national_id', e.target.value.replace(/\D/g, '').slice(0, 11))} required /></label>
           <label className="field"><FieldLabel required>شماره ثبت</FieldLabel><input className="input" value={form.registration_no} onChange={(e) => set('registration_no', e.target.value)} required /></label>
           <label className="field"><FieldLabel required>تاریخ ثبت</FieldLabel><JalaliDatePicker value={form.register_date} onChange={(v) => set('register_date', v)} placeholder="تاریخ شمسی" fromYear={1300} toYear={1410} /></label>
           <label className="field"><FieldLabel required>شناسه اقتصادی</FieldLabel><input className="input" value={form.economic_code} onChange={(e) => set('economic_code', e.target.value)} required /></label>
-          <p className="md:col-span-2 text-xs text-surface-500">متقاضی همین فرم به‌عنوان صاحب امضا ارسال می‌شود. کد ملی او باید در فهرست رسمی شرکت باشد.</p>
+          <p className="md:col-span-2 text-xs text-mute">متقاضی همین فرم به‌عنوان صاحب امضا ارسال می‌شود. کد ملی او باید در فهرست رسمی شرکت باشد.</p>
         </section>
       )}
 
       <section className="grid md:grid-cols-2 gap-3">
-        <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">فروشگاه / درگاه</div>
+        <div className="md:col-span-2 font-bold text-ink">فروشگاه / درگاه</div>
         <label className="field"><FieldLabel required>نام فروشگاه</FieldLabel><input className="input" value={form.shop_name} onChange={(e) => setFa('shop_name', 'shop_name_en', e.target.value)} required /></label>
         <label className="field"><FieldLabel required>نام انگلیسی فروشگاه</FieldLabel><input className="input" dir="ltr" value={form.shop_name_en} onChange={(e) => setEn('shop_name_en', e.target.value)} required /></label>
         <label className="field"><FieldLabel required>دسته‌بندی درگاه</FieldLabel>
@@ -644,14 +644,14 @@ export function GatewayCreateForm({ onDone, initialSharedToken }: { onDone: () =
       </section>
 
       <section className="grid md:grid-cols-2 gap-3">
-        <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">شبا</div>
+        <div className="md:col-span-2 font-bold text-ink">شبا</div>
         <label className="field"><FieldLabel required>شبا اصلی</FieldLabel><input className={fieldClass('customer.sheba')} dir="ltr" value={form.sheba} onChange={(e) => set('sheba', e.target.value)} placeholder="IR و ۲۴ رقم" required /><ErrText k="customer.sheba" /></label>
         <label className="field"><FieldLabel required>شبا پشتیبان</FieldLabel><input className={fieldClass('customer.backup_sheba')} dir="ltr" value={form.backup_sheba} onChange={(e) => set('backup_sheba', e.target.value)} placeholder="متفاوت از شبا اصلی" required /><ErrText k="customer.backup_sheba" /></label>
       </section>
 
       <section className="grid md:grid-cols-2 gap-3">
-        <div className="md:col-span-2 font-bold text-surface-800 dark:text-surface-100">مدارک</div>
-        <p className="md:col-span-2 text-xs text-surface-500">jpg، png یا pdf و حداکثر ۲ مگابایت. بدون روی کارت، پشت کارت و سلفی، فینوپال ثبت را رد می‌کند.</p>
+        <div className="md:col-span-2 font-bold text-ink">مدارک</div>
+        <p className="md:col-span-2 text-xs text-mute">jpg، png یا pdf و حداکثر ۲ مگابایت. بدون روی کارت، پشت کارت و سلفی، فینوپال ثبت را رد می‌کند.</p>
         <FileField required label="روی کارت ملی" file={docs.national_id_front} onChange={(file) => setDocs((d) => ({ ...d, national_id_front: file }))} />
         <FileField required label="پشت کارت ملی" file={docs.national_id_back} onChange={(file) => setDocs((d) => ({ ...d, national_id_back: file }))} />
         <FileField required label="سلفی احراز هویت" file={docs.selfie} onChange={(file) => setDocs((d) => ({ ...d, selfie: file }))} />

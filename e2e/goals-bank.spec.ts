@@ -159,6 +159,8 @@ test.describe('Goals Bank', () => {
     await page.goto(path)
     await expect(page.getByTestId('goals-bank-page')).toBeVisible({ timeout: 15000 })
     await expect(page.getByTestId('goals-assign')).toBeVisible()
+    await expect(page.getByTestId('goals-create')).toHaveCount(0)
+    await expect(page.getByTestId('goals-import')).toHaveCount(0)
 
     const repToken = await apiToken(page)
     const repMine = await request.get('http://127.0.0.1:8000/api/goals/bank?scope=mine', {

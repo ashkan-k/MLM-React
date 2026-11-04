@@ -6,19 +6,15 @@ import {
   CalendarDays,
   ListTodo,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   CreditCard,
   FileBarChart,
   GitBranch,
-  Globe,
   LayoutDashboard,
   LogOut,
   Menu,
   MessageSquare,
   MessagesSquare,
   Moon,
-  Network,
   Package,
   PieChart,
   Repeat,
@@ -35,10 +31,12 @@ import {
   Eye,
   UserCog,
   X,
+  Search,
 } from 'lucide-react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import { Avatar, Kbd, Menu as DropMenu } from '../components/ui'
 import { useApp } from '../contexts/AppContext'
 import { api } from '../lib/api'
 import { canAccessGoalsBank, canAccessPage } from '../lib/access'
@@ -127,7 +125,6 @@ const adminGroups: NavGroup[] = [
     items: [
       { to: '/superuser/reports', labelKey: 'navReports', icon: FileBarChart },
       { to: '/superuser/transactions', labelKey: 'navTransactions', icon: Repeat },
-      // همیشه در دسترس — وابسته به FINOPAL_PRODUCT_ORIENTED نیست
       { to: '/superuser/commissions', labelKey: 'navCommissions', icon: TrendingUp },
     ],
   },
@@ -238,119 +235,191 @@ function itemActive(item: LinkItem, pathname: string) {
   return item.to !== '' && (pathname.endsWith(`/${item.to}`) || pathname.includes(`/${item.to}/`))
 }
 
-function SidebarNav({ groups, extra }: { groups: NavGroup[]; extra?: ReactNode }) {
-  const { sidebarCollapsed, toggleSidebarCollapsed, sidebarOpen, setSidebarOpen, direction, t } = useApp()
-  const user = useAuth((s) => s.user)
-  const productOriented = useProductOriented()
-  const location = useLocation()
-  const [openGroups, setOpenGroups] = useState<string[]>([])
-  const ChevronIcon = direction === 'rtl' ? (sidebarCollapsed ? ChevronLeft : ChevronRight) : (sidebarCollapsed ? ChevronRight : ChevronLeft)
-  const visibleGroups = useMemo(
-    () => groups
-      .map((group) => ({
-        ...group,
-        items: group.items
-          .filter((item) => {
-            if (item.to === 'org-managers' && user?.active_role?.slug !== 'senior_manager') return false
-            const goalsPath = item.to === 'goals-bank' || item.to === '/superuser/goals-bank'
-              || item.to === 'goals-access' || item.to === '/superuser/goals-access'
-              || item.to === 'goals-monitor' || item.to === '/superuser/goals-monitor'
-            if (goalsPath) {
-              if (!canAccessGoalsBank(user)) return false
-              const managerOnly = item.to.includes('goals-access') || item.to.includes('goals-monitor')
-              if (managerOnly) {
-                return !!(user?.is_superuser || user?.active_role?.slug === 'senior_manager' || user?.active_role?.slug === 'superuser')
-              }
-              return true
-            }
-            return canAccessPage(user, item.to)
-          })
-          .map((item) => (
-            item.to === 'gateways' || item.to === '/superuser/gateways'
-              ? { ...item, labelKey: productNavKey(productOriented) }
-              : item
-          )),
-      }))
-      .filter((group) => group.items.length > 0),
-    [groups, user, productOriented],
+function BrandLogo({ compact }: { compact?: boolean }) {
+  const { t } = useApp()
+  return (
+    <div className="flex items-center gap-2.5 px-1">
+      <span className="w-9 h-9 rounded-xl bg-side2 border border-white/10 flex items-center justify-center shrink-0">
+        <svg width="20" height="20" viewBox="0 0 32 32" fill="none">
+          <circle cx="16" cy="8" r="3.4" fill="#f2b84b" />
+          <circle cx="7" cy="23" r="3.4" fill="#2cb98f" />
+          <circle cx="25" cy="23" r="3.4" fill="#2cb98f" />
+          <path d="M16 11.5v3.5m0 0l-6.5 5.5M16 15l6.5 5.5" stroke="#9db3a7" strokeWidth="1.9" strokeLinecap="round" />
+        </svg>
+      </span>
+      {!compact && (
+        <span className="leading-tight">
+          <span className="block text-[0.98rem] font-black text-white tracking-tight">{t('brand')}</span>
+          <span className="block text-[0.62rem] font-medium text-sidetx">{t('brandSub')}</span>
+        </span>
+      )}
+    </div>
   )
+}
+
+function filterGroups(groups: NavGroup[], user: ReturnType<typeof useAuth.getState>['user'], productOriented: boolean) {
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items
+        .filter((item) => {
+          if (item.to === 'org-managers' && user?.active_role?.slug !== 'senior_manager') return false
+          const goalsPath = item.to === 'goals-bank' || item.to === '/superuser/goals-bank'
+            || item.to === 'goals-access' || item.to === '/superuser/goals-access'
+            || item.to === 'goals-monitor' || item.to === '/superuser/goals-monitor'
+          if (goalsPath) {
+            if (!canAccessGoalsBank(user)) return false
+            const managerOnly = item.to.includes('goals-access') || item.to.includes('goals-monitor')
+            if (managerOnly) {
+              return user?.active_role?.slug === 'senior_manager' || user?.active_role?.slug === 'superuser'
+            }
+            return true
+          }
+          return canAccessPage(user, item.to)
+        })
+        .map((item) => (
+          item.to === 'gateways' || item.to === '/superuser/gateways'
+            ? { ...item, labelKey: productNavKey(productOriented) }
+            : item
+        )),
+    }))
+    .filter((group) => group.items.length > 0)
+}
+
+function SideNav({
+  groups,
+  collapsed,
+  onNavigate,
+  extra,
+}: {
+  groups: NavGroup[]
+  collapsed?: boolean
+  onNavigate?: () => void
+  extra?: ReactNode
+}) {
+  const { t } = useApp()
+  const location = useLocation()
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
-    const active = visibleGroups.filter((g) => g.items.some((item) => itemActive(item, location.pathname))).map((g) => g.key)
+    const next: Record<string, boolean> = {}
+    for (const g of groups) {
+      next[g.key] = g.standalone || g.items.some((item) => itemActive(item, location.pathname))
+    }
     setOpenGroups((prev) => {
-      if (prev.length === active.length && prev.every((k, i) => k === active[i])) return prev
-      return active
+      const merged = { ...prev }
+      for (const [k, v] of Object.entries(next)) {
+        if (v) merged[k] = true
+        else if (merged[k] === undefined) merged[k] = true
+      }
+      return merged
     })
-  }, [location.pathname, visibleGroups])
+  }, [location.pathname, groups])
+
+  if (collapsed) {
+    return (
+      <nav className="flex-1 overflow-y-auto py-2 scroll-slim">
+        {groups.flatMap((g) => g.items).map((item) => (
+          <NavLink
+            key={item.to + item.labelKey}
+            end={item.end}
+            to={item.to}
+            title={t(item.labelKey)}
+            onClick={onNavigate}
+            className={({ isActive }) => `nav-item !justify-center !mx-2 !px-0 ${isActive ? 'nav-item-active' : ''}`}
+          >
+            <item.icon size={18} />
+          </NavLink>
+        ))}
+        {extra}
+      </nav>
+    )
+  }
 
   return (
-    <>
-      {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />}
-      <aside className={`
-        fixed top-0 ${direction === 'rtl' ? 'right-0' : 'left-0'} h-full z-50
-        bg-white dark:bg-surface-900 border-s border-surface-200 dark:border-surface-700
-        transition-all duration-300
-        ${sidebarOpen ? 'translate-x-0' : (direction === 'rtl' ? 'translate-x-full' : '-translate-x-full')}
-        lg:translate-x-0 lg:static lg:z-auto
-        ${sidebarCollapsed ? 'w-[68px]' : 'w-64'}
-        flex flex-col
-      `}>
-        <div className="h-16 flex items-center justify-between px-4 border-b border-surface-200 dark:border-surface-700">
-          {!sidebarCollapsed && (
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center">
-                <Network className="w-4 h-4 text-white" />
-              </div>
-              <div>
-                <div className="font-bold text-sm text-surface-800 dark:text-surface-100">{t('brand')}</div>
-                <div className="text-[10px] text-surface-400">{t('brandSub')}</div>
+    <nav className="flex-1 overflow-y-auto py-2 scroll-slim">
+      {groups.map((group) => {
+        const gOpen = openGroups[group.key] !== false
+        const groupActive = group.items.some((item) => itemActive(item, location.pathname))
+        return (
+          <div key={group.key} className="mb-1">
+            {!group.standalone && (
+              <button
+                type="button"
+                className={`w-full flex items-center gap-2 px-4 py-2 text-[0.66rem] font-extrabold tracking-wide ${groupActive ? 'text-acc2' : 'text-sidetx/70'} hover:text-white/80 transition-colors`}
+                onClick={() => setOpenGroups((o) => ({ ...o, [group.key]: !gOpen }))}
+              >
+                <span className="flex-1 text-start">{t(group.key)}</span>
+                <ChevronDown size={12} className={`transition-transform duration-200 ${gOpen ? '' : '-rotate-90 rtl:rotate-90'}`} />
+              </button>
+            )}
+            <div className={`grid transition-all duration-200 ${group.standalone || gOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+              <div className="overflow-hidden">
+                {group.items.map((item) => (
+                  <NavLink
+                    key={item.to + item.labelKey}
+                    end={item.end}
+                    to={item.to}
+                    onClick={onNavigate}
+                    className={({ isActive }) => `nav-item ${isActive ? 'nav-item-active' : ''}`}
+                  >
+                    <item.icon size={16} className="shrink-0 opacity-80" />
+                    <span className="truncate">{t(item.labelKey)}</span>
+                  </NavLink>
+                ))}
               </div>
             </div>
-          )}
-          <button type="button" onClick={toggleSidebarCollapsed} className="hidden lg:flex p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500">
-            <ChevronIcon className="w-4 h-4" />
-          </button>
-          <button type="button" onClick={() => setSidebarOpen(false)} className="lg:hidden p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500">
-            <X className="w-4 h-4" />
-          </button>
+          </div>
+        )
+      })}
+      {extra}
+    </nav>
+  )
+}
+
+function SidebarContent({
+  groups,
+  collapsed,
+  onNavigate,
+  extra,
+}: {
+  groups: NavGroup[]
+  collapsed?: boolean
+  onNavigate?: () => void
+  extra?: ReactNode
+}) {
+  const user = useAuth((s) => s.user)
+  const { t } = useApp()
+  return (
+    <div className="flex flex-col h-full bg-side">
+      <div className="h-[62px] flex items-center border-b border-white/5 px-4 shrink-0">
+        <BrandLogo compact={collapsed} />
+      </div>
+      <SideNav groups={groups} collapsed={collapsed} onNavigate={onNavigate} extra={extra} />
+      {!collapsed && (
+        <div className="p-3 shrink-0">
+          <div className="rounded-xl bg-side2 border border-white/5 p-3 flex items-center gap-2.5">
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt="" className="w-[34px] h-[34px] rounded-full object-cover" />
+            ) : (
+              <Avatar name={user?.name || 'U'} size={34} status="online" />
+            )}
+            <div className="min-w-0">
+              <p className="text-[0.8rem] font-bold text-white truncate m-0">{user?.name}</p>
+              <p className="text-[0.66rem] text-sidetx truncate m-0">
+                {user?.active_role ? roleLabel(user.active_role.slug) : t('brandSub')}
+              </p>
+            </div>
+          </div>
         </div>
-        <nav className="flex-1 overflow-y-auto py-3 px-2">
-          {visibleGroups.map((group) => (
-            <div key={group.key} className="mb-1">
-              {!sidebarCollapsed && !group.standalone && (
-                <button type="button" onClick={() => setOpenGroups((prev) => prev.includes(group.key) ? prev.filter((g) => g !== group.key) : [...prev, group.key])} className="w-full flex items-center justify-between px-3 py-1.5 text-[11px] font-semibold text-surface-400 uppercase">
-                  <span>{t(group.key)}</span>
-                  <ChevronDown className={`w-3 h-3 transition-transform ${openGroups.includes(group.key) ? 'rotate-180' : ''}`} />
-                </button>
-              )}
-              {(sidebarCollapsed || group.standalone || openGroups.includes(group.key)) && (
-                <div className="space-y-0.5">
-                  {group.items.map((item) => (
-                    <NavLink
-                      key={item.to + item.labelKey}
-                      end={item.end}
-                      to={item.to}
-                      onClick={() => { if (window.innerWidth < 1024) setSidebarOpen(false) }}
-                      className={({ isActive }) => `nav-link w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all ${isActive ? 'active bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-400 font-medium' : 'text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800'} ${sidebarCollapsed ? 'justify-center' : ''}`}
-                    >
-                      <item.icon className="w-4 h-4 flex-shrink-0" />
-                      {!sidebarCollapsed && <span className="truncate">{t(item.labelKey)}</span>}
-                    </NavLink>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-          {extra}
-        </nav>
-      </aside>
-    </>
+      )}
+    </div>
   )
 }
 
 function BadgeCount({ count }: { count?: number }) {
   if (!count) return null
-  return <span className="absolute -top-1 -end-1 min-w-4 h-4 px-1 rounded-full bg-red-500 text-white text-[10px] leading-4 text-center">{count > 99 ? '99+' : count}</span>
+  return <span className="absolute top-1.5 end-1.5 w-2 h-2 rounded-full bg-bad border-2 border-surface" />
 }
 
 function HeaderIcons({ panel }: { panel: 'role' | 'admin' }) {
@@ -359,12 +428,12 @@ function HeaderIcons({ panel }: { panel: 'role' | 'admin' }) {
   const { data: chat } = useQuery({ queryKey: ['chat-unread'], queryFn: async () => (await api.get('/conversations/unread-count')).data, refetchInterval: 20_000 })
   return (
     <>
-      <NavLink to={panel === 'admin' ? '/superuser/chat' : 'chat'} className="relative p-2 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500" aria-label={t('navChat')}>
-        <MessagesSquare className="w-4 h-4" />
+      <NavLink to={panel === 'admin' ? '/superuser/chat' : 'chat'} className="icon-btn relative" aria-label={t('navChat')}>
+        <MessagesSquare size={18} />
         <BadgeCount count={Number(chat?.unread ?? 0)} />
       </NavLink>
-      <NavLink to={panel === 'admin' ? '/superuser/notifications' : 'notifications'} className="relative p-2 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500" aria-label={t('navNotifications')}>
-        <Bell className="w-4 h-4" />
+      <NavLink to={panel === 'admin' ? '/superuser/notifications' : 'notifications'} className="icon-btn relative" aria-label={t('navNotifications')}>
+        <Bell size={18} />
         <BadgeCount count={Number(notif?.unread ?? 0)} />
       </NavLink>
     </>
@@ -379,7 +448,7 @@ function ImpersonationBanner() {
   return (
     <div
       data-testid="impersonation-banner"
-      className="bg-amber-500 text-amber-950 px-4 py-2 text-sm flex flex-wrap items-center justify-between gap-2"
+      className="bg-acc2 text-[#3a2a05] px-4 py-2 text-sm flex flex-wrap items-center justify-between gap-2"
     >
       <span>
         {t('impersonatingAs')} <strong>{user.name}</strong>
@@ -389,7 +458,7 @@ function ImpersonationBanner() {
       <button
         type="button"
         data-testid="impersonation-exit"
-        className="px-3 py-1 rounded-lg bg-amber-950/15 hover:bg-amber-950/25 font-medium"
+        className="px-3 py-1 rounded-lg bg-black/10 hover:bg-black/15 font-medium"
         onClick={async () => {
           await logout()
           navigate('/login', { replace: true })
@@ -401,69 +470,273 @@ function ImpersonationBanner() {
   )
 }
 
-function ShellTopbar({ title, panel }: { title: string; panel: 'role' | 'admin' }) {
-  const { user, switchRole, logout } = useAuth()
-  const { darkMode, toggleDarkMode, toggleDirection, setSidebarOpen, t, locale } = useApp()
+function CommandPalette({
+  open,
+  onClose,
+  flatItems,
+}: {
+  open: boolean
+  onClose: () => void
+  flatItems: { to: string; label: string; icon: typeof LayoutDashboard }[]
+}) {
+  const { t, darkMode, toggleDarkMode, toggleDirection, locale } = useApp()
   const navigate = useNavigate()
-  const [menu, setMenu] = useState(false)
-  const active = user?.active_role
-  const impersonating = Boolean(user?.impersonating)
+  const [q, setQ] = useState('')
+  const [idx, setIdx] = useState(0)
 
+  const items = useMemo(() => {
+    const qq = q.trim().toLowerCase()
+    const navItems = flatItems
+      .filter((i) => !qq || i.label.toLowerCase().includes(qq) || i.to.includes(qq))
+      .map((i) => ({ label: i.label, icon: i.icon, run: () => navigate(i.to.startsWith('/') ? i.to : i.to || '.'), kind: locale === 'en' ? 'Page' : 'صفحه' }))
+    const acts = [
+      { label: darkMode ? (locale === 'en' ? 'Switch to light' : 'حالت روشن') : (locale === 'en' ? 'Switch to dark' : 'حالت تاریک'), icon: darkMode ? Sun : Moon, run: toggleDarkMode, kind: locale === 'en' ? 'Action' : 'عملیات' },
+      { label: locale === 'fa' ? 'English / LTR' : 'فارسی / RTL', icon: Search, run: toggleDirection, kind: locale === 'en' ? 'Action' : 'عملیات' },
+    ].filter((a) => !qq || a.label.toLowerCase().includes(qq))
+    return [...navItems, ...acts]
+  }, [q, flatItems, darkMode, locale, navigate, toggleDarkMode, toggleDirection])
+
+  useEffect(() => { setIdx(0) }, [q, open])
+  useEffect(() => {
+    if (!open) return
+    const h = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setIdx((i) => Math.min(i + 1, items.length - 1)) }
+      if (e.key === 'ArrowUp') { e.preventDefault(); setIdx((i) => Math.max(i - 1, 0)) }
+      if (e.key === 'Enter' && items[idx]) { items[idx].run(); onClose() }
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [open, idx, items, onClose])
+
+  if (!open) return null
   return (
-    <header className="h-16 bg-white dark:bg-surface-900 border-b border-surface-200 dark:border-surface-700 flex items-center justify-between px-4 lg:px-6">
-      <div className="flex items-center gap-3">
-        <button type="button" onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500">
-          <Menu className="w-5 h-5" />
-        </button>
-        <nav className="hidden md:flex items-center gap-2 text-sm">
-          <span className="text-surface-400">{t('home')}</span>
-          <span className="text-surface-300">/</span>
-          <span className="text-surface-800 dark:text-surface-200 font-medium">{title}</span>
-        </nav>
-      </div>
-      <div className="flex items-center gap-2">
-        {panel === 'role' && active && (
-          <select
-            data-testid="role-switcher"
-            className="input w-auto min-w-40 py-1.5"
-            value={active.slug}
-            onChange={async (e) => {
-              await switchRole(e.target.value)
-              navigate(dashboardPath(e.target.value))
-            }}
-          >
-            {user?.roles.filter((r) => r.is_active !== false && r.slug !== 'superuser').map((role) => (
-              <option key={role.slug} value={role.slug}>{roleLabel(role.slug, locale)}</option>
-            ))}
-          </select>
-        )}
-        <button type="button" data-testid="lang-toggle" onClick={toggleDirection} className="px-2.5 py-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-600 dark:text-surface-300 text-xs font-semibold" title={t('dir')}>
-          <span className="inline-flex items-center gap-1"><Globe className="w-4 h-4" />{t('language')}</span>
-        </button>
-        <button type="button" data-testid="theme-toggle" onClick={toggleDarkMode} className="p-2 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500" title={t('theme')}>
-          {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </button>
-        <HeaderIcons panel={panel} />
-        <div className="relative">
-          <button type="button" onClick={() => setMenu((v) => !v)} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-surface-100 dark:hover:bg-surface-800">
-            <div className="w-8 h-8 rounded-full overflow-hidden bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
-              {user?.avatar_url ? <img src={user.avatar_url} alt="" className="w-full h-full object-cover" /> : <User className="w-4 h-4 text-white" />}
-            </div>
-            <div className="hidden md:block text-start">
-              <div className="text-xs font-medium text-surface-700 dark:text-surface-300">{user?.name}</div>
-              <div className="text-[10px] text-surface-400">{t('id')} {user?.id} · {user?.mobile}</div>
-            </div>
-          </button>
-          {menu && (
-            <div className="absolute top-full mt-2 end-0 w-56 bg-white dark:bg-surface-800 rounded-xl shadow-lg border border-surface-200 dark:border-surface-700 p-1.5 z-40">
-              <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-danger-500 hover:bg-danger-500/10" onClick={async () => { await logout(); navigate('/login') }}>
-                <LogOut className="w-4 h-4" /> {impersonating ? t('impersonationExit') : t('logout')}
-              </button>
-            </div>
-          )}
+    <div className="fixed inset-0 z-[90] flex items-start justify-center pt-[12vh] p-4">
+      <div className="absolute inset-0 bg-black/50 anim-in" onClick={onClose} />
+      <div className="relative card w-full max-w-xl anim-pop overflow-hidden">
+        <div className="flex items-center gap-3 px-4 border-b border-line">
+          <Search size={17} className="text-faint" />
+          <input
+            autoFocus
+            className="flex-1 bg-transparent py-3.5 text-sm outline-none placeholder:text-faint"
+            placeholder={t('search') || 'جستجوی صفحه یا عملیات…'}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+          />
+          <Kbd>ESC</Kbd>
+        </div>
+        <div className="max-h-[46vh] overflow-y-auto p-2 scroll-slim">
+          {items.length === 0 && <p className="text-center text-sm text-mute py-8">{locale === 'en' ? 'Nothing found.' : 'چیزی پیدا نشد.'}</p>}
+          {items.map((it, i) => (
+            <button
+              key={it.label + i}
+              type="button"
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${i === idx ? 'bg-primsoft text-prim' : 'hover:bg-surface2'}`}
+              onMouseEnter={() => setIdx(i)}
+              onClick={() => { it.run(); onClose() }}
+            >
+              <it.icon size={16} className={i === idx ? 'text-prim' : 'text-faint'} />
+              <span className="flex-1 text-start">{it.label}</span>
+              <span className="text-[0.64rem] font-bold text-faint badge tone-neutral">{it.kind}</span>
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-3 px-4 py-2.5 border-t border-line text-[0.66rem] text-faint font-medium">
+          <span className="flex items-center gap-1"><Kbd>↑</Kbd><Kbd>↓</Kbd></span>
+          <span className="flex items-center gap-1"><Kbd>↵</Kbd></span>
+          <span className="ms-auto flex items-center gap-1"><Kbd>Ctrl</Kbd><Kbd>K</Kbd></span>
         </div>
       </div>
-    </header>
+    </div>
+  )
+}
+
+function ShellChrome({
+  groups,
+  panel,
+  title,
+  extra,
+}: {
+  groups: NavGroup[]
+  panel: 'role' | 'admin'
+  title: string
+  extra?: ReactNode
+}) {
+  const { user, switchRole, logout } = useAuth()
+  const { darkMode, toggleDarkMode, toggleDirection, sidebarCollapsed, toggleSidebarCollapsed, sidebarOpen, setSidebarOpen, t, locale } = useApp()
+  const navigate = useNavigate()
+  const location = useLocation()
+  const qc = useQueryClient()
+  const productOriented = useProductOriented()
+  const [palette, setPalette] = useState(false)
+  const active = user?.active_role
+  const impersonating = Boolean(user?.impersonating)
+  const switchableRoles = user?.roles.filter((r) => r.is_active !== false && r.slug !== 'superuser') ?? []
+
+  const visibleGroups = useMemo(
+    () => filterGroups(groups, user, productOriented),
+    [groups, user, productOriented],
+  )
+
+  const flatItems = useMemo(
+    () => visibleGroups.flatMap((g) => g.items.map((i) => ({
+      to: i.to.startsWith('/') || i.to === '' ? (i.to || location.pathname.split('/').slice(0, 3).join('/') || '.') : i.to,
+      label: t(i.labelKey),
+      icon: i.icon,
+    }))),
+    [visibleGroups, t, location.pathname],
+  )
+
+  useEffect(() => {
+    setSidebarOpen(false)
+  }, [location.pathname, setSidebarOpen])
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setPalette((p) => !p)
+      }
+    }
+    window.addEventListener('keydown', h)
+    return () => window.removeEventListener('keydown', h)
+  }, [])
+
+  return (
+    <div className="min-h-screen bg-bg">
+      <aside className={`hidden lg:block fixed inset-y-0 start-0 z-40 transition-all duration-300 ${sidebarCollapsed ? 'w-[76px]' : 'w-[264px]'}`}>
+        <SidebarContent groups={visibleGroups} collapsed={sidebarCollapsed} extra={extra} />
+      </aside>
+
+      {sidebarOpen && (
+        <div className="lg:hidden fixed inset-0 z-[75]">
+          <div className="absolute inset-0 bg-black/50 anim-in" onClick={() => setSidebarOpen(false)} />
+          <div className="absolute inset-y-0 start-0 w-[280px] anim-slide shadow-2xl">
+            <button type="button" className="absolute top-4 end-[-46px] icon-btn bg-side text-white hover:bg-side2" onClick={() => setSidebarOpen(false)} aria-label="close menu">
+              <X size={18} />
+            </button>
+            <SidebarContent groups={visibleGroups} onNavigate={() => setSidebarOpen(false)} extra={extra} />
+          </div>
+        </div>
+      )}
+
+      <div className={`transition-all duration-300 ${sidebarCollapsed ? 'lg:ps-[76px]' : 'lg:ps-[264px]'}`}>
+        <ImpersonationBanner />
+        <header className="sticky top-0 z-40 h-[62px] flex items-center gap-2 px-4 lg:px-6 border-b border-line bg-bg/85 backdrop-blur-md">
+          <button type="button" className="icon-btn lg:hidden" onClick={() => setSidebarOpen(true)} aria-label="menu"><Menu size={19} /></button>
+          <button type="button" className="icon-btn hidden lg:inline-flex" onClick={toggleSidebarCollapsed} aria-label="collapse sidebar">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+              <rect x="3" y="4" width="18" height="16" rx="3" />
+              <path d="M15.5 4v16" className="rtl:hidden" />
+              <path d="M8.5 4v16" className="ltr:hidden" />
+            </svg>
+          </button>
+          <div className="hidden md:block min-w-0">
+            <nav className="flex items-center gap-1.5 text-[0.8rem] min-w-0">
+              <span className="text-mute font-medium">{t('home')}</span>
+              <span className="text-faint">/</span>
+              <span className="font-bold truncate">{title}</span>
+            </nav>
+          </div>
+          <div className="flex-1" />
+          {panel === 'role' && active && switchableRoles.length > 1 && (
+            <select
+              data-testid="role-switcher"
+              className="input w-auto min-w-36 !py-1.5 !h-9 hidden sm:block"
+              value={active.slug}
+              onChange={async (e) => {
+                const slug = e.target.value
+                if (slug === active.slug) return
+                try {
+                  await switchRole(slug)
+                  navigate(dashboardPath(slug), { replace: true })
+                } finally {
+                  void qc.invalidateQueries()
+                }
+              }}
+            >
+              {switchableRoles.map((role) => (
+                <option key={role.slug} value={role.slug}>{roleLabel(role.slug, locale)}</option>
+              ))}
+            </select>
+          )}
+          <button
+            type="button"
+            onClick={() => setPalette(true)}
+            className="hidden sm:flex items-center gap-2.5 h-9 px-3 rounded-[10px] border border-line bg-surface text-faint text-[0.8rem] font-medium hover:border-line2 hover:text-mute transition-colors w-48 lg:w-56"
+          >
+            <Search size={15} />
+            <span className="flex-1 text-start truncate">{t('search') || 'جستجو…'}</span>
+            <span className="flex gap-1"><Kbd>Ctrl</Kbd><Kbd>K</Kbd></span>
+          </button>
+          <button type="button" className="icon-btn sm:hidden" onClick={() => setPalette(true)} aria-label="search"><Search size={18} /></button>
+          <button type="button" data-testid="theme-toggle" className="icon-btn" onClick={toggleDarkMode} aria-label={t('theme')}>
+            {darkMode ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
+          <button type="button" data-testid="lang-toggle" className="icon-btn" onClick={toggleDirection} aria-label={t('language')}>
+            <span className="font-code text-[0.72rem] font-bold">{locale === 'fa' ? 'EN' : 'فا'}</span>
+          </button>
+          <HeaderIcons panel={panel} />
+          <DropMenu
+            button={
+              <button type="button" className="flex items-center gap-2 ms-1 cursor-pointer" data-testid="user-menu">
+                {user?.avatar_url ? (
+                  <img src={user.avatar_url} alt="" className="w-[34px] h-[34px] rounded-full object-cover" />
+                ) : user?.name ? (
+                  <Avatar name={user.name} size={34} status="online" />
+                ) : (
+                  <span className="w-[34px] h-[34px] rounded-full bg-prim flex items-center justify-center"><User size={16} className="text-white" /></span>
+                )}
+              </button>
+            }
+            items={[
+              {
+                label: 'user-meta',
+                node: (
+                  <div className="px-3 py-2.5 mb-1 border-b border-line">
+                    <div className="text-sm font-bold text-ink truncate">{user?.name || '—'}</div>
+                    <div className="text-[0.7rem] text-mute truncate mt-0.5">
+                      {active ? roleLabel(active.slug, locale) : (panel === 'admin' ? t('navStats') : '—')}
+                    </div>
+                  </div>
+                ),
+              },
+              {
+                label: t('navNotifications'),
+                icon: Bell,
+                onClick: () => navigate(panel === 'admin' ? '/superuser/notifications' : 'notifications'),
+              },
+              ...(panel === 'admin' ? [{
+                label: t('navSettings'),
+                icon: Settings,
+                onClick: () => navigate('/superuser/settings'),
+              }] : panel === 'role' ? [{
+                label: t('navWallet'),
+                icon: Wallet,
+                onClick: () => navigate('wallet'),
+              }] : []),
+              {
+                label: impersonating ? t('impersonationExit') : t('logout'),
+                icon: LogOut,
+                danger: true,
+                onClick: async () => { await logout(); navigate('/login') },
+              },
+            ]}
+          />
+        </header>
+
+        <main className="p-4 lg:p-6 max-w-[1440px] mx-auto animate-fadeIn">
+          <Outlet />
+        </main>
+
+        <footer className="px-6 pb-6 text-[0.7rem] text-faint flex items-center gap-2 max-w-[1440px] mx-auto">
+          <span className="live-dot" />
+          <span>{t('brand')} — {title}</span>
+        </footer>
+      </div>
+
+      <CommandPalette open={palette} onClose={() => setPalette(false)} flatItems={flatItems} />
+    </div>
   )
 }
 
@@ -484,21 +757,20 @@ export function AppShell() {
   const { t } = useApp()
   const location = useLocation()
   const productOriented = useProductOriented()
-  const extra = user?.is_superuser ? (
-    <NavLink to="/superuser" className="nav-link w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-primary-700 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20">
-      <Building2 className="w-4 h-4" /> <span>{t('navSuperuser')}</span>
+  const extra = user?.is_superuser && !user?.impersonating ? (
+    <NavLink to="/superuser" className="nav-item text-acc2">
+      <Building2 size={16} className="shrink-0 opacity-80" />
+      <span className="truncate">{t('navSuperuser')}</span>
     </NavLink>
   ) : null
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-50 dark:bg-surface-950">
-      <SidebarNav groups={roleGroups} extra={user?.impersonating ? null : extra} />
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <ImpersonationBanner />
-        <ShellTopbar panel="role" title={currentTitle(location.pathname, t, `${t('titleDashboard')} ${roleLabel(user?.active_role?.slug)}`, productOriented)} />
-        <main className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto p-4 lg:p-6 animate-fadeIn"><Outlet /></main>
-      </div>
-    </div>
+    <ShellChrome
+      groups={roleGroups}
+      panel="role"
+      title={currentTitle(location.pathname, t, `${t('titleDashboard')} ${roleLabel(user?.active_role?.slug)}`, productOriented)}
+      extra={extra}
+    />
   )
 }
 
@@ -508,18 +780,19 @@ export function SuperuserShell() {
   const location = useLocation()
   const productOriented = useProductOriented()
   const back = dashboardPath(user?.roles.find((r) => r.slug !== 'superuser')?.slug ?? 'representative')
+  const extra = user?.impersonating ? null : (
+    <NavLink to={back} className="nav-item">
+      <User size={16} className="shrink-0 opacity-80" />
+      <span className="truncate">{t('navBackRole')}</span>
+    </NavLink>
+  )
 
   return (
-    <div className="flex h-screen overflow-hidden bg-surface-50 dark:bg-surface-950">
-      <SidebarNav
-        groups={adminGroups}
-        extra={user?.impersonating ? null : <NavLink to={back} className="nav-link w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-surface-600 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800">{t('navBackRole')}</NavLink>}
-      />
-      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <ImpersonationBanner />
-        <ShellTopbar panel="admin" title={currentTitle(location.pathname, t, t('titleAdmin'), productOriented)} />
-        <main className="flex-1 min-w-0 overflow-x-hidden overflow-y-auto p-4 lg:p-6 animate-fadeIn"><Outlet /></main>
-      </div>
-    </div>
+    <ShellChrome
+      groups={adminGroups}
+      panel="admin"
+      title={currentTitle(location.pathname, t, t('titleAdmin'), productOriented)}
+      extra={extra}
+    />
   )
 }

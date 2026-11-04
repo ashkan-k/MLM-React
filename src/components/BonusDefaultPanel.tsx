@@ -68,20 +68,20 @@ export function BonusDefaultToggle({
 
 function UserCard({ user }: { user: BonusUser }) {
   return (
-    <div className="rounded-2xl border border-surface-200 dark:border-surface-700 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between" data-testid="bonus-default-user">
+    <div className="rounded-2xl border border-line p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 justify-between" data-testid="bonus-default-user">
       <div className="min-w-0">
-        <div className="font-semibold text-sm text-surface-900 dark:text-surface-50">{user.name}</div>
+        <div className="font-semibold text-sm text-ink">{user.name}</div>
         {user.mobile ? (
-          <div className="text-xs text-surface-500 mt-0.5">
+          <div className="text-xs text-mute mt-0.5">
             <bdi className="tabular-nums" dir="ltr">{user.mobile}</bdi>
           </div>
         ) : null}
       </div>
       <div className="flex flex-wrap gap-2">
         {user.roles.length === 0 ? (
-          <span className="text-xs text-surface-400">نقش پاداش‌دار ندارد</span>
+          <span className="text-xs text-faint">نقش پاداش‌دار ندارد</span>
         ) : user.roles.map((role) => (
-          <div key={role.slug} className="flex items-center gap-2 rounded-xl bg-surface-50 dark:bg-surface-800/60 px-2 py-1.5">
+          <div key={role.slug} className="flex items-center gap-2 rounded-xl bg-surface2 px-2 py-1.5">
             <Badge tone="info">{roleLabel(role.slug) || role.name}</Badge>
             <BonusDefaultToggle userId={user.id} roleSlug={role.slug} enabled={role.bonus_default} compact />
           </div>
@@ -105,11 +105,11 @@ export function BonusDefaultFinder() {
   return (
     <section className="card p-4 sm:p-5 space-y-4" data-testid="bonus-default-finder">
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-xl bg-violet-100 dark:bg-violet-950/50 text-violet-700 dark:text-violet-200 flex items-center justify-center shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-primsoft text-prim flex items-center justify-center shrink-0">
           <Award className="w-5 h-5" />
         </div>
         <div>
-          <p className="text-xs text-surface-500 m-0 leading-6">
+          <p className="text-xs text-mute m-0 leading-6">
             نام یا موبایل را جستجو کنید و برای همان نقش دکمه را بزنید. درصد پاداش (برای نماینده ۵٪ روی ۱۵٪ پایه) برای همه درگاه‌های قبلی و بعدی، بدون حد نصاب، فعال می‌شود.
           </p>
         </div>
@@ -122,7 +122,7 @@ export function BonusDefaultFinder() {
         }}
       >
         <label className="relative grow min-w-[14rem]">
-          <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400 pointer-events-none" />
+          <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-faint pointer-events-none" />
           <input
             className="input with-icon w-full"
             value={input}
@@ -142,15 +142,15 @@ export function BonusDefaultFinder() {
         )}
       </form>
       {isLoading ? (
-        <p className="text-sm text-surface-500 m-0">در حال بارگذاری...</p>
+        <p className="text-sm text-mute m-0">در حال بارگذاری...</p>
       ) : users.length === 0 ? (
         <Empty text="کاربری با نقش پاداش‌دار پیدا نشد" />
       ) : (
         <div className="space-y-2">
           {users.map((user) => <UserCard key={user.id} user={user} />)}
-          {isFetching && <p className="text-xs text-surface-400 m-0">به‌روزرسانی...</p>}
+          {isFetching && <p className="text-xs text-faint m-0">به‌روزرسانی...</p>}
           {!search && users.length >= 20 && (
-            <p className="text-xs text-surface-400 m-0">۲۰ نفر اول نمایش داده شد. برای بقیه، نام یا موبایل را جستجو کنید.</p>
+            <p className="text-xs text-faint m-0">۲۰ نفر اول نمایش داده شد. برای بقیه، نام یا موبایل را جستجو کنید.</p>
           )}
         </div>
       )}
@@ -176,9 +176,9 @@ export function BonusDefaultDialog({
 
   return (
     <Modal open={Boolean(user)} onClose={onClose} title={user ? `پاداش پیش‌فرض ${user.name}` : 'پاداش پیش‌فرض'}>
-      {isLoading && <p className="text-sm text-surface-500 m-0">در حال بارگذاری...</p>}
+      {isLoading && <p className="text-sm text-mute m-0">در حال بارگذاری...</p>}
       {!isLoading && !found && (
-        <p className="text-sm text-surface-500 m-0 leading-6">
+        <p className="text-sm text-mute m-0 leading-6">
           این کاربر نقش نماینده، مدیر فروش یا مدیر توسعه ندارد. پاداش پیش‌فرض فقط برای همین نقش‌هاست.
         </p>
       )}

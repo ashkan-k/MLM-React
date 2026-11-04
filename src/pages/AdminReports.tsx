@@ -130,7 +130,7 @@ export function AdminReports({ scope = 'superuser' }: { scope?: ReportsScope }) 
           <StatCard key={s.key} title={s.label} value={s.money ? money(s.value) : Number(s.value).toLocaleString(localeTag())} />
         ))}
       </div>
-      {isFetching && <div className="text-sm text-surface-400">{t('reportsUpdating')}</div>}
+      {isFetching && <div className="text-sm text-faint">{t('reportsUpdating')}</div>}
 
       <div className="grid lg:grid-cols-2 gap-3">
         <div className="card p-5">

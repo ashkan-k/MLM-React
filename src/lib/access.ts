@@ -27,7 +27,7 @@ export const PAGE_PERMISSION: Record<string, string> = {
 
 export function canAccessGoalsBank(user: AuthUser | null | undefined): boolean {
   if (!user) return false
-  if (user.is_superuser || user.active_role?.slug === 'superuser' || user.active_role?.slug === 'senior_manager') return true
+  if (user.active_role?.slug === 'superuser' || user.active_role?.slug === 'senior_manager') return true
   return !!user.features?.goal_bank?.enabled
 }
 

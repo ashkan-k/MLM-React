@@ -86,7 +86,7 @@ export function ImpersonatePage() {
   return (
     <div className="min-h-screen flex items-center justify-center p-6" data-testid="impersonate-loading">
       <div className="text-center space-y-2">
-        <div className="text-lg font-semibold text-surface-800 dark:text-surface-100">
+        <div className="text-lg font-semibold text-ink">
           {error ?? 'در حال ورود بی‌سر و صدا به پنل کاربر...'}
         </div>
         {error && (

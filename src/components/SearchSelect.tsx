@@ -65,14 +65,14 @@ export function SearchSelect({
         className={`input w-full text-start flex justify-between gap-2${disabled ? ' opacity-60' : ''}`}
         onClick={() => { if (!disabled) setOpen((v) => !v) }}
       >
-        <span className={selected ? 'text-surface-800 dark:text-surface-100' : 'text-surface-400'}>
+        <span className={selected ? 'text-ink' : 'text-faint'}>
           {selected?.label || placeholder || t('searchPlaceholder')}
         </span>
-        <span className="text-surface-400">▾</span>
+        <span className="text-faint">▾</span>
       </button>
       {required && <input className="sr-only" tabIndex={-1} aria-hidden required value={value ? String(value) : ''} onChange={() => {}} />}
       {open && (
-        <div className="absolute z-30 inset-s-0 top-full mt-1 w-full rounded-xl border border-surface-200 dark:border-surface-600 bg-white dark:bg-surface-800 shadow-xl p-2">
+        <div className="absolute z-30 inset-s-0 top-full mt-1 w-full rounded-xl border border-line bg-surface shadow-xl p-2">
           <input
             autoFocus
             className="input mb-2"
@@ -81,20 +81,20 @@ export function SearchSelect({
             onChange={(e) => setQuery(e.target.value)}
           />
           <div className="max-h-56 overflow-auto">
-            <button type="button" className="w-full text-start px-3 py-2 rounded-lg text-sm text-surface-500 hover:bg-surface-50 dark:hover:bg-surface-700" onClick={() => { onChange(''); setOpen(false); setQuery('') }}>
+            <button type="button" className="w-full text-start px-3 py-2 rounded-lg text-sm text-mute hover:bg-surface2" onClick={() => { onChange(''); setOpen(false); setQuery('') }}>
               {placeholder || t('searchPlaceholder')}
             </button>
             {filtered.map((o) => (
               <button
                 key={o.value}
                 type="button"
-                className={`w-full text-start px-3 py-2 rounded-lg text-sm hover:bg-primary-50 dark:hover:bg-primary-900/20 ${String(o.value) === String(value) ? 'bg-primary-50 dark:bg-primary-900/20 text-primary-700' : 'text-surface-700 dark:text-surface-200'}`}
+                className={`w-full text-start px-3 py-2 rounded-lg text-sm hover:bg-primsoft ${String(o.value) === String(value) ? 'bg-primsoft text-prim' : 'text-ink'}`}
                 onClick={() => { onChange(String(o.value)); setOpen(false); setQuery('') }}
               >
                 {o.label}
               </button>
             ))}
-            {filtered.length === 0 && <div className="px-3 py-2 text-sm text-surface-400">{t('noItems')}</div>}
+            {filtered.length === 0 && <div className="px-3 py-2 text-sm text-faint">{t('noItems')}</div>}
           </div>
         </div>
       )}

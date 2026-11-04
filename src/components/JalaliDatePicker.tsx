@@ -23,14 +23,14 @@ function weekdayIndex(date: Date) {
 }
 
 export function jalaliPopStyle(anchor: HTMLElement | null, width: number): CSSProperties {
-  if (!anchor) return { position: 'fixed', zIndex: 80, width }
+  if (!anchor) return { position: 'fixed', zIndex: 120, width }
   const rect = anchor.getBoundingClientRect()
   const rtl = document.documentElement.dir === 'rtl'
   let left = rtl ? rect.right - width : rect.left
   left = Math.max(8, Math.min(left, window.innerWidth - width - 8))
   let top = rect.bottom + 6
   if (top + 420 > window.innerHeight) top = Math.max(8, rect.top - 426)
-  return { position: 'fixed', top, left, width, zIndex: 80 }
+  return { position: 'fixed', top, left, width, zIndex: 120 }
 }
 
 export function JalaliDatePicker({

@@ -137,12 +137,12 @@ function FieldBlock({
 }) {
   const empty = value == null || value === ''
   return (
-    <div className="min-w-0 py-1.5 border-b border-surface-100/90 dark:border-surface-700/80 last:border-b-0" data-testid={testId}>
-      <div className="text-[10px] font-medium tracking-wide text-surface-400 mb-0.5">{label}</div>
+    <div className="min-w-0 py-1.5 border-b border-line last:border-b-0" data-testid={testId}>
+      <div className="text-[10px] font-medium tracking-wide text-faint mb-0.5">{label}</div>
       {empty ? (
-        <div className="text-[13px] text-surface-300">—</div>
+        <div className="text-[13px] text-faint">—</div>
       ) : (
-        <div className="text-[13px] leading-snug text-surface-800 dark:text-surface-100 break-words whitespace-pre-wrap" dir={dir}>{value}</div>
+        <div className="text-[13px] leading-snug text-ink break-words whitespace-pre-wrap" dir={dir}>{value}</div>
       )}
     </div>
   )
@@ -152,20 +152,20 @@ function GoalPartCard({ item, footer }: { item: GoalItem; footer?: ReactNode }) 
   const location = [item.province, item.city].filter(Boolean).join(' / ') || null
   return (
     <article
-      className="card p-3.5 flex flex-col h-full min-w-0 hover:border-primary-200/80 transition-colors"
+      className="card p-3.5 flex flex-col h-full min-w-0 hover:border-prim/30 transition-colors"
       data-testid={`goal-item-${item.id}`}
     >
-      <header className="flex items-start justify-between gap-2 shrink-0 pb-2.5 border-b border-surface-100 dark:border-surface-700">
+      <header className="flex items-start justify-between gap-2 shrink-0 pb-2.5 border-b border-line">
         <div className="min-w-0 flex-1">
-          <h3 className="m-0 font-semibold text-sm leading-snug text-surface-900 dark:text-surface-50 break-words">
+          <h3 className="m-0 font-semibold text-sm leading-snug text-ink break-words">
             {item.name}
           </h3>
-          <p className="m-0 mt-1 text-[11px] text-surface-500 break-all line-clamp-2">
+          <p className="m-0 mt-1 text-[11px] text-mute break-all line-clamp-2">
             <span>{item.platform}</span>
             {item.platform_url ? (
               <>
                 <span className="mx-1 opacity-40">·</span>
-                <a href={item.platform_url} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline break-all" dir="ltr">
+                <a href={item.platform_url} target="_blank" rel="noreferrer" className="text-prim hover:underline break-all" dir="ltr">
                   {item.platform_url.replace(/^https?:\/\//, '')}
                 </a>
               </>
@@ -197,7 +197,7 @@ function GoalPartCard({ item, footer }: { item: GoalItem; footer?: ReactNode }) 
       </div>
 
       {footer && (
-        <div className="flex flex-wrap gap-2 pt-3 mt-auto border-t border-surface-100 dark:border-surface-700 shrink-0">
+        <div className="flex flex-wrap gap-2 pt-3 mt-auto border-t border-line shrink-0">
           {footer}
         </div>
       )}
@@ -304,7 +304,8 @@ function AccessGeoFields({
 function GoalsBankSection({ section }: { section: GoalsSection }) {
   const user = useAuth((s) => s.user)
   const qc = useQueryClient()
-  const isManager = !!(user?.is_superuser || user?.active_role?.slug === 'senior_manager' || user?.features?.goal_bank?.is_manager)
+  // فقط نقش فعال سوپریوزر / مدیر ارشد — نه hasRole و نه فلگ is_manager بک‌اند هنگام سوییچ نقش
+  const isManager = user?.active_role?.slug === 'senior_manager' || user?.active_role?.slug === 'superuser'
   const [scope, setScope] = useState(isManager ? 'all' : 'in_progress')
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -687,7 +688,7 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
     if (isManager && item.status === 'available') {
       buttons.push(
         <button key="e" type="button" className="btn btn-ghost" onClick={() => openEdit(item)}>ویرایش</button>,
-        <button key="d" type="button" className="btn btn-ghost text-rose-600" onClick={() => deleteMut.mutate(item.id)}>حذف</button>,
+        <button key="d" type="button" className="btn btn-ghost text-bad" onClick={() => deleteMut.mutate(item.id)}>حذف</button>,
       )
     }
     return buttons.length ? buttons : null
@@ -728,7 +729,7 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
             <StatCard title="اندازه نوبت بعدی" value={canReceive ? String(batchSize) : '—'} />
             <StatCard title="مجاز به دریافت نوبت" value={canReceive ? 'بله' : 'خیر'} />
           </div>
-          <p className="text-xs text-surface-500 -mt-1 leading-relaxed">
+          <p className="text-xs text-mute -mt-1 leading-relaxed">
             «تعداد مجاز هر نوبت» یعنی در هر بار دریافت، سیستم همین تعداد پارت آزاد را از اول صف برمی‌دارد و به شما می‌دهد.
           </p>
 
@@ -760,7 +761,7 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
           </div>
 
           {!canReceive && (state?.in_progress ?? 0) > 0 && (
-            <div className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-xl p-3">
+            <div className="text-sm text-warn bg-warnsoft border border-warn/30 rounded-xl p-3">
               نوبت جاری باز است ({state?.in_progress}/{state?.max_concurrent}). ابتدا همهٔ پارت‌های در حال انجام را تعیین‌تکلیف کنید.
             </div>
           )}
@@ -776,7 +777,7 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
           {listQ.data?.meta && listQ.data.meta.total > 0 && (
             <TablePager page={listQ.data.meta.current_page} last={listQ.data.meta.last_page} total={listQ.data.meta.total} onPage={setPage} />
           )}
-          {mineInProgress.length > 0 && <div className="text-xs text-surface-500">پارت‌های جاری شما در این صفحه: {mineInProgress.length}</div>}
+          {mineInProgress.length > 0 && <div className="text-xs text-mute">پارت‌های جاری شما در این صفحه: {mineInProgress.length}</div>}
         </>
       )}
 
@@ -788,13 +789,13 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
                 جستجوی کاربر
                 <input className="input" value={accessSearch} onChange={(e) => setAccessSearch(e.target.value)} placeholder="نام، کد ملی، موبایل، ایمیل…" data-testid="goals-access-search" />
               </label>
-              <div className="text-xs text-surface-500 pb-2">
+              <div className="text-xs text-mute pb-2">
                 {accessQ.isFetching ? 'در حال جستجو…' : accessQ.data?.meta
                   ? `${accessQ.data.meta.total.toLocaleString('fa-IR')} کاربر · صفحه ${accessQ.data.meta.current_page.toLocaleString('fa-IR')}`
                   : null}
               </div>
             </div>
-            <p className="text-xs text-surface-500 m-0">
+            <p className="text-xs text-mute m-0">
               دسترسی بانک اهداف برای هر کاربر یک‌بار تعریف می‌شود و بین همهٔ نقش‌ها/پنل‌های او مشترک است.
               «تعداد مجاز هر نوبت» سقف هر دریافت خودکار است (پیش‌فرض ۱۰). استان/شهر برای اولویت تخصیص جغرافیایی ذخیره می‌شود.
             </p>
@@ -803,20 +804,20 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
           {(accessQ.data?.data ?? []).map((row) => (
             <div key={row.user_id} className="card p-4 space-y-3" data-testid={`goals-access-user-${row.user_id}`}>
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <div className="font-medium text-surface-800 dark:text-surface-100">{row.name}</div>
-                <span className="text-surface-500 text-sm" dir="ltr">{row.mobile}</span>
-                {row.national_id && <span className="text-surface-400 text-xs" dir="ltr">کد ملی: {row.national_id}</span>}
+                <div className="font-medium text-ink">{row.name}</div>
+                <span className="text-mute text-sm" dir="ltr">{row.mobile}</span>
+                {row.national_id && <span className="text-faint text-xs" dir="ltr">کد ملی: {row.national_id}</span>}
               </div>
               {row.roles.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {row.roles.map((role) => (
-                    <span key={role.role_id} className="text-[11px] px-2 py-0.5 rounded-md bg-surface-100 dark:bg-surface-800 text-surface-600 dark:text-surface-300">
+                    <span key={role.role_id} className="text-[11px] px-2 py-0.5 rounded-md bg-surface3 text-mute">
                       {role.role_name}
                     </span>
                   ))}
                 </div>
               )}
-              <div className="border-t border-surface-100 dark:border-surface-700 pt-4 space-y-4">
+              <div className="border-t border-line pt-4 space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 items-end">
                   <label className="field !mb-0 min-w-0">
                     دسترسی
@@ -863,8 +864,8 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
                     />
                   </label>
                   <div className="field !mb-0 min-w-0">
-                    <span className="block text-sm text-surface-600 dark:text-surface-300 mb-1.5">پارت جاری</span>
-                    <div className="input w-full h-11 flex items-center text-surface-700 dark:text-surface-200 bg-surface-50 dark:bg-surface-900/40" data-testid={`goals-access-current-${row.user_id}`}>
+                    <span className="block text-sm text-mute mb-1.5">پارت جاری</span>
+                    <div className="input w-full h-11 flex items-center text-ink bg-surface2/40" data-testid={`goals-access-current-${row.user_id}`}>
                       {row.in_progress.toLocaleString('fa-IR')}
                     </div>
                   </div>
@@ -901,8 +902,8 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
         <div className="space-y-4" data-testid="goals-monitor-panel">
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-[minmax(16rem,19rem)_minmax(0,1fr)]">
             <aside className="card p-0 overflow-hidden flex flex-col min-h-[14rem] max-h-[22rem] lg:max-h-[calc(100svh-12rem)] lg:min-h-[24rem]" data-testid="goals-monitor-sidebar">
-              <div className="p-4 border-b border-surface-100 dark:border-surface-700 space-y-2 bg-surface-50/80 dark:bg-surface-900/40 shrink-0">
-                <div className="text-sm font-semibold text-surface-800 dark:text-surface-100">انتخاب کاربر</div>
+              <div className="p-4 border-b border-line space-y-2 bg-surface2/80 /40 shrink-0">
+                <div className="text-sm font-semibold text-ink">انتخاب کاربر</div>
                 <label className="field !mb-0">
                   جستجو
                   <input
@@ -913,16 +914,16 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
                     data-testid="goals-monitor-search"
                   />
                 </label>
-                <div className="text-[11px] text-surface-500" data-testid="goals-monitor-users-meta">
+                <div className="text-[11px] text-mute" data-testid="goals-monitor-users-meta">
                   {monitorUsersQ.isFetching
                     ? 'در حال بارگذاری…'
                     : monitorUsersQ.data?.meta
                       ? `${monitorUsersQ.data.meta.total.toLocaleString('fa-IR')} کاربر · صفحه ${monitorUsersQ.data.meta.current_page.toLocaleString('fa-IR')} از ${monitorUsersQ.data.meta.last_page.toLocaleString('fa-IR')}`
                       : null}
                 </div>
-                <p className="text-[11px] text-surface-400 m-0 leading-relaxed">هر صفحه حداکثر ۱۵ کاربر؛ برای سازمان‌های بزرگ حتماً جستجو کنید.</p>
+                <p className="text-[11px] text-faint m-0 leading-relaxed">هر صفحه حداکثر ۱۵ کاربر؛ برای سازمان‌های بزرگ حتماً جستجو کنید.</p>
               </div>
-              <div className="flex-1 overflow-y-auto divide-y divide-surface-100 dark:divide-surface-700 min-h-0" data-testid="goals-monitor-picks">
+              <div className="flex-1 overflow-y-auto divide-y divide-line min-h-0" data-testid="goals-monitor-picks">
                 {(monitorUsersQ.data?.data ?? []).map((row) => {
                   const active = monitorUser?.user_id === row.user_id
                   const openCount = row.in_progress || 0
@@ -931,27 +932,27 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
                       key={row.user_id}
                       type="button"
                       data-testid={`goals-monitor-pick-${row.user_id}`}
-                      className={`w-full text-start px-4 py-3 transition-colors ${active ? 'bg-primary-50 dark:bg-primary-950/40 border-s-4 border-primary-500' : 'hover:bg-surface-50 dark:hover:bg-surface-800/60 border-s-4 border-transparent'}`}
+                      className={`w-full text-start px-4 py-3 transition-colors ${active ? 'bg-primsoft border-s-4 border-prim' : 'hover:bg-surface2/60 border-s-4 border-transparent'}`}
                       onClick={() => {
                         setMonitorUser(row)
                         setMonitorPage(1)
                       }}
                     >
-                      <div className="font-medium text-surface-800 dark:text-surface-100 truncate">{row.name}</div>
-                      <div className="text-xs text-surface-500 mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
+                      <div className="font-medium text-ink truncate">{row.name}</div>
+                      <div className="text-xs text-mute mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
                         <span dir="ltr">{row.mobile}</span>
                         {row.national_id && <span dir="ltr">کد ملی {row.national_id}</span>}
                       </div>
-                      <div className="text-[11px] text-surface-400 mt-1">پارت جاری: {openCount.toLocaleString('fa-IR')}</div>
+                      <div className="text-[11px] text-faint mt-1">پارت جاری: {openCount.toLocaleString('fa-IR')}</div>
                     </button>
                   )
                 })}
                 {(monitorUsersQ.data?.data?.length ?? 0) === 0 && !monitorUsersQ.isFetching && (
-                  <div className="p-4 text-sm text-surface-500">کاربری یافت نشد.</div>
+                  <div className="p-4 text-sm text-mute">کاربری یافت نشد.</div>
                 )}
               </div>
               {monitorUsersQ.data?.meta && monitorUsersQ.data.meta.last_page > 1 && (
-                <div className="p-3 border-t border-surface-100 dark:border-surface-700 shrink-0" data-testid="goals-monitor-users-pager">
+                <div className="p-3 border-t border-line shrink-0" data-testid="goals-monitor-users-pager">
                   <TablePager
                     page={monitorUsersQ.data.meta.current_page}
                     last={monitorUsersQ.data.meta.last_page}
@@ -967,12 +968,12 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
                 <div className="min-w-0 flex-1">
                   {monitorUser ? (
                     <div data-testid="goals-monitor-selected">
-                      <div className="text-xs text-surface-400 mb-0.5">در حال مشاهده</div>
-                      <div className="font-semibold text-surface-800 dark:text-surface-100 truncate">{monitorUser.name}</div>
-                      <div className="text-sm text-surface-500" dir="ltr">{monitorUser.mobile}</div>
+                      <div className="text-xs text-faint mb-0.5">در حال مشاهده</div>
+                      <div className="font-semibold text-ink truncate">{monitorUser.name}</div>
+                      <div className="text-sm text-mute" dir="ltr">{monitorUser.mobile}</div>
                     </div>
                   ) : (
-                    <div className="text-sm text-surface-500">از فهرست کاربران یک نفر را انتخاب کنید.</div>
+                    <div className="text-sm text-mute">از فهرست کاربران یک نفر را انتخاب کنید.</div>
                   )}
                 </div>
                 <label className="field !mb-0 w-full sm:w-auto sm:min-w-[11rem]">
@@ -1010,11 +1011,11 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
 
                   <div className="grid gap-3 grid-cols-1 xl:grid-cols-2">
                     <div className="card p-4 space-y-2" data-testid="goals-monitor-bar-chart">
-                      <div className="text-sm font-semibold text-surface-800 dark:text-surface-100">تفکیک وضعیت (میله‌ای)</div>
-                      <p className="text-[11px] text-surface-500 m-0">مقایسه تعداد پارت در هر وضعیت برای این کاربر</p>
+                      <div className="text-sm font-semibold text-ink">تفکیک وضعیت (میله‌ای)</div>
+                      <p className="text-[11px] text-mute m-0">مقایسه تعداد پارت در هر وضعیت برای این کاربر</p>
                       <div className="h-56">
                         {!monitorStatsQ.data ? (
-                          <div className="h-full flex items-center justify-center text-sm text-surface-500">در حال بارگذاری نمودار…</div>
+                          <div className="h-full flex items-center justify-center text-sm text-mute">در حال بارگذاری نمودار…</div>
                         ) : monitorChartRows.every((r) => r.value === 0) ? (
                           <Empty text="هنوز پارتی برای این کاربر ثبت نشده." />
                         ) : (
@@ -1037,11 +1038,11 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
 
                     <div className="card p-4 space-y-3" data-testid="goals-monitor-pct-chart">
                       <div>
-                        <div className="text-sm font-semibold text-surface-800 dark:text-surface-100">سهم درصدی وضعیت‌ها</div>
-                        <p className="text-[11px] text-surface-500 m-0 mt-0.5">درصد هر وضعیت از کل پارت‌ها + نتیجهٔ پارت‌های بسته‌شده</p>
+                        <div className="text-sm font-semibold text-ink">سهم درصدی وضعیت‌ها</div>
+                        <p className="text-[11px] text-mute m-0 mt-0.5">درصد هر وضعیت از کل پارت‌ها + نتیجهٔ پارت‌های بسته‌شده</p>
                       </div>
                       {!monitorStatsQ.data ? (
-                        <div className="h-40 flex items-center justify-center text-sm text-surface-500">در حال بارگذاری…</div>
+                        <div className="h-40 flex items-center justify-center text-sm text-mute">در حال بارگذاری…</div>
                       ) : monitorPctRows.every((r) => r.value === 0) ? (
                         <Empty text="هنوز پارتی برای محاسبه درصد نیست." />
                       ) : (
@@ -1049,8 +1050,8 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
                           <div className="space-y-3" data-testid="goals-monitor-pct-bars">
                             {monitorPctRows.map((r) => (
                               <div key={r.key} className="space-y-1">
-                                <div className="flex items-center justify-between gap-2 text-xs text-surface-600 dark:text-surface-300">
-                                  <span className="inline-flex items-center gap-1.5 font-medium text-surface-800 dark:text-surface-100">
+                                <div className="flex items-center justify-between gap-2 text-xs text-mute">
+                                  <span className="inline-flex items-center gap-1.5 font-medium text-ink">
                                     <span className="inline-block w-2.5 h-2.5 rounded-full shrink-0" style={{ background: r.color }} />
                                     {r.name}
                                   </span>
@@ -1058,7 +1059,7 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
                                     {r.pct.toLocaleString('fa-IR')}٪ · {r.value.toLocaleString('fa-IR')}
                                   </span>
                                 </div>
-                                <div className="h-2.5 rounded-full bg-surface-100 dark:bg-surface-800 overflow-hidden">
+                                <div className="h-2.5 rounded-full bg-surface3 overflow-hidden">
                                   <div
                                     className="h-full rounded-full transition-[width] duration-500"
                                     style={{ width: `${Math.min(100, r.pct)}%`, background: r.color }}
@@ -1069,16 +1070,16 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
                           </div>
 
                           {monitorOutcome && (
-                            <div className="rounded-xl border border-surface-100 dark:border-surface-700 p-3 space-y-2 bg-surface-50/70 dark:bg-surface-900/30" data-testid="goals-monitor-outcome">
+                            <div className="rounded-xl border border-line p-3 space-y-2 bg-surface2/70 /30" data-testid="goals-monitor-outcome">
                               <div className="flex items-center justify-between gap-2 text-xs">
-                                <span className="font-medium text-surface-700 dark:text-surface-200">از پارت‌های بسته‌شده ({monitorOutcome.decided.toLocaleString('fa-IR')})</span>
-                                <span className="text-emerald-700 dark:text-emerald-400 tabular-nums">موفقیت {monitorOutcome.successPct.toLocaleString('fa-IR')}٪</span>
+                                <span className="font-medium text-ink">از پارت‌های بسته‌شده ({monitorOutcome.decided.toLocaleString('fa-IR')})</span>
+                                <span className="text-ok tabular-nums">موفقیت {monitorOutcome.successPct.toLocaleString('fa-IR')}٪</span>
                               </div>
-                              <div className="h-3 rounded-full overflow-hidden flex bg-surface-200 dark:bg-surface-700">
-                                <div className="h-full bg-emerald-500 transition-[width] duration-500" style={{ width: `${monitorOutcome.successPct}%` }} title="انجام‌شده" />
-                                <div className="h-full bg-rose-500 transition-[width] duration-500" style={{ width: `${monitorOutcome.failPct}%` }} title="انجام‌نشده" />
+                              <div className="h-3 rounded-full overflow-hidden flex bg-surface3">
+                                <div className="h-full bg-ok transition-[width] duration-500" style={{ width: `${monitorOutcome.successPct}%` }} title="انجام‌شده" />
+                                <div className="h-full bg-bad transition-[width] duration-500" style={{ width: `${monitorOutcome.failPct}%` }} title="انجام‌نشده" />
                               </div>
-                              <div className="flex justify-between text-[11px] text-surface-500">
+                              <div className="flex justify-between text-[11px] text-mute">
                                 <span>انجام‌شده {monitorOutcome.completed.toLocaleString('fa-IR')}</span>
                                 <span>انجام‌نشده {monitorOutcome.failed.toLocaleString('fa-IR')}</span>
                               </div>
@@ -1094,7 +1095,7 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
               {!monitorUser ? (
                 <Empty text="برای دیدن پارت‌ها ابتدا کاربر را انتخاب کنید." />
               ) : monitorPartsQ.isFetching && !monitorPartsQ.data ? (
-                <div className="card p-8 text-center text-surface-500 text-sm">در حال دریافت پارت‌ها…</div>
+                <div className="card p-8 text-center text-mute text-sm">در حال دریافت پارت‌ها…</div>
               ) : (monitorPartsQ.data?.data?.length ?? 0) === 0 ? (
                 <Empty text="پارتی با این فیلتر برای کاربر یافت نشد." />
               ) : (
@@ -1115,7 +1116,7 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
 
       <Modal open={importOpen} onClose={() => setImportOpen(false)} title="ورود یکجای پارت‌ها از اکسل" subtitle="تا ۱۵٬۰۰۰ ردیف در هر فایل · ستون‌ها مطابق نمونه">
         <div className="space-y-4" data-testid="goals-import-modal">
-          <p className="text-sm text-surface-600 dark:text-surface-300 m-0 leading-relaxed">
+          <p className="text-sm text-mute m-0 leading-relaxed">
             ابتدا نمونه را دانلود کنید، لیست پارت‌ها را روی همان ستون‌ها پر کنید، سپس فایل <span dir="ltr">.xlsx</span> یا <span dir="ltr">.csv</span> را آپلود کنید.
           </p>
           <div className="flex flex-wrap gap-2">
@@ -1138,7 +1139,7 @@ function GoalsBankSection({ section }: { section: GoalsSection }) {
               }}
             />
           </label>
-          {importMut.isPending && <div className="text-sm text-surface-500">در حال وارد کردن… ممکن است برای فایل‌های بزرگ چند لحظه طول بکشد.</div>}
+          {importMut.isPending && <div className="text-sm text-mute">در حال وارد کردن… ممکن است برای فایل‌های بزرگ چند لحظه طول بکشد.</div>}
           <div className="flex justify-end">
             <button type="button" className="btn btn-ghost" onClick={() => setImportOpen(false)}>بستن</button>
           </div>
