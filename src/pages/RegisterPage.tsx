@@ -1,6 +1,6 @@
 import { AlertTriangle, CheckCircle2, Clock3, Link2Off, Moon, Percent, ShieldAlert, Sun, Users, Wallet } from 'lucide-react'
-import { useEffect, useState, type ReactNode } from 'react'
-import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useApp } from '../contexts/AppContext'
 import { api, authApi } from '../lib/api'
 import { dashboardPath } from '../lib/roles'
@@ -116,6 +116,47 @@ function StatusPanel({
   )
 }
 
+function ReferralCodeGate() {
+  const { t } = useApp()
+  const navigate = useNavigate()
+  const [code, setCode] = useState('')
+  const [error, setError] = useState('')
+
+  const onSubmit = (e: FormEvent) => {
+    e.preventDefault()
+    const trimmed = code.trim()
+    if (!trimmed) {
+      setError(t('registerNeedsReferral'))
+      return
+    }
+    navigate(`/register?ref=${encodeURIComponent(trimmed)}`, { replace: true })
+  }
+
+  return (
+    <AuthShell title={t('registerTitle')} subtitle={t('registerNeedsReferral')}>
+      <form className="space-y-4" onSubmit={onSubmit} data-testid="register-ref-gate">
+        <div>
+          <label className="lbl">کد معرف</label>
+          <input
+            className="input"
+            dir="ltr"
+            value={code}
+            onChange={(e) => { setCode(e.target.value); setError('') }}
+            placeholder="REF-…"
+            required
+            data-testid="register-ref-code"
+          />
+        </div>
+        {error && <div className="text-bad text-sm font-medium">{error}</div>}
+        <button className="btn btn-primary w-full btn-lg" type="submit" data-testid="register-ref-continue">
+          ادامه ثبت‌نام
+        </button>
+        <Link to="/login" className="block text-sm text-prim text-center font-bold hover:underline">{t('registerBack')}</Link>
+      </form>
+    </AuthShell>
+  )
+}
+
 export function RegisterPage() {
   const [params] = useSearchParams()
   const referralFromLink = (params.get('ref') ?? '').trim()
@@ -164,7 +205,7 @@ export function RegisterPage() {
   }, [shareFromLink, referralFromLink, navigate])
 
   if (!referralFromLink && !shareFromLink) {
-    return <Navigate to="/login" replace state={{ registerNeedsReferral: true }} />
+    return <ReferralCodeGate />
   }
 
   if (shareFromLink && !referralFromLink && shareLoading) {

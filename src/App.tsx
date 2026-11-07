@@ -1,5 +1,6 @@
 import { Navigate, Outlet, Route, Routes } from 'react-router-dom'
 import type { ReactNode } from 'react'
+import { LabLanding } from './landing/LabLanding'
 import { AppShell, SuperuserShell } from './layouts/AppShell'
 import { canAccessPage } from './lib/access'
 import { dashboardPath } from './lib/roles'
@@ -87,6 +88,7 @@ const roleChildren = (
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<LabLanding />} />
       <Route path="/shared-link/:token" element={<SharedLinkPage />} />
       <Route path="/impersonate" element={<ImpersonatePage />} />
       <Route element={<Guest />}>
