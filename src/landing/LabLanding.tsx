@@ -20,6 +20,7 @@ const ACCENTS = [RED, BLUE, GREEN, '#C77800', GOLD, '#0F766E'] as const
 type CatalogProductPublic = {
   type: string
   label: string
+  description?: string | null
   default_code?: string | null
   signup_url?: string | null
   requires_merchant?: boolean
@@ -47,6 +48,8 @@ function productHref(p: CatalogProductPublic): string {
 }
 
 function productDesc(p: CatalogProductPublic): string {
+  const fromPanel = (p.description ?? '').trim()
+  if (fromPanel) return fromPanel
   if (p.requires_merchant) {
     return 'محصول مبتنی بر درگاه — ثبت، تأیید و سهم از سود تراکنش‌های موفق در شبکه فروش.'
   }
@@ -102,8 +105,6 @@ const NAV = [
   ['مسیر عضویت', '#path'],
   ['سؤالات', '#faq'],
 ] as const
-
-const BRANDS = ['سازمان فروش', 'شبکه نمایندگان', 'پورسانت شفاف', 'پاداش ماهانه', 'کیف پول نقش‌محور', 'گزارش لحظه‌ای', 'فینونت', 'رشد پایدار']
 
 const BARS = [
   { h: 22, bg: '#fff', delay: 0 },
@@ -298,22 +299,6 @@ export function LabLanding() {
 
   return (
     <div dir="rtl" className="landing-root f-vazir min-h-screen" style={{ background: PAPER, color: INK }} data-testid="lab-landing">
-      {/* top ticker — same as raw */}
-      <div className="bg-[#131313] text-[#FAF9F4] overflow-hidden" dir="ltr">
-        <div className="flex w-max anim-marquee-fast">
-          {[0, 1].map((k) => (
-            <div key={k} className="flex items-center shrink-0 f-mono text-[12px] tracking-wide py-2">
-              {['عضویت رایگان در سازمان فروش', 'پورسانت شفاف روی سود', 'شبکه نمایندگان چندسطحی', 'ماشین‌حساب واقعی', 'پاداش ماهانه', 'پنل نقش‌محور'].map((t) => (
-                <span key={t} className="flex items-center" dir="rtl">
-                  <span className="px-5">{t}</span>
-                  <span className="w-2 h-2 rotate-45" style={{ background: RED }} />
-                </span>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
-
       {/* header */}
       <header className="sticky top-0 z-40 border-b-2 border-[#131313]" style={{ background: PAPER }}>
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4">
@@ -350,17 +335,15 @@ export function LabLanding() {
               <span className="inline-block w-2.5 h-2.5 rounded-full anim-pulse-dot" style={{ background: RED }} />
               سازمان فروش فینونت — عضویت نمایندگی
             </p>
-            <h1 className="f-lalezar font-normal leading-[1.15] text-[13.5vw] sm:text-6xl md:text-7xl xl:text-[86px]">
-              اول{' '}
+            <h1 className="f-lalezar font-normal leading-[1.2] text-[11vw] sm:text-5xl md:text-6xl xl:text-[72px]">
+              فینونت در شبکه همکاری و{' '}
               <span className="relative inline-block">
-                عدد را ببین،
+                فروش فینو
                 <span className="absolute right-0 left-0 bottom-1 h-[10px] md:h-[14px] -z-10" style={{ background: '#F5C9C1' }} />
               </span>
-              <br />
-              بعد <span style={{ color: RED }}>وارد شبکه شو.</span>
             </h1>
             <p className="mt-7 max-w-xl text-base md:text-lg leading-8 text-[#131313]/75">
-              فینونت مسیر فروش چندسطحی را یکجا جمع کرده: محصولات، پورسانت نقش‌محور، پاداش ماهانه و پنل واقعی نمایندگان.
+              فینونت مسیر فروش پلکانی را یکجا جمع کرده: محصولات، پورسانت نقش‌محور، پاداش ماهانه و پنل واقعی نمایندگان.
               <strong className="text-[#131313]"> عضویت رایگان</strong> — با نرخ رسمی سازمان تصمیم بگیر، نه با شعار تبلیغاتی.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-4">
@@ -463,32 +446,12 @@ export function LabLanding() {
         </div>
       </section>
 
-      {/* brand strip */}
-      <section className="border-y-2 border-[#131313] bg-white overflow-hidden" dir="ltr">
-        <div className="flex w-max anim-marquee mask-fade-x py-4">
-          {[0, 1].map((k) => (
-            <div key={k} className="flex items-center shrink-0">
-              {BRANDS.map((b) => (
-                <span key={b} dir="rtl" className="f-lalezar text-2xl md:text-3xl text-[#131313]/25 hover:text-[#131313] transition-colors px-8 whitespace-nowrap">
-                  {b}
-                </span>
-              ))}
-            </div>
-          ))}
-        </div>
-      </section>
-
       {/* TOOL — same grid as raw */}
-      <section id="tool" className="py-20 md:py-28">
+      <section id="tool" className="py-20 md:py-28 border-t-2 border-[#131313]">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
-          <Reveal className="flex flex-wrap items-end justify-between gap-6 mb-12">
-            <div>
-              <p className="f-mono text-xs mb-3" style={{ color: RED }}>// محصولات و زیرساخت</p>
-              <h2 className="f-lalezar font-normal text-4xl md:text-6xl leading-tight">داخل جعبه‌ابزار چه خبر است؟</h2>
-            </div>
-            <p className="max-w-sm text-[#131313]/65 leading-7 text-sm md:text-base">
-              همان محصولات فعال کاتالوگ سازمان فروش (صفحهٔ مدیریت محصولات). کد هر کارت به مبدا همان محصول لینک می‌شود.
-            </p>
+          <Reveal className="mb-12">
+            <p className="f-mono text-xs mb-3" style={{ color: RED }}>// محصولات و زیرساخت</p>
+            <h2 className="f-lalezar font-normal text-4xl md:text-6xl leading-tight">محصولات سبد فروش فینونت</h2>
           </Reveal>
 
           <div className="grid md:grid-cols-6 gap-4 md:gap-5" data-testid="landing-products">
@@ -711,7 +674,7 @@ export function LabLanding() {
                 <span className="f-lalezar text-2xl">فینونت</span>
               </div>
               <p className="text-sm leading-7 text-[#131313]/60 max-w-xs">
-                سازمان فروش چندسطحی فینونت — شبکه نمایندگان، پورسانت شفاف و پنل نقش‌محور.
+                سازمان فروش پلکانی فینونت — شبکه نمایندگان، پورسانت شفاف و پنل نقش‌محور.
               </p>
             </div>
             <div>
@@ -738,7 +701,7 @@ export function LabLanding() {
           </div>
           <div className="flex flex-wrap justify-between gap-3 border-t border-[#131313]/15 pt-6 f-mono text-[11px] text-[#131313]/50">
             <span>© فینونت — سازمان فروش</span>
-            <span>سازمان فروش چندسطحی · finonet.ir</span>
+            <span>سازمان فروش پلکانی · finonet.ir</span>
           </div>
         </div>
       </footer>

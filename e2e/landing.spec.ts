@@ -26,8 +26,9 @@ test.describe('لندینگ سازمان فروش فینونت', () => {
           },
           {
             type: 'subscription',
-            label: 'اشتراک فینونت',
-            default_code: 'SUBSCRIPTION',
+            label: 'اپلیکیشن فاپ',
+            description: 'اپلیکیشن جامع خدمات استعلام و پرداخت فاپ',
+            default_code: 'FAP',
             signup_url: 'https://finopal.ir/',
             requires_merchant: false,
             sale_points: 5,
@@ -53,21 +54,33 @@ test.describe('لندینگ سازمان فروش فینونت', () => {
     await expect(page.getByRole('banner')).not.toContainText('رشدلَب')
     await expect(page.getByRole('banner')).not.toContainText('تعرفه')
 
-    // هیرو
-    await expect(page.locator('#top')).toContainText('سازمان فروش فینونت')
+    // هیرو / شعار
+    await expect(page.locator('#top')).toContainText('فینونت در شبکه همکاری و فروش فینو')
+    await expect(page.locator('#top')).toContainText('فروش پلکانی')
+    await expect(page.locator('#top')).not.toContainText('چندسطحی')
+    await expect(page.locator('#top')).not.toContainText('شبکه‌ای')
     await expect(page.getByTestId('hero-activate')).toBeVisible()
     await expect(page.getByTestId('hero-calc')).toBeVisible()
     await expect(page.locator('#top')).not.toContainText('آزمایشگاه بازاریابی')
     await expect(page.locator('#top')).not.toContainText('پروندهٔ شماره')
 
-    // محصولات — از کاتالوگ عمومی (همان منبع سوپریوزر، فقط فعال‌ها)
+    // اسلایدرهای حرکتی حذف شده‌اند
+    await expect(page.locator('.anim-marquee, .anim-marquee-fast')).toHaveCount(0)
+
+    // محصولات — عنوان و توضیح از کاتالوگ عمومی (پنل سوپریوزر)
+    const tool = page.locator('#tool')
+    await expect(tool.getByRole('heading', { name: 'محصولات سبد فروش فینونت' })).toBeVisible()
+    await expect(tool).not.toContainText('داخل جعبه‌ابزار چه خبر است؟')
+    await expect(tool).not.toContainText('همان محصولات فعال کاتالوگ سازمان فروش')
     const products = page.getByTestId('landing-products')
     await expect(products).toBeVisible()
     await expect(products).toContainText('فینوپال')
     await expect(products).toContainText('فینوتیکت')
     await expect(products).toContainText('قالب‌بازار')
+    await expect(products).toContainText('اپلیکیشن فاپ')
+    await expect(products).toContainText('اپلیکیشن جامع خدمات استعلام و پرداخت فاپ')
     await expect(page.getByTestId('product-link-GATEWAY')).toHaveAttribute('href', /finopal\.ir/)
-    await expect(page.getByTestId('product-link-SUBSCRIPTION')).toHaveAttribute('href', /finopal\.ir/)
+    await expect(page.getByTestId('product-link-FAP')).toHaveAttribute('href', /finopal\.ir/)
     await expect(page.getByTestId('product-link-GHALEBAZAR')).toHaveAttribute('href', /ghalebazar\.ir/)
 
     // چرا فینونت
@@ -96,7 +109,9 @@ test.describe('لندینگ سازمان فروش فینونت', () => {
 
     // فوتر
     const footer = page.getByTestId('landing-footer')
-    await expect(footer).toContainText('سازمان فروش چندسطحی')
+    await expect(footer).toContainText('سازمان فروش پلکانی')
+    await expect(footer).not.toContainText('چندسطحی')
+    await expect(footer).not.toContainText('شبکه‌ای')
     await expect(footer).toContainText('finonet.ir')
     await expect(footer).not.toContainText('فهرست آزمایشگاه')
     await expect(footer).not.toContainText('کانسپت ۰۱')

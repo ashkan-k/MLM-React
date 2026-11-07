@@ -10,6 +10,7 @@ type Product = {
   id: number
   type: string
   label: string
+  description?: string | null
   requires_merchant: boolean
   sale_points: number
   default_code?: string | null
@@ -22,6 +23,7 @@ type Product = {
 type Form = {
   type: string
   label: string
+  description: string
   requires_merchant: boolean
   sale_points: string
   default_code: string
@@ -33,6 +35,7 @@ type Form = {
 const emptyForm = (): Form => ({
   type: '',
   label: '',
+  description: '',
   requires_merchant: false,
   sale_points: '0',
   default_code: '',
@@ -45,6 +48,7 @@ function fromProduct(product: Product): Form {
   return {
     type: product.type,
     label: product.label,
+    description: product.description ?? '',
     requires_merchant: product.requires_merchant,
     sale_points: String(product.sale_points ?? 0),
     default_code: product.default_code ?? '',
@@ -74,6 +78,7 @@ export function CatalogProductsPage() {
       const payload = {
         ...form,
         sale_points: Number(form.sale_points || 0),
+        description: form.description.trim() || null,
         signup_url: form.signup_url.trim() || null,
         default_code: form.default_code.trim() || null,
         aliases: form.aliases.trim() || null,
@@ -150,8 +155,18 @@ export function CatalogProductsPage() {
       <Modal open={open} title={editing ? 'ویرایش محصول' : 'محصول جدید'} subtitle="این مشخصات در وب‌هوک، فیلتر تراکنش و لینک ثبت فروش استفاده می‌شود." onClose={() => setOpen(false)}>
         <div className="grid gap-3">
           <label className="field">نام نمایشی
-            <input className="input" data-testid="catalog-product-label" placeholder="قالب بازار" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
-            <FieldHint>در فهرست محصولات، فیلتر تراکنش‌ها و انتخاب لینک ثبت فروش دیده می‌شود.</FieldHint>
+            <input className="input" data-testid="catalog-product-label" placeholder="اپلیکیشن فاپ" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
+            <FieldHint>همین عنوان روی لندینگ و فهرست محصولات دیده می‌شود.</FieldHint>
+          </label>
+          <label className="field">توضیح لندینگ
+            <textarea
+              className="input min-h-[88px] resize-y"
+              data-testid="catalog-product-description"
+              placeholder="اپلیکیشن جامع خدمات استعلام و پرداخت فاپ"
+              value={form.description}
+              onChange={(e) => setForm({ ...form, description: e.target.value })}
+            />
+            <FieldHint>متن کوتاه کارت محصول در صفحهٔ اصلی. اگر خالی باشد توضیح پیش‌فرض نشان داده می‌شود.</FieldHint>
           </label>
           <label className="field">شناسه وب‌هوک
             <input className="input" data-testid="catalog-product-type" dir="ltr" placeholder="ghalebazar" value={form.type} disabled={Boolean(editing?.is_system)} onChange={(e) => setForm({ ...form, type: e.target.value.trim().toLowerCase() })} />
