@@ -1,4 +1,4 @@
-/** نرخ‌های پایه و پاداش سازمان فروش فینونت (هم‌راستا با CommissionEngine / QaBaseSeeder) */
+/** نرخ‌های پایه و پاداش — از API عمومی یا پیش‌فرض هم‌راستا با پنل سوپریوزر */
 
 export type RoleSlug =
   | 'representative'
@@ -17,6 +17,7 @@ export type RoleOption = {
   pointsPerGateway: number
 }
 
+/** پیش‌فرض محلی — فقط تا وقتی API لود نشده / خطا */
 export const ROLE_OPTIONS: RoleOption[] = [
   {
     slug: 'representative',
@@ -60,6 +61,50 @@ export const ROLE_OPTIONS: RoleOption[] = [
   },
 ]
 
+export type ApiCommissionRole = {
+  slug: string
+  label: string
+  base_percent: number
+  qualified_percent: number
+  bonus_delta_percent: number
+  points_threshold: number | null
+  points_per_gateway: number
+  qualification_type?: string | null
+}
+
+export type ApiCommissionRates = {
+  roles: ApiCommissionRole[]
+  points_per_gateway?: number
+}
+
+const SLUGS = new Set<RoleSlug>([
+  'representative',
+  'representative_referrer',
+  'sales_manager',
+  'development_manager',
+  'senior_manager',
+])
+
+export function mapApiRoles(payload: ApiCommissionRates | null | undefined): RoleOption[] {
+  const rows = payload?.roles ?? []
+  if (!rows.length) return ROLE_OPTIONS
+  const mapped = rows
+    .filter((r): r is ApiCommissionRole & { slug: RoleSlug } => SLUGS.has(r.slug as RoleSlug))
+    .map((r) => {
+      const base = Number(r.base_percent) || 0
+      const bonus = Math.max(0, Number(r.bonus_delta_percent) || 0)
+      return {
+        slug: r.slug,
+        label: r.label || r.slug,
+        basePercent: base,
+        bonusDeltaPercent: bonus,
+        pointsThreshold: bonus > 0 ? (r.points_threshold ?? null) : null,
+        pointsPerGateway: Number(r.points_per_gateway) || payload?.points_per_gateway || 100,
+      } satisfies RoleOption
+    })
+  return mapped.length ? mapped : ROLE_OPTIONS
+}
+
 export type CalcInput = {
   role: RoleSlug
   /** سود ماهانه تراکنش‌های منتسب به نقش (تومان) */
@@ -68,6 +113,7 @@ export type CalcInput = {
   gatewaysThisMonth: number
   /** آیا درگاه‌ها از قبل واجد شرایط پاداش دائمی هستند */
   assumeQualified: boolean
+  roles?: RoleOption[]
 }
 
 export type CalcResult = {
@@ -83,13 +129,14 @@ export type CalcResult = {
 }
 
 export function calculateCommission(input: CalcInput): CalcResult {
-  const role = ROLE_OPTIONS.find((r) => r.slug === input.role) ?? ROLE_OPTIONS[0]
+  const catalog = input.roles?.length ? input.roles : ROLE_OPTIONS
+  const role = catalog.find((r) => r.slug === input.role) ?? catalog[0] ?? ROLE_OPTIONS[0]
   const profit = Math.max(0, Number(input.monthlyProfit) || 0)
   const gateways = Math.max(0, Math.floor(Number(input.gatewaysThisMonth) || 0))
   const pointsEarned = gateways * role.pointsPerGateway
 
   const qualified =
-    role.pointsThreshold == null
+    role.pointsThreshold == null || role.bonusDeltaPercent <= 0
       ? false
       : input.assumeQualified || pointsEarned >= role.pointsThreshold
 
@@ -98,9 +145,9 @@ export function calculateCommission(input: CalcInput): CalcResult {
   const totalAmount = baseAmount + bonusAmount
   const effectivePercent = role.basePercent + (qualified ? role.bonusDeltaPercent : 0)
 
-  const pointsNeeded = role.pointsThreshold
+  const pointsNeeded = role.bonusDeltaPercent > 0 ? role.pointsThreshold : null
   const gatewaysNeededForBonus =
-    role.pointsThreshold == null ? null : Math.ceil(role.pointsThreshold / role.pointsPerGateway)
+    pointsNeeded == null ? null : Math.ceil(pointsNeeded / role.pointsPerGateway)
 
   return {
     role,
@@ -116,7 +163,7 @@ export function calculateCommission(input: CalcInput): CalcResult {
 }
 
 /** جمع پایهٔ زنجیره برای یک سود تراکنش (سناریوی انفرادی + معرف) */
-export function chainBaseTotal(profit: number): number {
+export function chainBaseTotal(profit: number, roles: RoleOption[] = ROLE_OPTIONS): number {
   const order: RoleSlug[] = [
     'representative',
     'representative_referrer',
@@ -125,7 +172,7 @@ export function chainBaseTotal(profit: number): number {
     'senior_manager',
   ]
   return order.reduce((sum, slug) => {
-    const role = ROLE_OPTIONS.find((r) => r.slug === slug)
+    const role = roles.find((r) => r.slug === slug)
     return sum + (profit * (role?.basePercent ?? 0)) / 100
   }, 0)
 }

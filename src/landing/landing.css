@@ -72,7 +72,8 @@
   appearance: none;
   height: 6px;
   border-radius: 999px;
-  background: linear-gradient(to left, var(--fill, #e8442e) var(--pct, 50%), rgba(20,20,20,0.14) var(--pct, 50%));
+  /* inputs are dir=ltr — fill grows left→right with --pct */
+  background: linear-gradient(to right, var(--fill, #e8442e) var(--pct, 50%), rgba(20,20,20,0.14) var(--pct, 50%));
   outline: none;
   width: 100%;
 }

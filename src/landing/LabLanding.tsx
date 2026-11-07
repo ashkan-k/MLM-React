@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
-import { calculateCommission, ROLE_OPTIONS, type RoleSlug } from './commissionCalc'
+import { calculateCommission, mapApiRoles, type RoleSlug } from './commissionCalc'
 import { FaqItem, Reveal, fa, faMoney } from './fx'
 import './landing.css'
 
@@ -35,7 +35,6 @@ type LandingProduct = {
   desc: string
   color: string
   span: 'hero' | 'side' | 'card'
-  note?: string
 }
 
 function productHref(p: CatalogProductPublic): string {
@@ -47,16 +46,35 @@ function productHref(p: CatalogProductPublic): string {
   return REGISTER
 }
 
+/** پیش‌فرض توضیح کارت — اگر در پنل خالی باشد */
+const DEFAULT_PRODUCT_DESC: Record<string, string> = {
+  gateway_profit:
+    'ارائه‌دهنده خدمات درگاه پرداخت اینترنتی به کسب‌وکارها و فروشگاه‌های آنلاین، با امکان مدیریت و پردازش هوشمند تراکنش‌ها.\nمدل درآمدزایی نماینده: دریافت سهم درآمد از تراکنش‌های درگاه‌های پرداخت ثبت‌شده و فعال‌شده توسط مشتریان معرفی‌شده؛ ایجاد درآمد مستمر با ادامه فعالیت پذیرندگان.',
+  subscription:
+    'مجموعه‌ای یکپارچه از خدمات پرداخت، استعلام و سرویس‌های کاربردی روزمره در قالب یک اپلیکیشن برای کاربران حقیقی و کسب‌وکارها.\nمدل درآمدزایی نماینده: دریافت سهم درآمد از تراکنش‌های پرداختی و خدمات استعلامی کاربران معرفی‌شده به فاپ.',
+  finopol:
+    'ارائه مجموعه‌ای از APIها و وب‌سرویس‌های مالی، هویتی و اطلاعاتی برای کسب‌وکارها، سامانه‌ها و توسعه‌دهندگان نرم‌افزار.\nمدل درآمدزایی نماینده: دریافت سهم درآمد از مصرف سرویس‌ها و تراکنش‌های کسب‌وکارهای معرفی‌شده؛ با ظرفیت ایجاد درآمد مستمر از مشتریان سازمانی.',
+  finolo:
+    'ابزاری کاربردی برای برنامه‌ریزی، مدیریت پروژه‌ها، سازمان‌دهی وظایف و افزایش بهره‌وری تیم‌ها و کسب‌وکارها.\nمدل درآمدزایی نماینده: دریافت پورسانت از فروش و تمدید اشتراک مشتریان معرفی‌شده.',
+  ghalebazar:
+    'مجموعه‌ای گسترده با بیش از ۶ هزار قالب و طرح مدرن وب‌سایت، مبتنی بر فناوری SPA، برای راه‌اندازی سریع و حرفه‌ای کسب‌وکارهای آنلاین.\nمدل درآمدزایی نماینده: دریافت پورسانت از فروش قالب‌های آماده و محصولات دیجیتال به مشتریان معرفی‌شده.',
+  finoticket:
+    'راهکاری حرفه‌ای برای مدیریت تیکت‌ها، ارتباط با مشتریان، پیگیری درخواست‌ها و سازمان‌دهی فرآیندهای پشتیبانی کسب‌وکارها.\nمدل درآمدزایی نماینده: دریافت پورسانت از فروش و تمدید اشتراک کسب‌وکارهای معرفی‌شده.',
+  ticketing:
+    'راهکاری حرفه‌ای برای مدیریت تیکت‌ها، ارتباط با مشتریان، پیگیری درخواست‌ها و سازمان‌دهی فرآیندهای پشتیبانی کسب‌وکارها.\nمدل درآمدزایی نماینده: دریافت پورسانت از فروش و تمدید اشتراک کسب‌وکارهای معرفی‌شده.',
+}
+
 function productDesc(p: CatalogProductPublic): string {
   const fromPanel = (p.description ?? '').trim()
   if (fromPanel) return fromPanel
+  if (DEFAULT_PRODUCT_DESC[p.type]) return DEFAULT_PRODUCT_DESC[p.type]
   if (p.requires_merchant) {
-    return 'محصول مبتنی بر درگاه — ثبت، تأیید و سهم از سود تراکنش‌های موفق در شبکه فروش.'
+    return 'ارائه‌دهنده خدمات درگاه پرداخت اینترنتی به کسب‌وکارها؛ سهم نماینده از تراکنش‌های پذیرندگان معرفی‌شده.'
   }
   if ((p.sale_points ?? 0) > 0) {
     return `محصول فعال کاتالوگ سازمان فروش · ${fa(p.sale_points ?? 0)} امتیاز به ازای هر فروش موفق.`
   }
-  return 'محصول فعال در کاتالوگ سازمان فروش فینونت؛ منبع سهم نمایندگان و مدیران شبکه.'
+  return 'محصول و خدمت فینو در سبد فروش فینونت؛ منبع سهم نمایندگان از معرفی و فروش.'
 }
 
 function mapCatalogProducts(rows: CatalogProductPublic[]): LandingProduct[] {
@@ -71,7 +89,6 @@ function mapCatalogProducts(rows: CatalogProductPublic[]): LandingProduct[] {
       desc: productDesc(p),
       color: ACCENTS[i % ACCENTS.length],
       span,
-      note: i === 1 ? '✓ از کاتالوگ رسمی سازمان فروش' : undefined,
     }
   })
 }
@@ -164,11 +181,23 @@ function CommissionCalculator() {
   const [profit, setProfit] = useState(100_000_000)
   const [gateways, setGateways] = useState(10)
   const [assumeQualified, setAssumeQualified] = useState(false)
+  const { data: ratesPayload } = useQuery({
+    queryKey: ['public-commission-rates'],
+    queryFn: async () => (await api.get('/public/commission-rates')).data as import('./commissionCalc').ApiCommissionRates,
+    staleTime: 60_000,
+  })
+  const roles = useMemo(() => mapApiRoles(ratesPayload), [ratesPayload])
 
   const result = useMemo(
-    () => calculateCommission({ role, monthlyProfit: profit, gatewaysThisMonth: gateways, assumeQualified }),
-    [role, profit, gateways, assumeQualified],
+    () => calculateCommission({ role, monthlyProfit: profit, gatewaysThisMonth: gateways, assumeQualified, roles }),
+    [role, profit, gateways, assumeQualified, roles],
   )
+
+  useEffect(() => {
+    if (!roles.some((r) => r.slug === role) && roles[0]) {
+      setRole(roles[0].slug)
+    }
+  }, [roles, role])
 
   const profitPct = Math.min(100, Math.max(0, ((profit - 10_000_000) / (500_000_000 - 10_000_000)) * 100))
   const gwPct = Math.min(100, Math.max(0, (gateways / 50) * 100))
@@ -193,7 +222,7 @@ function CommissionCalculator() {
           onChange={(e) => setRole(e.target.value as RoleSlug)}
           data-testid="calc-role"
         >
-          {ROLE_OPTIONS.map((r) => (
+          {roles.map((r) => (
             <option key={r.slug} value={r.slug}>
               {r.label} — پایه {fa(r.basePercent)}٪{r.bonusDeltaPercent ? ` + پاداش ${fa(r.bonusDeltaPercent)}٪` : ''}
             </option>
@@ -307,7 +336,6 @@ export function LabLanding() {
               <span className="w-5 h-5"><Beaker className="w-full h-full" /></span>
             </span>
             <span className="f-lalezar text-2xl leading-none pt-1">فینونت</span>
-            <span className="hidden sm:inline f-mono text-[10px] border border-[#131313]/40 px-1.5 py-0.5 -translate-y-1">سازمان فروش</span>
           </a>
           <nav className="hidden lg:flex items-center gap-6 text-sm font-medium">
             {NAV.map(([t, h]) => (
@@ -335,16 +363,16 @@ export function LabLanding() {
               <span className="inline-block w-2.5 h-2.5 rounded-full anim-pulse-dot" style={{ background: RED }} />
               سازمان فروش فینونت — عضویت نمایندگی
             </p>
-            <h1 className="f-lalezar font-normal leading-[1.2] text-[11vw] sm:text-5xl md:text-6xl xl:text-[72px]">
-              فینونت در شبکه همکاری و{' '}
+            <h1 className="f-lalezar font-normal leading-[1.2] text-[10vw] sm:text-5xl md:text-6xl xl:text-[68px]">
+              فینونت؛{' '}
               <span className="relative inline-block">
-                فروش فینو
+                بستری برای درآمدی ماندگار
                 <span className="absolute right-0 left-0 bottom-1 h-[10px] md:h-[14px] -z-10" style={{ background: '#F5C9C1' }} />
               </span>
             </h1>
             <p className="mt-7 max-w-xl text-base md:text-lg leading-8 text-[#131313]/75">
               فینونت مسیر فروش پلکانی را یکجا جمع کرده: محصولات، پورسانت نقش‌محور، پاداش ماهانه و پنل واقعی نمایندگان.
-              <strong className="text-[#131313]"> عضویت رایگان</strong> — با نرخ رسمی سازمان تصمیم بگیر، نه با شعار تبلیغاتی.
+              <strong className="text-[#131313]"> عضویت رایگان</strong>.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-4">
               <Link
@@ -449,9 +477,12 @@ export function LabLanding() {
       {/* TOOL — same grid as raw */}
       <section id="tool" className="py-20 md:py-28 border-t-2 border-[#131313]">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
-          <Reveal className="mb-12">
-            <p className="f-mono text-xs mb-3" style={{ color: RED }}>// محصولات و زیرساخت</p>
-            <h2 className="f-lalezar font-normal text-4xl md:text-6xl leading-tight">محصولات سبد فروش فینونت</h2>
+          <Reveal className="mb-12 max-w-3xl">
+            <p className="f-mono text-xs mb-3" style={{ color: RED }}>// سبد محصولات و خدمات فینو</p>
+            <h2 className="f-lalezar font-normal text-4xl md:text-6xl leading-tight">سبد محصولات و خدمات فینو</h2>
+            <p className="mt-5 text-sm md:text-base leading-8 text-[#131313]/70">
+              با معرفی محصولات فینو، یک جریان درآمدی مستمر برای خود ایجاد کنید. با عضویت در شبکه فروش فینونت، مجموعه‌ای متنوع از محصولات و خدمات مالی، پرداختی و فناوری فینو را به مشتریان و کسب‌وکارها معرفی کنید و از فعالیت و خرید مشتریان معرفی‌شده، درآمد کسب کنید.
+            </p>
           </Reveal>
 
           <div className="grid md:grid-cols-6 gap-4 md:gap-5" data-testid="landing-products">
@@ -486,7 +517,7 @@ export function LabLanding() {
                       <ProductCodeLink code={hero.code} href={hero.href} color={hero.color} />
                     </div>
                     <h3 className="f-lalezar text-2xl md:text-3xl mb-3">{hero.title}</h3>
-                    <p className="text-sm md:text-[15px] leading-7 text-[#131313]/70">{hero.desc}</p>
+                    <p className="text-sm md:text-[15px] leading-7 text-[#131313]/70 whitespace-pre-line">{hero.desc}</p>
                     <Link to={REGISTER} className="inline-block mt-4 f-mono text-xs underline underline-offset-4 hover:no-underline" style={{ color: BLUE }}>
                       عضویت رایگان ←
                     </Link>
@@ -522,12 +553,7 @@ export function LabLanding() {
                   <ProductCodeLink code={side.code} href={side.href} color={side.color} />
                 </div>
                 <h3 className="f-lalezar text-2xl mb-2">{side.title}</h3>
-                <p className="text-sm leading-7 text-[#131313]/70 flex-1">{side.desc}</p>
-                {side.note ? (
-                  <div className="mt-5 f-mono text-[11px] border border-[#131313] p-3 bg-white">
-                    <span style={{ color: GREEN }}>{side.note}</span>
-                  </div>
-                ) : null}
+                <p className="text-sm leading-7 text-[#131313]/70 flex-1 whitespace-pre-line">{side.desc}</p>
               </Reveal>
             ) : null}
 
@@ -542,7 +568,7 @@ export function LabLanding() {
                   <ProductCodeLink code={p.code} href={p.href} color={p.color} />
                 </div>
                 <h3 className="f-lalezar text-xl md:text-2xl mt-4 mb-1.5">{p.title}</h3>
-                <p className="text-sm leading-7 text-[#131313]/70">{p.desc}</p>
+                <p className="text-sm leading-7 text-[#131313]/70 whitespace-pre-line">{p.desc}</p>
               </Reveal>
             ))}
           </div>

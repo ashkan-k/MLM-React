@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Badge, FieldHint, Modal, PageHeader } from '../components/ui'
@@ -16,6 +16,7 @@ type Product = {
   default_code?: string | null
   signup_url?: string | null
   aliases?: string | null
+  sort_order: number
   is_system: boolean
   is_active: boolean
 }
@@ -29,6 +30,7 @@ type Form = {
   default_code: string
   signup_url: string
   aliases: string
+  sort_order: string
   is_active: boolean
 }
 
@@ -41,6 +43,7 @@ const emptyForm = (): Form => ({
   default_code: '',
   signup_url: '',
   aliases: '',
+  sort_order: '0',
   is_active: true,
 })
 
@@ -54,6 +57,7 @@ function fromProduct(product: Product): Form {
     default_code: product.default_code ?? '',
     signup_url: product.signup_url ?? '',
     aliases: product.aliases ?? '',
+    sort_order: String(product.sort_order ?? 0),
     is_active: product.is_active,
   }
 }
@@ -71,6 +75,7 @@ export function CatalogProductsPage() {
   const refresh = () => {
     qc.invalidateQueries({ queryKey: ['catalog-products-admin'] })
     qc.invalidateQueries({ queryKey: ['catalog-products'] })
+    qc.invalidateQueries({ queryKey: ['public-catalog-products'] })
   }
 
   const save = useMutation({
@@ -78,6 +83,7 @@ export function CatalogProductsPage() {
       const payload = {
         ...form,
         sale_points: Number(form.sale_points || 0),
+        sort_order: Number(form.sort_order || 0),
         description: form.description.trim() || null,
         signup_url: form.signup_url.trim() || null,
         default_code: form.default_code.trim() || null,
@@ -108,9 +114,48 @@ export function CatalogProductsPage() {
     },
   })
 
+  const reorder = useMutation({
+    mutationFn: async ({ a, b }: { a: Product; b: Product }) => {
+      await api.put(`/superuser/products/${a.id}`, {
+        type: a.type,
+        label: a.label,
+        description: a.description ?? null,
+        requires_merchant: a.requires_merchant,
+        sale_points: a.sale_points,
+        default_code: a.default_code ?? null,
+        signup_url: a.signup_url ?? null,
+        aliases: a.aliases ?? null,
+        is_active: a.is_active,
+        sort_order: b.sort_order,
+      })
+      await api.put(`/superuser/products/${b.id}`, {
+        type: b.type,
+        label: b.label,
+        description: b.description ?? null,
+        requires_merchant: b.requires_merchant,
+        sale_points: b.sale_points,
+        default_code: b.default_code ?? null,
+        signup_url: b.signup_url ?? null,
+        aliases: b.aliases ?? null,
+        is_active: b.is_active,
+        sort_order: a.sort_order,
+      })
+    },
+    onSuccess: () => {
+      toast.success('ترتیب نمایش به‌روز شد')
+      refresh()
+    },
+    onError: () => toast.error('تغییر ترتیب انجام نشد'),
+  })
+
   const openForm = (product?: Product) => {
     setEditing(product ?? null)
-    setForm(product ? fromProduct(product) : emptyForm())
+    if (product) {
+      setForm(fromProduct(product))
+    } else {
+      const next = ((data ?? []).reduce((m, p) => Math.max(m, p.sort_order ?? 0), 0) || 0) + 10
+      setForm({ ...emptyForm(), sort_order: String(next) })
+    }
     setOpen(true)
   }
 
@@ -119,28 +164,61 @@ export function CatalogProductsPage() {
     remove.mutate(product.id)
   }
 
-  const rows = data ?? []
+  const rows = [...(data ?? [])].sort((a, b) => (a.sort_order - b.sort_order) || (a.id - b.id))
+
+  const move = (index: number, dir: -1 | 1) => {
+    const other = rows[index + dir]
+    if (!other || reorder.isPending) return
+    reorder.mutate({ a: rows[index], b: other })
+  }
 
   return (
     <div className="space-y-4" data-testid="catalog-products-page">
       <PageHeader
         title="محصولات"
-        subtitle="هر محصولی که اینجا فعال باشد در وب‌هوک، فیلتر تراکنش‌ها و لینک ثبت فروش استفاده می‌شود."
+        subtitle="ترتیب این فهرست، ترتیب نمایش کارت‌های لندینگ است. فلش‌ها یا فیلد ترتیب را تغییر دهید."
         action={<button type="button" className="btn btn-primary" data-testid="catalog-product-open" onClick={() => openForm()}><Plus className="w-4 h-4" /> محصول جدید</button>}
       />
       {isLoading && <div className="text-sm text-mute">در حال بارگذاری...</div>}
       <div className="grid gap-3">
-        {rows.map((product) => (
+        {rows.map((product, index) => (
           <article key={product.id} data-testid="catalog-product-row" className="card p-4 flex items-start justify-between gap-3 min-w-0">
-            <div className="min-w-0">
-              <div className="font-semibold text-ink wrap-anywhere">{product.label}</div>
-              <div className="text-xs text-mute mt-1 wrap-anywhere" dir="ltr">{product.type}</div>
-              <div className="flex flex-wrap gap-1 mt-2">
-                <Badge tone={product.is_active ? 'ok' : 'muted'}>{product.is_active ? 'فعال' : 'غیرفعال'}</Badge>
-                <Badge tone="info">{product.requires_merchant ? 'با مرچنت' : 'با مالک'}</Badge>
-                {product.is_system && <Badge tone="muted">سیستمی</Badge>}
+            <div className="min-w-0 flex items-start gap-3">
+              <div className="shrink-0 flex flex-col gap-1 pt-0.5">
+                <button
+                  type="button"
+                  className="w-8 h-8 rounded-lg inline-flex items-center justify-center text-faint hover:text-prim2 disabled:opacity-30"
+                  aria-label="بالا"
+                  data-testid="catalog-product-up"
+                  disabled={index === 0 || reorder.isPending}
+                  onClick={() => move(index, -1)}
+                >
+                  <ArrowUp className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  className="w-8 h-8 rounded-lg inline-flex items-center justify-center text-faint hover:text-prim2 disabled:opacity-30"
+                  aria-label="پایین"
+                  data-testid="catalog-product-down"
+                  disabled={index === rows.length - 1 || reorder.isPending}
+                  onClick={() => move(index, 1)}
+                >
+                  <ArrowDown className="w-4 h-4" />
+                </button>
               </div>
-              {product.signup_url && <div className="text-xs text-prim mt-2 wrap-anywhere" dir="ltr">{product.signup_url}</div>}
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="f-mono text-[11px] text-mute tabular-nums" data-testid="catalog-product-order">#{product.sort_order}</span>
+                  <div className="font-semibold text-ink wrap-anywhere">{product.label}</div>
+                </div>
+                <div className="text-xs text-mute mt-1 wrap-anywhere" dir="ltr">{product.type}</div>
+                <div className="flex flex-wrap gap-1 mt-2">
+                  <Badge tone={product.is_active ? 'ok' : 'muted'}>{product.is_active ? 'فعال' : 'غیرفعال'}</Badge>
+                  <Badge tone="info">{product.requires_merchant ? 'با مرچنت' : 'با مالک'}</Badge>
+                  {product.is_system && <Badge tone="muted">سیستمی</Badge>}
+                </div>
+                {product.signup_url && <div className="text-xs text-prim mt-2 wrap-anywhere" dir="ltr">{product.signup_url}</div>}
+              </div>
             </div>
             <div className="flex items-center shrink-0">
               <button type="button" className="w-8 h-8 rounded-lg inline-flex items-center justify-center text-faint hover:text-prim2" aria-label="ویرایش محصول" onClick={() => openForm(product)}><Pencil className="w-4 h-4" /></button>
@@ -152,21 +230,31 @@ export function CatalogProductsPage() {
         ))}
       </div>
 
-      <Modal open={open} title={editing ? 'ویرایش محصول' : 'محصول جدید'} subtitle="این مشخصات در وب‌هوک، فیلتر تراکنش و لینک ثبت فروش استفاده می‌شود." onClose={() => setOpen(false)}>
+      <Modal open={open} title={editing ? 'ویرایش محصول' : 'محصول جدید'} subtitle="عنوان، توضیح و ترتیب نمایش لندینگ از همینجا کنترل می‌شود." onClose={() => setOpen(false)}>
         <div className="grid gap-3">
           <label className="field">نام نمایشی
-            <input className="input" data-testid="catalog-product-label" placeholder="اپلیکیشن فاپ" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
+            <input className="input" data-testid="catalog-product-label" placeholder="فاپ | اپلیکیشن جامع خدمات مالی و پرداخت" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
             <FieldHint>همین عنوان روی لندینگ و فهرست محصولات دیده می‌شود.</FieldHint>
           </label>
           <label className="field">توضیح لندینگ
             <textarea
               className="input min-h-[88px] resize-y"
               data-testid="catalog-product-description"
-              placeholder="اپلیکیشن جامع خدمات استعلام و پرداخت فاپ"
+              placeholder="توضیح کارت و مدل درآمدزایی نماینده"
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
             />
-            <FieldHint>متن کوتاه کارت محصول در صفحهٔ اصلی. اگر خالی باشد توضیح پیش‌فرض نشان داده می‌شود.</FieldHint>
+            <FieldHint>توضیح کارت محصول در لندینگ. اگر خالی باشد توضیح پیش‌فرض همان محصول نشان داده می‌شود.</FieldHint>
+          </label>
+          <label className="field">ترتیب نمایش در لندینگ
+            <input
+              className="input"
+              data-testid="catalog-product-sort"
+              inputMode="numeric"
+              value={form.sort_order}
+              onChange={(e) => setForm({ ...form, sort_order: e.target.value.replace(/[^\d]/g, '') })}
+            />
+            <FieldHint>عدد کمتر = بالاتر در صفحهٔ اصلی. می‌توانید با فلش‌های لیست هم جابه‌جا کنید.</FieldHint>
           </label>
           <label className="field">شناسه وب‌هوک
             <input className="input" data-testid="catalog-product-type" dir="ltr" placeholder="ghalebazar" value={form.type} disabled={Boolean(editing?.is_system)} onChange={(e) => setForm({ ...form, type: e.target.value.trim().toLowerCase() })} />
