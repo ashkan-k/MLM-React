@@ -100,14 +100,14 @@ const WHY = [
   { n: '۰۱', c: RED, t: 'عضویت رایگان، بدون تله', d: 'ثبت‌نام و ورود به پنل سازمان فروش هزینه ندارد. درآمد از سهم فروش واقعی شکل می‌گیرد، نه حق عضویت پنهان یا تمدید خودکار.' },
   { n: '۰۲', c: BLUE, t: 'عدد شفاف، تصمیم روشن', d: 'نرخ هر نقش در پنل و ماشین‌حساب همین صفحه یکی است. قبل از عضویت می‌توانی برآورد دریافتی‌ات را ببینی.' },
   { n: '۰۳', c: RED, t: 'از روز اول پنل واقعی', d: 'بعد از ثبت‌نام، داشبورد، سوییچ نقش، گزارش و کیف پول در دسترس است — نه دموی محدود و نه نسخهٔ نمایشی.' },
-  { n: '۰۴', c: BLUE, t: 'رشد با پاداش پایدار', d: 'با رسیدن به حد نصاب ماهانه، سهم پاداش روی فعالیت‌های واجد شرایط قفل می‌ماند و در تراکنش‌های بعدی هم لحاظ می‌شود.' },
+  { n: '۰۴', c: BLUE, t: 'فروش با پاداش پایدار', d: 'با رسیدن به حد نصاب ماهانه، سهم پاداش روی فعالیت‌های واجد شرایط قفل می‌ماند و در تراکنش‌های بعدی هم لحاظ می‌شود.' },
 ] as const
 
 const PATH = [
   { n: '۱', day: 'گام ۱', dayColor: BLUE, last: false, t: 'ثبت‌نام با کد معرف', d: 'از لینک دعوت یا صفحهٔ ثبت‌نام وارد شو؛ نقش نمایندگی برایت ساخته می‌شود و به پنل دسترسی پیدا می‌کنی.' },
   { n: '۲', day: 'گام ۲', dayColor: BLUE, last: false, t: 'فعال‌سازی فروش', d: 'محصول یا کانال فروش خودت را ثبت کن و مدارک لازم را برای بررسی مدیر ارشد بفرست.' },
   { n: '۳', day: 'گام ۳', dayColor: BLUE, last: false, t: 'اولین فروش و سهم', d: 'با ثبت فروش موفق، سهم پایه همان مسیر به کیف نقش‌های زنجیره واریز می‌شود.' },
-  { n: '۴', day: 'گام ۴', dayColor: RED, last: true, t: 'رشد شبکه و پاداش', d: 'زیرمجموعه بساز، به حد نصاب برس و پاداش ماهانه را روی فعالیت‌های واجد شرایط فعال نگه دار.' },
+  { n: '۴', day: 'گام ۴', dayColor: RED, last: true, t: 'رشد فروش و پاداش', d: 'مشتری بساز، به حد نصاب برس و پاداش ماهانه را روی فعالیت‌های واجد شرایط فعال نگه دار.' },
 ] as const
 
 const FAQS = [
@@ -189,7 +189,10 @@ function CommissionCalculator() {
     queryFn: async () => (await api.get('/public/commission-rates')).data as import('./commissionCalc').ApiCommissionRates,
     staleTime: 60_000,
   })
-  const roles = useMemo(() => mapApiRoles(ratesPayload), [ratesPayload])
+  const roles = useMemo(
+    () => mapApiRoles(ratesPayload).filter((r) => r.slug !== 'senior_manager'),
+    [ratesPayload],
+  )
 
   const result = useMemo(
     () => calculateCommission({ role, monthlyProfit: profit, gatewaysThisMonth: gateways, assumeQualified, roles }),

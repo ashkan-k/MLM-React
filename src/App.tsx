@@ -24,6 +24,7 @@ import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { SharedLinkPage } from './pages/SharedLinkPage'
 import { AdminOrgManagers } from './pages/AdminOrgManagers'
+import { AdminQueueMonitorPage } from './pages/AdminQueueMonitorPage'
 import { AdminSmsDebugPage } from './pages/AdminSmsDebugPage'
 import { useAuth } from './stores/auth'
 
@@ -135,6 +136,7 @@ export default function App() {
           <Route path="notifications" element={<NotificationsPage />} />
           <Route path="frasoft" element={<AdminFraSoft />} />
           <Route path="sms" element={<AdminSmsDebugPage />} />
+          <Route path="queues" element={<AdminQueueMonitorPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/login" replace />} />

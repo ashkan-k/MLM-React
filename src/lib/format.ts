@@ -420,6 +420,12 @@ const auditLabelEn: Record<string, string> = {
   'finopal.webhook.transaction.ok': 'Finopal webhook / transaction ok',
   'finopal.webhook.transaction.failed': 'Finopal webhook / transaction failed',
   'api.error': 'System error',
+  'queue.pending_deleted': 'Queue pending job deleted',
+  'queue.pending_released': 'Queue pending job released',
+  'queue.failed_retried': 'Failed queue job retried',
+  'queue.failed_deleted': 'Failed queue job deleted',
+  'queue.failed_retry_all': 'All failed queue jobs retried',
+  'queue.failed_flushed': 'Failed queue jobs flushed',
 }
 
 export const auditLabel: Record<string, string> = {
@@ -461,6 +467,12 @@ export const auditLabel: Record<string, string> = {
   'finopal.webhook.transaction.ok': 'وب‌هوک فینوپال / تراکنش موفق',
   'finopal.webhook.transaction.failed': 'وب‌هوک فینوپال / تراکنش ناموفق',
   'api.error': 'خطای سامانه',
+  'queue.pending_deleted': 'حذف جاب از صف',
+  'queue.pending_released': 'آزاد کردن رزرو جاب صف',
+  'queue.failed_retried': 'Retry جاب ناموفق صف',
+  'queue.failed_deleted': 'حذف جاب ناموفق صف',
+  'queue.failed_retry_all': 'Retry همه جاب‌های ناموفق صف',
+  'queue.failed_flushed': 'پاک‌سازی جاب‌های ناموفق صف',
 }
 
 export const entityLabel: Record<string, string> = {

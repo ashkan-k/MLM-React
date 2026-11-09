@@ -166,6 +166,7 @@ const adminGroups: NavGroup[] = [
       { to: '/superuser/settings', labelKey: 'navSettings', icon: Settings },
       { to: '/superuser/audits', labelKey: 'navAudits', icon: ScrollText },
       { to: '/superuser/sms', labelKey: 'navSmsDebug', icon: MessageSquare },
+      { to: '/superuser/queues', labelKey: 'navQueueDebug', icon: ListTodo },
       { to: '/superuser/frasoft', labelKey: 'navFrasoft', icon: Repeat },
     ],
   },
@@ -224,6 +225,7 @@ const titleKeys: Record<string, string> = {
   '/superuser/settings': 'navSettings',
   '/superuser/audits': 'navAudits',
   '/superuser/sms': 'navSmsDebug',
+  '/superuser/queues': 'navQueueDebug',
   '/superuser/frasoft': 'navFrasoft',
 }
 
@@ -633,18 +635,18 @@ function ShellChrome({
               <path d="M8.5 4v16" className="ltr:hidden" />
             </svg>
           </button>
-          <div className="hidden md:block min-w-0">
+          <div className="hidden md:block min-w-0 flex-1">
             <nav className="flex items-center gap-1.5 text-[0.8rem] min-w-0">
-              <span className="text-mute font-medium">{t('home')}</span>
-              <span className="text-faint">/</span>
+              <span className="text-mute font-medium shrink-0">{t('home')}</span>
+              <span className="text-faint shrink-0">/</span>
               <span className="font-bold truncate">{title}</span>
             </nav>
           </div>
-          <div className="flex-1" />
           {panel === 'role' && active && switchableRoles.length > 1 && (
             <select
               data-testid="role-switcher"
-              className="input w-auto min-w-36 !py-1.5 !h-9 hidden sm:block"
+              title={roleLabel(active.slug, locale)}
+              className="input !w-[6.75rem] !max-w-[6.75rem] !min-w-0 shrink-0 !py-1.5 !h-9 hidden sm:block"
               value={active.slug}
               onChange={async (e) => {
                 const slug = e.target.value

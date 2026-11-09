@@ -130,10 +130,13 @@ test.describe('لندینگ سازمان فروش فینونت', () => {
     // چرا فینونت
     await expect(page.locator('#why')).toContainText('چرا فینونت')
     await expect(page.locator('#why')).toContainText('عضویت رایگان')
+    await expect(page.locator('#why')).toContainText('فروش با پاداش پایدار')
+    await expect(page.locator('#why')).not.toContainText('رشد با پاداش پایدار')
 
     // ماشین‌حساب
     await expect(page.getByTestId('landing-calculator')).toBeVisible()
     await expect(page.locator('#calc')).toContainText('ماشین‌حساب سود')
+    await expect(page.getByTestId('calc-role').locator('option[value="senior_manager"]')).toHaveCount(0)
 
     // مسیر — تایم‌لاین عمودی
     const path = page.locator('#path')
@@ -141,6 +144,10 @@ test.describe('لندینگ سازمان فروش فینونت', () => {
     await expect(path.locator('.absolute.right-\\[27px\\]')).toHaveCount(1)
     await expect(path.getByText('گام ۱', { exact: true })).toBeVisible()
     await expect(path.getByText('گام ۴', { exact: true })).toBeVisible()
+    await expect(path).toContainText('رشد فروش و پاداش')
+    await expect(path).toContainText('مشتری بساز')
+    await expect(path).not.toContainText('رشد شبکه و پاداش')
+    await expect(path).not.toContainText('زیرمجموعه')
     await expect(path).not.toContainText('روز ۱')
 
     // FAQ عمومی
@@ -219,11 +226,9 @@ test.describe('لندینگ سازمان فروش فینونت', () => {
     await expect(page.getByTestId('calc-bonus')).toContainText(/۲.?۰۰۰.?۰۰۰/)
     await expect(page.getByTestId('calc-total')).toContainText(/۸.?۰۰۰.?۰۰۰/)
 
-    // مدیر ارشد: فقط ۴٪ بدون پاداش
-    await page.getByTestId('calc-role').selectOption('senior_manager')
-    await expect(page.getByTestId('calc-base')).toContainText(/۴.?۰۰۰.?۰۰۰/)
-    await expect(page.getByTestId('calc-total')).toContainText(/۴.?۰۰۰.?۰۰۰/)
-    await expect(page.getByTestId('calc-qualified')).toHaveCount(0)
+    // مدیر ارشد از نقش‌های فعال ماشین‌حساب حذف شده است
+    await expect(page.getByTestId('calc-role').locator('option[value="senior_manager"]')).toHaveCount(0)
+    await expect(page.getByTestId('calc-role')).not.toContainText('مدیر ارشد')
 
     // اسلایدر: رنگ پرشدگی با افزایش مقدار زیاد می‌شود (نه برعکس)
     const slider = page.getByTestId('calc-profit')
@@ -241,6 +246,7 @@ test.describe('لندینگ سازمان فروش فینونت', () => {
       points_per_gateway: 100,
       roles: [
         { slug: 'representative', label: 'نماینده', base_percent: 11, qualified_percent: 16, bonus_delta_percent: 5, points_threshold: 1000, points_per_gateway: 100 },
+        { slug: 'sales_manager', label: 'مدیر فروش', base_percent: 7, qualified_percent: 9, bonus_delta_percent: 2, points_threshold: 5000, points_per_gateway: 100 },
         { slug: 'senior_manager', label: 'مدیر ارشد', base_percent: 3, qualified_percent: 3, bonus_delta_percent: 0, points_threshold: null, points_per_gateway: 100 },
       ],
     })
@@ -250,8 +256,11 @@ test.describe('لندینگ سازمان فروش فینونت', () => {
     await page.getByTestId('calc-gateways').fill('10')
     await expect(page.getByTestId('calc-base')).toContainText(/۱۱.?۰۰۰.?۰۰۰/)
     await expect(page.getByTestId('calc-total')).toContainText(/۱۶.?۰۰۰.?۰۰۰/)
-    await page.getByTestId('calc-role').selectOption('senior_manager')
-    await expect(page.getByTestId('calc-base')).toContainText(/۳.?۰۰۰.?۰۰۰/)
+    await expect(page.getByTestId('calc-role').locator('option[value="senior_manager"]')).toHaveCount(0)
+    await page.getByTestId('calc-role').selectOption('sales_manager')
+    await page.getByTestId('calc-qualified').check()
+    await expect(page.getByTestId('calc-base')).toContainText(/۷.?۰۰۰.?۰۰۰/)
+    await expect(page.getByTestId('calc-total')).toContainText(/۹.?۰۰۰.?۰۰۰/)
   })
 
   test('منطق ماشین‌حساب با نرخ‌های سازمان', () => {
