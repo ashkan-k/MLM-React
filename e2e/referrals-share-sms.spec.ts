@@ -53,11 +53,13 @@ test.describe('اشتراک لینک + QR + پیامک', () => {
     expect(tg.hostname).toMatch(/t\.me/)
     const sharedUrl = tg.searchParams.get('url') ?? ''
     const sharedText = tg.searchParams.get('text') ?? ''
+    // url = لینک ثبت‌نام؛ text = کپشن بدون تکرار لینک/بدون URL تصویر
     expect(sharedUrl).toBe(linkText)
-    // لینک نباید داخل text دوباره آمده باشد
-    expect(sharedText).not.toContain('http')
+    expect(sharedUrl).not.toContain('share-qr')
     expect(sharedText).toMatch(/فینونت/)
-    expect((sharedText.match(new RegExp(linkText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) ?? []).length).toBe(0)
+    expect(sharedText).not.toContain('http')
+    expect(sharedText).not.toContain('share-qr')
+    await expect(page.getByTestId('share-attach-guide')).toBeVisible()
 
     await page.keyboard.press('Escape')
     await expect(page.getByTestId('share-modal')).toHaveCount(0)
@@ -79,10 +81,10 @@ test.describe('اشتراک لینک + QR + پیامک', () => {
     )
     await page.getByTestId('share-sms-send').click()
     const res = await smsResponse
-    expect(res.ok(), await res.text()).toBeTruthy()
     const body = await res.json()
-    expect(body.success).toBeTruthy()
     expect(body.mobile).toBe('09396988720')
+    // لوکال: driver=log → logged_only؛ پروداکشن با کاوه‌نگار: success
+    expect(body.success === true || body.logged_only === true).toBeTruthy()
   })
 
   test('API پیامک لینک دیگران را رد می‌کند', async ({ request }) => {

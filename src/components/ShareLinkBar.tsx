@@ -76,6 +76,8 @@ export function ShareLinkBar({
   )
 }
 
+type ShareNetwork = 'telegram' | 'bale' | 'eitaa' | 'whatsapp' | 'rubika'
+
 function ShareNetworksModal({
   open,
   link,
@@ -87,9 +89,16 @@ function ShareNetworksModal({
 }) {
   const { t } = useApp()
   const [qr, setQr] = useState<string>('')
+  const [attachFor, setAttachFor] = useState<ShareNetwork | null>(null)
+  const [qrCopied, setQrCopied] = useState(false)
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
-    if (!open) return
+    if (!open) {
+      setAttachFor(null)
+      setQrCopied(false)
+      return
+    }
     let cancelled = false
     qrDataUrl(link, 240).then((url) => {
       if (!cancelled) setQr(url)
@@ -99,45 +108,62 @@ function ShareNetworksModal({
     }
   }, [open, link])
 
-  const prepareMessenger = async (network: 'telegram' | 'bale' | 'eitaa' | 'whatsapp' | 'rubika') => {
-    await navigator.clipboard.writeText(SHARE_TEXT_TEMPLATE(link)).catch(() => undefined)
-    const copiedImg = await copyQrImage(link)
-    if (!copiedImg) {
-      try {
-        downloadBlob(await qrShareCardBlob(link), 'finonet-qr.png')
-      } catch {
-        /* ignore */
-      }
+  const prepareQrForPaste = async () => {
+    const copied = await copyQrImage(link)
+    if (copied) {
+      setQrCopied(true)
+      return true
     }
+    try {
+      downloadBlob(await qrShareCardBlob(link), 'finonet-qr.png')
+      setQrCopied(false)
+      return false
+    } catch {
+      return false
+    }
+  }
 
-    if (network === 'rubika') {
+  const openMessengerWithText = (network: ShareNetwork) => {
+    if (network === 'rubika') return
+    window.open(messengerShareUrl(network, link), '_blank', 'noopener,noreferrer')
+  }
+
+  const prepareMessenger = async (network: ShareNetwork) => {
+    setBusy(true)
+    try {
+      // موبایل/سیستم‌عامل: فایل تصویر QR + متن با هم
+      const native = await tryNativeShare(link)
+      if (native === 'shared') {
+        toast.success(t('shareNativeOk'))
+        setAttachFor(null)
+        return
+      }
+      if (native === 'aborted') return
+
+      // دسکتاپ: لینک وب پیام‌رسان عکس نمی‌پذیرد → راهنمای Paste تصویر
+      await prepareQrForPaste()
+      setAttachFor(network)
+      openMessengerWithText(network)
+      toast.message(t('sharePasteQrHint'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const nativeShare = async () => {
+    setBusy(true)
+    try {
       const result = await tryNativeShare(link)
       if (result === 'shared') {
         toast.success(t('shareNativeOk'))
         return
       }
       if (result === 'aborted') return
-      toast.success(copiedImg ? t('shareQrCopiedHint') : t('shareQrDownloadHint'))
-      return
-    }
-
-    window.open(messengerShareUrl(network, link), '_blank', 'noopener,noreferrer')
-    toast.success(copiedImg ? t('shareQrCopiedHint') : t('shareQrDownloadHint'))
-  }
-
-  const nativeShare = async () => {
-    const result = await tryNativeShare(link)
-    if (result === 'shared') {
-      toast.success(t('shareNativeOk'))
-      return
-    }
-    if (result === 'aborted') return
-    try {
-      downloadBlob(await qrShareCardBlob(link), 'finonet-qr.png')
-      await navigator.clipboard.writeText(SHARE_TEXT_TEMPLATE(link))
-      toast.success(t('shareFallbackOk'))
-    } catch {
-      toast.error(t('shareFail'))
+      await prepareQrForPaste()
+      setAttachFor('telegram')
+      toast.message(t('sharePasteQrHint'))
+    } finally {
+      setBusy(false)
     }
   }
 
@@ -156,7 +182,7 @@ function ShareNetworksModal({
             <div className="font-semibold text-ink">{t('shareLinkLabel')}</div>
             <a className="text-prim break-all block leading-6" href={link} target="_blank" rel="noreferrer">{link}</a>
             <p className="text-xs text-mute m-0 leading-6">{t('shareBothHint')}</p>
-            <button type="button" className="btn btn-primary w-full sm:w-auto" data-testid="share-native" onClick={() => void nativeShare()}>
+            <button type="button" className="btn btn-primary w-full sm:w-auto" data-testid="share-native" disabled={busy} onClick={() => void nativeShare()}>
               <Share2 className="w-4 h-4" /> {t('shareNative')}
             </button>
           </div>
@@ -177,6 +203,7 @@ function ShareNetworksModal({
                 type="button"
                 className="btn btn-outline text-xs justify-center"
                 data-testid={`share-net-${id}`}
+                disabled={busy}
                 onClick={() => void prepareMessenger(id)}
               >
                 {label}
@@ -184,6 +211,56 @@ function ShareNetworksModal({
             ))}
           </div>
         </div>
+
+        {attachFor && (
+          <div className="rounded-xl border border-prim/30 bg-primsoft/40 p-4 space-y-3" data-testid="share-attach-guide">
+            <div className="font-semibold text-sm text-ink">{t('shareAttachTitle')}</div>
+            <p className="text-xs text-mute m-0 leading-6">{t('shareAttachBody')}</p>
+            <ol className="m-0 pr-4 text-xs text-ink leading-7 list-decimal">
+              <li>{qrCopied ? t('shareAttachStepCopied') : t('shareAttachStepDownload')}</li>
+              <li>{t('shareAttachStepPaste')}</li>
+            </ol>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn btn-primary text-xs"
+                data-testid="share-copy-qr"
+                onClick={async () => {
+                  const ok = await copyQrImage(link)
+                  setQrCopied(ok)
+                  if (ok) toast.success(t('shareQrImageCopied'))
+                  else {
+                    downloadBlob(await qrShareCardBlob(link), 'finonet-qr.png')
+                    toast.success(t('shareQrDownloadHint'))
+                  }
+                }}
+              >
+                {t('shareCopyQrImage')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-outline text-xs"
+                data-testid="share-download-qr"
+                onClick={async () => {
+                  downloadBlob(await qrShareCardBlob(link), 'finonet-qr.png')
+                  toast.success(t('shareQrDownloadHint'))
+                }}
+              >
+                {t('shareDownloadQr')}
+              </button>
+              {attachFor !== 'rubika' && (
+                <button
+                  type="button"
+                  className="btn btn-soft text-xs"
+                  data-testid="share-reopen-messenger"
+                  onClick={() => openMessengerWithText(attachFor)}
+                >
+                  {t('shareOpenApp')}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </Modal>
   )

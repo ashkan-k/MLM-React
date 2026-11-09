@@ -1,10 +1,10 @@
 import QRCode from 'qrcode'
 
-/** متن کامل برای پیامک / واتساپ / کلیپ‌بورد — لینک فقط یک‌بار */
+/** متن کامل برای پیامک / پیام‌رسان — لینک فقط یک‌بار */
 export const SHARE_TEXT_TEMPLATE = (link: string) =>
   `دعوت به سازمان فروش فینونت\nلینک شما:\n${link}`
 
-/** کپشن برای پیام‌رسان‌هایی که خودشان پارامتر url جدا می‌گذارند (تلگرام/بله/ایتا) */
+/** کپشن کوتاه؛ لینک جدا در پارامتر url می‌رود */
 export const SHARE_CAPTION = 'دعوت به سازمان فروش فینونت'
 
 export async function qrDataUrl(link: string, size = 280): Promise<string> {
@@ -16,7 +16,7 @@ export async function qrDataUrl(link: string, size = 280): Promise<string> {
   })
 }
 
-/** کارت تصویری شامل QR + متن لینک — برای اشتراک‌گذاری یک‌جا در پیام‌رسان‌ها */
+/** کارت تصویری شامل QR + متن لینک */
 export async function qrShareCardBlob(link: string, heading = 'فینونت'): Promise<Blob> {
   const size = 320
   const pad = 28
@@ -58,11 +58,14 @@ export async function qrFile(link: string, filename = 'finonet-qr.png'): Promise
   return new File([blob], filename, { type: 'image/png' })
 }
 
+/**
+ * لینک اشتراک پیام‌رسان — فقط متن/لینک ثبت‌نام (نه URL تصویر).
+ * ارسال فایل عکس از وب‌لینک تلگرام/بله ممکن نیست.
+ */
 export function messengerShareUrl(
   network: 'telegram' | 'bale' | 'eitaa' | 'whatsapp',
   link: string,
 ): string {
-  // تلگرام/بله/ایتا لینک را از پارامتر url می‌گذارند — کپشن بدون تکرار لینک
   if (network === 'telegram') {
     return `https://t.me/share/url?${new URLSearchParams({ url: link, text: SHARE_CAPTION })}`
   }
@@ -72,22 +75,31 @@ export function messengerShareUrl(
   if (network === 'eitaa') {
     return `https://eitaa.com/share/url?${new URLSearchParams({ url: link, text: SHARE_CAPTION })}`
   }
-  // واتساپ فقط text دارد — لینک یک‌بار داخل متن
   return `https://api.whatsapp.com/send?${new URLSearchParams({ text: SHARE_TEXT_TEMPLATE(link) })}`
 }
 
+/** اشتراک واقعی فایل QR + متن؛ در غیر این صورت unsupported */
 export async function tryNativeShare(link: string): Promise<'shared' | 'unsupported' | 'aborted'> {
   const text = SHARE_TEXT_TEMPLATE(link)
   try {
+    if (typeof navigator === 'undefined' || typeof navigator.share !== 'function') {
+      return 'unsupported'
+    }
     const file = await qrFile(link)
+    try {
+      await navigator.share({ title: 'فینونت', text, files: [file] })
+      return 'shared'
+    } catch (err) {
+      if ((err as DOMException)?.name === 'AbortError') return 'aborted'
+    }
     const withFile: ShareData = { title: 'فینونت', text, files: [file] }
-    if (typeof navigator !== 'undefined' && navigator.canShare?.(withFile)) {
+    if (navigator.canShare?.(withFile)) {
       await navigator.share(withFile)
       return 'shared'
     }
-    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
-      // فقط text (شامل لینک یک‌بار) — url جدا نده تا تکراری نشود
-      await navigator.share({ title: 'فینونت', text })
+    const filesOnly: ShareData = { files: [file], title: 'فینونت' }
+    if (navigator.canShare?.(filesOnly)) {
+      await navigator.share({ files: [file], title: 'فینونت', text })
       return 'shared'
     }
     return 'unsupported'
