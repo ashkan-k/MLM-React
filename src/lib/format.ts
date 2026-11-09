@@ -407,6 +407,19 @@ const auditLabelEn: Record<string, string> = {
   'gateway.submitted': 'Gateway submitted for inspection',
   'gateway.approved': 'Gateway approved with merchant code',
   'gateway.rejected': 'Gateway rejected',
+  'organization.reassign_manager': 'Organization manager reassigned',
+  'organization.appoint_vacant': 'Vacant seat appointed',
+  'finopal.webhook.signup.ok': 'Finopal webhook / signup ok',
+  'finopal.webhook.signup.failed': 'Finopal webhook / signup failed',
+  'finopal.webhook.signup.error': 'Finopal webhook / signup error',
+  'finopal.webhook.gateway.ok': 'Finopal webhook / gateway ok',
+  'finopal.webhook.gateway.failed': 'Finopal webhook / gateway failed',
+  'finopal.webhook.gateway.error': 'Finopal webhook / gateway error',
+  'finopal.webhook.org-structure.ok': 'Finopal webhook / org-sync ok',
+  'finopal.webhook.org-structure.failed': 'Finopal webhook / org-sync failed',
+  'finopal.webhook.transaction.ok': 'Finopal webhook / transaction ok',
+  'finopal.webhook.transaction.failed': 'Finopal webhook / transaction failed',
+  'api.error': 'System error',
 }
 
 export const auditLabel: Record<string, string> = {
@@ -435,6 +448,19 @@ export const auditLabel: Record<string, string> = {
   'gateway.submitted': 'ثبت درگاه برای بازرسی',
   'gateway.approved': 'تایید درگاه با کد مرچنت فینونت',
   'gateway.rejected': 'رد درگاه',
+  'organization.reassign_manager': 'جابه‌جایی مدیر در درخت',
+  'organization.appoint_vacant': 'انتصاب جایگاه خالی',
+  'finopal.webhook.signup.ok': 'وب‌هوک فینوپال / ثبت کاربر موفق',
+  'finopal.webhook.signup.failed': 'وب‌هوک فینوپال / ثبت کاربر ناموفق',
+  'finopal.webhook.signup.error': 'وب‌هوک فینوپال / خطای ثبت کاربر',
+  'finopal.webhook.gateway.ok': 'وب‌هوک فینوپال / ثبت درگاه موفق',
+  'finopal.webhook.gateway.failed': 'وب‌هوک فینوپال / ثبت درگاه ناموفق',
+  'finopal.webhook.gateway.error': 'وب‌هوک فینوپال / خطای ثبت درگاه',
+  'finopal.webhook.org-structure.ok': 'وب‌هوک فینوپال / همگام‌سازی ساختار موفق',
+  'finopal.webhook.org-structure.failed': 'وب‌هوک فینوپال / همگام‌سازی ساختار ناموفق',
+  'finopal.webhook.transaction.ok': 'وب‌هوک فینوپال / تراکنش موفق',
+  'finopal.webhook.transaction.failed': 'وب‌هوک فینوپال / تراکنش ناموفق',
+  'api.error': 'خطای سامانه',
 }
 
 export const entityLabel: Record<string, string> = {
