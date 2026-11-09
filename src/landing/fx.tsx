@@ -59,7 +59,7 @@ export function FaqItem({
   a,
   open,
   onToggle,
-  accent = '#E8442E',
+  accent = '#0e8467',
 }: {
   q: string
   a: string

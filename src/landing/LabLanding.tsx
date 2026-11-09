@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+﻿import { useQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
@@ -6,16 +6,19 @@ import { calculateCommission, mapApiRoles, type RoleSlug } from './commissionCal
 import { FaqItem, Reveal, fa, faMoney } from './fx'
 import './landing.css'
 
-const RED = '#E8442E'
-const BLUE = '#2743C7'
-const GOLD = '#F0C33A'
-const GREEN = '#1C7C46'
-const PAPER = '#FAF9F4'
-const INK = '#131313'
+/** پالت هم‌راستا با پنل (index.css — --prim / --info / --acc / --ok) */
+const RED = '#0e8467' // primary (was orange; now panel green)
+const BLUE = '#2f7cb3' // info
+const GOLD = '#f2b84b' // accent
+const GREEN = '#1b945f' // ok
+const PAPER = '#f2f5f1' // panel bg
+const INK = '#15211b'
+const PRIM_SOFT = '#e0f1e9'
+const OK_SOFT = '#dff2e7'
 const REGISTER = '/register'
 const LOGIN = '/login'
 
-const ACCENTS = [RED, BLUE, GREEN, '#C77800', GOLD, '#0F766E'] as const
+const ACCENTS = [RED, BLUE, GREEN, '#c9880f', GOLD, '#0a6b53'] as const
 
 type CatalogProductPublic = {
   type: string
@@ -134,9 +137,9 @@ const BARS = [
   { h: 55, bg: '#fff', delay: 490 },
   { h: 50, bg: '#fff', delay: 560 },
   { h: 64, bg: '#fff', delay: 630 },
-  { h: 60, bg: '#8FA0E8', delay: 700 },
-  { h: 78, bg: '#8FA0E8', delay: 770 },
-  { h: 72, bg: '#8FA0E8', delay: 840 },
+  { h: 60, bg: '#8eb9d6', delay: 700 },
+  { h: 78, bg: '#8eb9d6', delay: 770 },
+  { h: 72, bg: '#8eb9d6', delay: 840 },
   { h: 92, bg: RED, delay: 910, tip: '۲۰٪' },
 ]
 
@@ -161,7 +164,7 @@ function CheckIcon() {
 
 function ProductCodeLink({ code, href, color }: { code: string; href: string; color: string }) {
   const external = href.startsWith('http')
-  const cls = 'f-mono text-[10px] border border-[#131313] px-2 py-0.5 hover:underline underline-offset-2'
+  const cls = 'f-mono text-[10px] border border-[#15211b] px-2 py-0.5 hover:underline underline-offset-2'
   if (external) {
     return (
       <a href={href} target="_blank" rel="noreferrer" className={cls} style={{ color }} data-testid={`product-link-${code}`}>
@@ -203,21 +206,21 @@ function CommissionCalculator() {
   const gwPct = Math.min(100, Math.max(0, (gateways / 50) * 100))
 
   return (
-    <div className="border-2 border-[#131313] bg-white shadow-[10px_10px_0_#131313] p-6 md:p-9" data-testid="landing-calculator">
+    <div className="border-2 border-[#15211b] bg-white shadow-[10px_10px_0_#15211b] p-6 md:p-9" data-testid="landing-calculator">
       <div className="flex justify-between items-center mb-7">
         <h3 className="f-lalezar text-2xl">ورودی‌های آزمایش</h3>
-        <span className="f-mono text-[11px] border border-[#131313] px-2 py-1" style={{ background: GOLD }}>LIVE</span>
+        <span className="f-mono text-[11px] border border-[#15211b] px-2 py-1" style={{ background: GOLD }}>LIVE</span>
       </div>
 
       <div className="mb-6">
         <div className="flex justify-between mb-2.5">
           <label className="text-sm font-medium">نقش فعال در سازمان</label>
-          <span className="f-mono text-xs font-semibold border border-[#131313]/30 px-2 py-0.5" style={{ color: BLUE }}>
+          <span className="f-mono text-xs font-semibold border border-[#15211b]/30 px-2 py-0.5" style={{ color: BLUE }}>
             {result.role.label}
           </span>
         </div>
         <select
-          className="w-full border-2 border-[#131313] bg-[#FAF9F4] px-3 py-2.5 text-sm font-medium"
+          className="w-full border-2 border-[#15211b] bg-[#f2f5f1] px-3 py-2.5 text-sm font-medium"
           value={role}
           onChange={(e) => setRole(e.target.value as RoleSlug)}
           data-testid="calc-role"
@@ -233,7 +236,7 @@ function CommissionCalculator() {
       <div className="mb-6">
         <div className="flex justify-between mb-2.5">
           <label className="text-sm font-medium">سود ماهانهٔ تراکنش‌ها</label>
-          <span className="f-mono text-xs font-semibold border border-[#131313]/30 px-2 py-0.5" style={{ color: BLUE }} data-testid="calc-profit-value">
+          <span className="f-mono text-xs font-semibold border border-[#15211b]/30 px-2 py-0.5" style={{ color: BLUE }} data-testid="calc-profit-value">
             {faMoney(profit)} تومان
           </span>
         </div>
@@ -255,7 +258,7 @@ function CommissionCalculator() {
       <div className="mb-6">
         <div className="flex justify-between mb-2.5">
           <label className="text-sm font-medium">درگاه ثبت‌شده این ماه</label>
-          <span className="f-mono text-xs font-semibold border border-[#131313]/30 px-2 py-0.5" style={{ color: BLUE }} data-testid="calc-gateways-value">
+          <span className="f-mono text-xs font-semibold border border-[#15211b]/30 px-2 py-0.5" style={{ color: BLUE }} data-testid="calc-gateways-value">
             {fa(gateways)}
           </span>
         </div>
@@ -281,29 +284,29 @@ function CommissionCalculator() {
             type="checkbox"
             checked={assumeQualified}
             onChange={(e) => setAssumeQualified(e.target.checked)}
-            className="accent-[#E8442E]"
+            className="accent-[#0e8467]"
             data-testid="calc-qualified"
           />
           درگاه‌های قبلی واجد شرایط پاداش دائمی هستند
         </label>
       )}
 
-      <div className="border-t-2 border-dashed border-[#131313]/25 pt-6 space-y-3">
+      <div className="border-t-2 border-dashed border-[#15211b]/25 pt-6 space-y-3">
         <div className="flex justify-between text-sm" data-testid="calc-base">
-          <span className="text-[#131313]/60">پورسانت پایه ({fa(result.role.basePercent)}٪)</span>
+          <span className="text-[#15211b]/60">پورسانت پایه ({fa(result.role.basePercent)}٪)</span>
           <span className="f-mono font-semibold">{faMoney(result.baseAmount)} تومان</span>
         </div>
         <div className="flex justify-between text-sm" data-testid="calc-bonus">
-          <span className="text-[#131313]/60">پاداش ماهانه{result.qualified ? '' : ' (غیرفعال)'}</span>
+          <span className="text-[#15211b]/60">پاداش ماهانه{result.qualified ? '' : ' (غیرفعال)'}</span>
           <span className="f-mono font-semibold" style={{ color: BLUE }}>{faMoney(result.bonusAmount)} تومان</span>
         </div>
-        <div className="flex justify-between items-center border-2 border-[#131313] p-4 mt-4" style={{ background: '#D8F3E3' }} data-testid="calc-total">
+        <div className="flex justify-between items-center border-2 border-[#15211b] p-4 mt-4" style={{ background: OK_SOFT }} data-testid="calc-total">
           <span className="f-lalezar text-xl">جمع دریافتی</span>
           <span className="f-lalezar text-2xl md:text-3xl" style={{ color: GREEN }}>{faMoney(result.totalAmount)}+</span>
         </div>
         <Link
           to={REGISTER}
-          className="mt-5 block text-center f-changa font-bold text-lg py-3.5 border-2 border-[#131313] shadow-[5px_5px_0_#131313] hover:shadow-[1px_1px_0_#131313] hover:translate-x-1 hover:translate-y-1 transition-all"
+          className="mt-5 block text-center f-changa font-bold text-lg py-3.5 border-2 border-[#15211b] shadow-[5px_5px_0_#15211b] hover:shadow-[1px_1px_0_#15211b] hover:translate-x-1 hover:translate-y-1 transition-all"
           style={{ background: RED, color: '#fff' }}
           data-testid="calc-cta"
         >
@@ -329,24 +332,24 @@ export function LabLanding() {
   return (
     <div dir="rtl" className="landing-root f-vazir min-h-screen" style={{ background: PAPER, color: INK }} data-testid="lab-landing">
       {/* header */}
-      <header className="sticky top-0 z-40 border-b-2 border-[#131313]" style={{ background: PAPER }}>
+      <header className="sticky top-0 z-40 border-b-2 border-[#15211b]" style={{ background: PAPER }}>
         <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between gap-4">
           <a href="#top" className="flex items-center gap-2.5 group">
-            <span className="w-9 h-9 grid place-items-center border-2 border-[#131313] group-hover:rotate-6 transition-transform" style={{ background: RED, color: PAPER }}>
+            <span className="w-9 h-9 grid place-items-center border-2 border-[#15211b] group-hover:rotate-6 transition-transform" style={{ background: RED, color: PAPER }}>
               <span className="w-5 h-5"><Beaker className="w-full h-full" /></span>
             </span>
             <span className="f-lalezar text-2xl leading-none pt-1">فینونت</span>
           </a>
           <nav className="hidden lg:flex items-center gap-6 text-sm font-medium">
             {NAV.map(([t, h]) => (
-              <a key={h} href={h} className="relative after:absolute after:bottom-[-4px] after:right-0 after:h-[3px] after:w-0 hover:after:w-full after:bg-[#E8442E] after:transition-all">
+              <a key={h} href={h} className="relative after:absolute after:bottom-[-4px] after:right-0 after:h-[3px] after:w-0 hover:after:w-full after:bg-[#0e8467] after:transition-all">
                 {t}
               </a>
             ))}
           </nav>
           <Link
             to={REGISTER}
-            className="f-changa font-bold text-sm md:text-base px-4 md:px-6 py-2 border-2 border-[#131313] shadow-[4px_4px_0_#131313] hover:shadow-[1px_1px_0_#131313] hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
+            className="f-changa font-bold text-sm md:text-base px-4 md:px-6 py-2 border-2 border-[#15211b] shadow-[4px_4px_0_#15211b] hover:shadow-[1px_1px_0_#15211b] hover:translate-x-[3px] hover:translate-y-[3px] transition-all"
             style={{ background: RED, color: '#fff' }}
             data-testid="nav-register"
           >
@@ -367,17 +370,17 @@ export function LabLanding() {
               فینونت؛{' '}
               <span className="relative inline-block">
                 بستری برای درآمدی ماندگار
-                <span className="absolute right-0 left-0 bottom-1 h-[10px] md:h-[14px] -z-10" style={{ background: '#F5C9C1' }} />
+                <span className="absolute right-0 left-0 bottom-1 h-[10px] md:h-[14px] -z-10" style={{ background: PRIM_SOFT }} />
               </span>
             </h1>
-            <p className="mt-7 max-w-xl text-base md:text-lg leading-8 text-[#131313]/75">
+            <p className="mt-7 max-w-xl text-base md:text-lg leading-8 text-[#15211b]/75">
               فینونت مسیر فروش پلکانی را یکجا جمع کرده: محصولات، پورسانت نقش‌محور، پاداش ماهانه و پنل واقعی نمایندگان.
-              <strong className="text-[#131313]"> عضویت رایگان</strong>.
+              <strong className="text-[#15211b]"> عضویت رایگان</strong>.
             </p>
             <div className="mt-9 flex flex-wrap items-center gap-4">
               <Link
                 to={REGISTER}
-                className="f-changa font-bold text-lg px-8 py-3.5 border-2 border-[#131313] shadow-[6px_6px_0_#131313] hover:shadow-[2px_2px_0_#131313] hover:translate-x-1 hover:translate-y-1 transition-all"
+                className="f-changa font-bold text-lg px-8 py-3.5 border-2 border-[#15211b] shadow-[6px_6px_0_#15211b] hover:shadow-[2px_2px_0_#15211b] hover:translate-x-1 hover:translate-y-1 transition-all"
                 style={{ background: RED, color: '#fff' }}
                 data-testid="hero-activate"
               >
@@ -385,7 +388,7 @@ export function LabLanding() {
               </Link>
               <a
                 href="#calc"
-                className="f-changa font-bold text-lg px-8 py-3.5 border-2 border-[#131313] bg-[#131313]/0 hover:bg-[#131313] hover:text-[#FAF9F4] transition-colors"
+                className="f-changa font-bold text-lg px-8 py-3.5 border-2 border-[#15211b] bg-[#15211b]/0 hover:bg-[#15211b] hover:text-[#f2f5f1] transition-colors"
                 data-testid="hero-calc"
               >
                 محاسبهٔ سود من
@@ -399,7 +402,7 @@ export function LabLanding() {
               ].map(([n, l]) => (
                 <div key={l} className="flex items-baseline gap-3">
                   <span className="f-lalezar text-3xl md:text-4xl" style={{ color: BLUE }}>{n}</span>
-                  <span className="text-sm text-[#131313]/60">{l}</span>
+                  <span className="text-sm text-[#15211b]/60">{l}</span>
                 </div>
               ))}
             </div>
@@ -420,52 +423,52 @@ export function LabLanding() {
               </svg>
             </div>
 
-            <div className="border-2 border-[#131313] bg-white shadow-[10px_10px_0_#131313] relative">
-              <div className="flex items-center justify-between border-b-2 border-[#131313] px-5 py-3">
+            <div className="border-2 border-[#15211b] bg-white shadow-[10px_10px_0_#15211b] relative">
+              <div className="flex items-center justify-between border-b-2 border-[#15211b] px-5 py-3">
                 <span className="f-mono text-xs">FINONET / نمای شبکه</span>
                 <span className="flex gap-1.5">
-                  <i className="w-3 h-3 rounded-full border border-[#131313]" style={{ background: RED }} />
-                  <i className="w-3 h-3 rounded-full border border-[#131313]" style={{ background: BLUE }} />
-                  <i className="w-3 h-3 rounded-full border border-[#131313]" style={{ background: GOLD }} />
+                  <i className="w-3 h-3 rounded-full border border-[#15211b]" style={{ background: RED }} />
+                  <i className="w-3 h-3 rounded-full border border-[#15211b]" style={{ background: BLUE }} />
+                  <i className="w-3 h-3 rounded-full border border-[#15211b]" style={{ background: GOLD }} />
                 </span>
               </div>
               <div className="p-5 md:p-7">
                 <div className="flex justify-between items-end mb-1">
                   <span className="f-lalezar text-xl">نرخ مؤثر پورسانت — نماینده</span>
-                  <span className="f-mono text-[11px] px-2 py-0.5 border border-[#131313]" style={{ background: '#D8F3E3' }}>+۵٪ ▲</span>
+                  <span className="f-mono text-[11px] px-2 py-0.5 border border-[#15211b]" style={{ background: OK_SOFT }}>+۵٪ ▲</span>
                 </div>
-                <div className="flex items-end gap-2 h-40 border-b-2 border-[#131313] pb-0">
+                <div className="flex items-end gap-2 h-40 border-b-2 border-[#15211b] pb-0">
                   {BARS.map((b, i) => (
                     <div
                       key={i}
-                      className="flex-1 bar-grow border border-[#131313] relative"
+                      className="flex-1 bar-grow border border-[#15211b] relative"
                       style={{ height: `${b.h}%`, background: b.bg, animationDelay: `${b.delay}ms` }}
                     >
                       {b.tip ? (
-                        <span className="absolute -top-7 right-1/2 translate-x-1/2 f-mono text-[10px] whitespace-nowrap border border-[#131313] bg-white px-1">{b.tip}</span>
+                        <span className="absolute -top-7 right-1/2 translate-x-1/2 f-mono text-[10px] whitespace-nowrap border border-[#15211b] bg-white px-1">{b.tip}</span>
                       ) : null}
                     </div>
                   ))}
                 </div>
-                <div className="flex justify-between f-mono text-[10px] text-[#131313]/60 mt-1.5">
+                <div className="flex justify-between f-mono text-[10px] text-[#15211b]/60 mt-1.5">
                   <span>پایه ۱۵٪</span><span>حد نصاب</span><span>با پاداش ۲۰٪</span>
                 </div>
                 <div className="mt-5 space-y-2.5 f-mono text-xs">
-                  <div className="flex justify-between border-b border-dashed border-[#131313]/25 pb-2">
-                    <span className="text-[#131313]/60">وضعیت</span>
+                  <div className="flex justify-between border-b border-dashed border-[#15211b]/25 pb-2">
+                    <span className="text-[#15211b]/60">وضعیت</span>
                     <span className="font-semibold" style={{ color: GREEN }}>موفق ✔</span>
                   </div>
-                  <div className="flex justify-between border-b border-dashed border-[#131313]/25 pb-2">
-                    <span className="text-[#131313]/60">هزینهٔ عضویت</span>
+                  <div className="flex justify-between border-b border-dashed border-[#15211b]/25 pb-2">
+                    <span className="text-[#15211b]/60">هزینهٔ عضویت</span>
                     <span className="font-semibold" style={{ color: BLUE }}>۰ تومان</span>
                   </div>
-                  <div className="flex justify-between border-b border-dashed border-[#131313]/25 pb-2">
-                    <span className="text-[#131313]/60">دادهٔ لازم</span>
+                  <div className="flex justify-between border-b border-dashed border-[#15211b]/25 pb-2">
+                    <span className="text-[#15211b]/60">دادهٔ لازم</span>
                     <span className="font-semibold">کد معرف + پنل</span>
                   </div>
                 </div>
               </div>
-              <div className="border-t-2 border-[#131313] px-5 py-3 f-mono text-[11px] flex justify-between">
+              <div className="border-t-2 border-[#15211b] px-5 py-3 f-mono text-[11px] flex justify-between">
                 <span>finonet.ir</span>
                 <span className="anim-blink">آمادهٔ عضویت…▌</span>
               </div>
@@ -475,37 +478,37 @@ export function LabLanding() {
       </section>
 
       {/* TOOL — same grid as raw */}
-      <section id="tool" className="py-20 md:py-28 border-t-2 border-[#131313]">
+      <section id="tool" className="py-20 md:py-28 border-t-2 border-[#15211b]">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <Reveal className="mb-12 max-w-3xl">
             <p className="f-mono text-xs mb-3" style={{ color: RED }}>// سبد محصولات و خدمات فینو</p>
             <h2 className="f-lalezar font-normal text-4xl md:text-6xl leading-tight">سبد محصولات و خدمات فینو</h2>
-            <p className="mt-5 text-sm md:text-base leading-8 text-[#131313]/70">
+            <p className="mt-5 text-sm md:text-base leading-8 text-[#15211b]/70">
               با معرفی محصولات فینو، یک جریان درآمدی مستمر برای خود ایجاد کنید. با عضویت در شبکه فروش فینونت، مجموعه‌ای متنوع از محصولات و خدمات مالی، پرداختی و فناوری فینو را به مشتریان و کسب‌وکارها معرفی کنید و از فعالیت و خرید مشتریان معرفی‌شده، درآمد کسب کنید.
             </p>
           </Reveal>
 
           <div className="grid md:grid-cols-6 gap-4 md:gap-5" data-testid="landing-products">
             {catalogLoading ? (
-              <div className="md:col-span-6 border-2 border-[#131313] bg-white p-8 f-mono text-sm text-[#131313]/60" data-testid="landing-products-loading">
+              <div className="md:col-span-6 border-2 border-[#15211b] bg-white p-8 f-mono text-sm text-[#15211b]/60" data-testid="landing-products-loading">
                 در حال بارگذاری محصولات کاتالوگ…
               </div>
             ) : null}
 
             {catalogError ? (
-              <div className="md:col-span-6 border-2 border-[#131313] bg-white p-8 text-sm text-[#131313]/70" data-testid="landing-products-error">
+              <div className="md:col-span-6 border-2 border-[#15211b] bg-white p-8 text-sm text-[#15211b]/70" data-testid="landing-products-error">
                 دریافت لیست محصولات از کاتالوگ ممکن نشد. بعداً دوباره تلاش کنید.
               </div>
             ) : null}
 
             {!catalogLoading && !catalogError && products.length === 0 ? (
-              <div className="md:col-span-6 border-2 border-[#131313] bg-white p-8 text-sm text-[#131313]/70" data-testid="landing-products-empty">
+              <div className="md:col-span-6 border-2 border-[#15211b] bg-white p-8 text-sm text-[#15211b]/70" data-testid="landing-products-empty">
                 هنوز محصول فعالی در کاتالوگ سازمان فروش ثبت نشده است.
               </div>
             ) : null}
 
             {hero ? (
-              <Reveal className="md:col-span-4 border-2 border-[#131313] bg-white shadow-[8px_8px_0_#131313] p-6 md:p-8 relative overflow-hidden group">
+              <Reveal className="md:col-span-4 border-2 border-[#15211b] bg-white shadow-[8px_8px_0_#15211b] p-6 md:p-8 relative overflow-hidden group">
                 <div className="flex flex-wrap gap-8 items-center">
                   <div className="min-w-[200px] flex-1">
                     <div className="flex items-center gap-3 mb-4">
@@ -517,7 +520,7 @@ export function LabLanding() {
                       <ProductCodeLink code={hero.code} href={hero.href} color={hero.color} />
                     </div>
                     <h3 className="f-lalezar text-2xl md:text-3xl mb-3">{hero.title}</h3>
-                    <p className="text-sm md:text-[15px] leading-7 text-[#131313]/70 whitespace-pre-line">{hero.desc}</p>
+                    <p className="text-sm md:text-[15px] leading-7 text-[#15211b]/70 whitespace-pre-line">{hero.desc}</p>
                     <Link to={REGISTER} className="inline-block mt-4 f-mono text-xs underline underline-offset-4 hover:no-underline" style={{ color: BLUE }}>
                       عضویت رایگان ←
                     </Link>
@@ -526,11 +529,11 @@ export function LabLanding() {
                     {[
                       ['ثبت درگاه', '100%', INK],
                       ['تأیید ارشد', '62%', BLUE],
-                      ['تراکنش موفق', '41%', '#8FA0E8'],
+                      ['تراکنش موفق', '41%', '#8eb9d6'],
                       ['پورسانت واریزی', '27%', RED],
                     ].map(([lab, w, c], i) => (
                       <div key={lab} className="flex items-center gap-3">
-                        <div className="flex-1 h-8 border border-[#131313] bg-white p-1">
+                        <div className="flex-1 h-8 border border-[#15211b] bg-white p-1">
                           <div className="h-full transition-all duration-1000 group-hover:opacity-90" style={{ width: w, background: c, transitionDelay: `${i * 120}ms` }} />
                         </div>
                         <span className="f-mono text-[11px] w-24 shrink-0">{lab}</span>
@@ -542,7 +545,7 @@ export function LabLanding() {
             ) : null}
 
             {side ? (
-              <Reveal delay={100} className="md:col-span-2 border-2 border-[#131313] shadow-[8px_8px_0_#131313] p-6 md:p-8 flex flex-col" style={{ background: PAPER }}>
+              <Reveal delay={100} className="md:col-span-2 border-2 border-[#15211b] shadow-[8px_8px_0_#15211b] p-6 md:p-8 flex flex-col" style={{ background: PAPER }}>
                 <div className="flex items-start justify-between gap-2 mb-4">
                   <span className="w-10 h-10" style={{ color: side.color }}>
                     <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2.4" className="w-full h-full">
@@ -553,12 +556,12 @@ export function LabLanding() {
                   <ProductCodeLink code={side.code} href={side.href} color={side.color} />
                 </div>
                 <h3 className="f-lalezar text-2xl mb-2">{side.title}</h3>
-                <p className="text-sm leading-7 text-[#131313]/70 flex-1 whitespace-pre-line">{side.desc}</p>
+                <p className="text-sm leading-7 text-[#15211b]/70 flex-1 whitespace-pre-line">{side.desc}</p>
               </Reveal>
             ) : null}
 
             {cards.map((p, i) => (
-              <Reveal key={`${p.type}-${p.code}`} delay={i * 90} className="md:col-span-3 lg:col-span-3 border-2 border-[#131313] bg-white shadow-[8px_8px_0_#131313] p-6 md:p-7 hover:-translate-y-1.5 transition-transform">
+              <Reveal key={`${p.type}-${p.code}`} delay={i * 90} className="md:col-span-3 lg:col-span-3 border-2 border-[#15211b] bg-white shadow-[8px_8px_0_#15211b] p-6 md:p-7 hover:-translate-y-1.5 transition-transform">
                 <div className="flex items-start justify-between">
                   <span className="w-9 h-9" style={{ color: p.color }}>
                     <svg viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2.4" className="w-full h-full">
@@ -568,7 +571,7 @@ export function LabLanding() {
                   <ProductCodeLink code={p.code} href={p.href} color={p.color} />
                 </div>
                 <h3 className="f-lalezar text-xl md:text-2xl mt-4 mb-1.5">{p.title}</h3>
-                <p className="text-sm leading-7 text-[#131313]/70 whitespace-pre-line">{p.desc}</p>
+                <p className="text-sm leading-7 text-[#15211b]/70 whitespace-pre-line">{p.desc}</p>
               </Reveal>
             ))}
           </div>
@@ -576,15 +579,15 @@ export function LabLanding() {
       </section>
 
       {/* WHY — numbered list layout */}
-      <section id="why" className="border-y-2 border-[#131313] py-20 md:py-28 bg-white">
+      <section id="why" className="border-y-2 border-[#15211b] py-20 md:py-28 bg-white">
         <div className="max-w-7xl mx-auto px-4 md:px-8 grid lg:grid-cols-12 gap-10">
           <Reveal className="lg:col-span-4">
             <p className="f-mono text-xs mb-3" style={{ color: BLUE }}>// سؤال اصلی</p>
             <h2 className="f-lalezar font-normal text-4xl md:text-5xl leading-[1.2]">چرا فینونت؟ چون به مدل فروش شک نداریم.</h2>
-            <p className="mt-6 leading-8 text-[#131313]/70 text-sm md:text-base">بیشتر سیستم‌ها فقط وعده می‌دهند؛ اینجا پنل واقعی سازمان فروش را می‌بینی. این چهار دلیل پشت این اعتماد است:</p>
+            <p className="mt-6 leading-8 text-[#15211b]/70 text-sm md:text-base">بیشتر سیستم‌ها فقط وعده می‌دهند؛ اینجا پنل واقعی سازمان فروش را می‌بینی. این چهار دلیل پشت این اعتماد است:</p>
             <Link
               to={REGISTER}
-              className="mt-8 inline-block f-changa font-bold px-7 py-3 border-2 border-[#131313] shadow-[5px_5px_0_#131313] hover:shadow-[1px_1px_0_#131313] hover:translate-x-1 hover:translate-y-1 transition-all"
+              className="mt-8 inline-block f-changa font-bold px-7 py-3 border-2 border-[#15211b] shadow-[5px_5px_0_#15211b] hover:shadow-[1px_1px_0_#15211b] hover:translate-x-1 hover:translate-y-1 transition-all"
               style={{ background: GOLD }}
             >
               شروع عضویت
@@ -592,14 +595,14 @@ export function LabLanding() {
           </Reveal>
           <div className="lg:col-span-8">
             {WHY.map((item, i) => (
-              <Reveal key={item.n} delay={i * 80} className="group grid sm:grid-cols-[90px_1fr] gap-4 md:gap-8 py-7 border-b-2 border-[#131313]/12 last:border-0">
+              <Reveal key={item.n} delay={i * 80} className="group grid sm:grid-cols-[90px_1fr] gap-4 md:gap-8 py-7 border-b-2 border-[#15211b]/12 last:border-0">
                 <span className="f-lalezar text-5xl md:text-6xl leading-none transition-colors" data-n={item.n}>
-                  <span className="group-hover:hidden text-[#131313]/15">{item.n}</span>
+                  <span className="group-hover:hidden text-[#15211b]/15">{item.n}</span>
                   <span className="hidden group-hover:inline" style={{ color: item.c }}>{item.n}</span>
                 </span>
                 <div>
                   <h3 className="f-lalezar text-2xl mb-2">{item.t}</h3>
-                  <p className="leading-8 text-[#131313]/70 text-sm md:text-[15px]">{item.d}</p>
+                  <p className="leading-8 text-[#15211b]/70 text-sm md:text-[15px]">{item.d}</p>
                 </div>
               </Reveal>
             ))}
@@ -608,28 +611,28 @@ export function LabLanding() {
       </section>
 
       {/* CALC — 2-col raw layout */}
-      <section id="calc" className="py-20 md:py-28 border-t-2 border-[#131313] bg-grid-paper">
+      <section id="calc" className="py-20 md:py-28 border-t-2 border-[#15211b] bg-grid-paper">
         <div className="max-w-7xl mx-auto px-4 md:px-8 grid lg:grid-cols-2 gap-12 items-center">
           <Reveal>
             <p className="f-mono text-xs mb-3" style={{ color: RED }}>// برآورد روی عدد خودت</p>
             <h2 className="f-lalezar font-normal text-4xl md:text-6xl leading-[1.15]">ماشین‌حساب سود: عددِ خودت را ببین</h2>
-            <p className="mt-6 leading-8 text-[#131313]/70 text-sm md:text-base max-w-lg">
+            <p className="mt-6 leading-8 text-[#15211b]/70 text-sm md:text-base max-w-lg">
               نقش و سود ماهانه را تنظیم کن تا سهم پایه و پاداش با نرخ رسمی سازمان فروش محاسبه شود —
               از نماینده تا مدیر ارشد، همان چیزی که در پنل می‌بینی.
             </p>
             <ul className="mt-8 space-y-4">
               <li className="flex gap-4 items-start">
-                <span className="w-8 h-8 shrink-0 border-2 border-[#131313] grid place-items-center" style={{ background: GOLD }}><CheckIcon /></span>
+                <span className="w-8 h-8 shrink-0 border-2 border-[#15211b] grid place-items-center" style={{ background: GOLD }}><CheckIcon /></span>
                 <div>
                   <strong className="block">قبل از عضویت</strong>
-                  <span className="text-sm text-[#131313]/60">برآورد رایگان است؛ هیچ تعهد مالی برای ورود به شبکه نیست.</span>
+                  <span className="text-sm text-[#15211b]/60">برآورد رایگان است؛ هیچ تعهد مالی برای ورود به شبکه نیست.</span>
                 </div>
               </li>
               <li className="flex gap-4 items-start">
-                <span className="w-8 h-8 shrink-0 border-2 border-[#131313] grid place-items-center" style={{ background: GOLD }}><CheckIcon /></span>
+                <span className="w-8 h-8 shrink-0 border-2 border-[#15211b] grid place-items-center" style={{ background: GOLD }}><CheckIcon /></span>
                 <div>
                   <strong className="block">بعد از عضویت</strong>
-                  <span className="text-sm text-[#131313]/60">همان نرخ‌ها در پنل اعمال می‌شود؛ فقط فروش واقعی را ثبت می‌کنی.</span>
+                  <span className="text-sm text-[#15211b]/60">همان نرخ‌ها در پنل اعمال می‌شود؛ فقط فروش واقعی را ثبت می‌کنی.</span>
                 </div>
               </li>
             </ul>
@@ -641,18 +644,18 @@ export function LabLanding() {
       </section>
 
       {/* PATH — vertical timeline like raw */}
-      <section id="path" className="py-20 md:py-28 bg-white border-t-2 border-[#131313]">
+      <section id="path" className="py-20 md:py-28 bg-white border-t-2 border-[#15211b]">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <Reveal className="mb-14 text-center">
             <p className="f-mono text-xs mb-3" style={{ color: RED }}>// مسیر ورود به شبکه</p>
             <h2 className="f-lalezar font-normal text-4xl md:text-6xl">مسیر عضویت، قدم‌به‌قدم</h2>
           </Reveal>
           <div className="relative max-w-3xl mx-auto">
-            <div className="absolute right-[27px] md:right-[31px] top-2 bottom-2 w-[3px] bg-[#131313]/15" />
+            <div className="absolute right-[27px] md:right-[31px] top-2 bottom-2 w-[3px] bg-[#15211b]/15" />
             {PATH.map((step, i) => (
               <Reveal key={step.n} delay={i * 120} className="relative flex gap-6 md:gap-8 pb-12 last:pb-0">
                 <span
-                  className="relative z-10 w-14 h-14 md:w-16 md:h-16 shrink-0 border-2 border-[#131313] grid place-items-center f-lalezar text-xl md:text-2xl shadow-[4px_4px_0_#131313]"
+                  className="relative z-10 w-14 h-14 md:w-16 md:h-16 shrink-0 border-2 border-[#15211b] grid place-items-center f-lalezar text-xl md:text-2xl shadow-[4px_4px_0_#15211b]"
                   style={{ background: step.last ? RED : PAPER, color: step.last ? '#fff' : INK }}
                 >
                   {step.n}
@@ -660,7 +663,7 @@ export function LabLanding() {
                 <div className="pt-1">
                   <p className="f-mono text-xs mb-1.5" style={{ color: step.dayColor }}>{step.day}</p>
                   <h3 className="f-lalezar text-2xl md:text-3xl mb-2">{step.t}</h3>
-                  <p className="leading-8 text-[#131313]/70 text-sm md:text-[15px] max-w-xl">{step.d}</p>
+                  <p className="leading-8 text-[#15211b]/70 text-sm md:text-[15px] max-w-xl">{step.d}</p>
                 </div>
               </Reveal>
             ))}
@@ -669,12 +672,12 @@ export function LabLanding() {
       </section>
 
       {/* FAQ — raw 4+8 layout, no pricing/testimonials/form */}
-      <section id="faq" className="py-20 md:py-28 bg-grid-paper border-t-2 border-[#131313]">
+      <section id="faq" className="py-20 md:py-28 bg-grid-paper border-t-2 border-[#15211b]">
         <div className="max-w-7xl mx-auto px-4 md:px-8 grid lg:grid-cols-12 gap-10">
           <Reveal className="lg:col-span-4">
             <p className="f-mono text-xs mb-3" style={{ color: BLUE }}>// ابهام‌زدایی</p>
             <h2 className="f-lalezar font-normal text-4xl md:text-5xl leading-[1.2]">سؤالاتی که همه می‌پرسند</h2>
-            <p className="mt-5 text-sm leading-7 text-[#131313]/65">
+            <p className="mt-5 text-sm leading-7 text-[#15211b]/65">
               پاسخ دقیق‌تر را بعد از ورود به پنل، از پشتیبانی سازمان فروش بگیر.
             </p>
           </Reveal>
@@ -689,22 +692,22 @@ export function LabLanding() {
       </section>
 
       {/* footer — light like raw */}
-      <footer className="border-t-2 border-[#131313] pt-14 pb-8 overflow-hidden" data-testid="landing-footer">
+      <footer className="border-t-2 border-[#15211b] pt-14 pb-8 overflow-hidden" data-testid="landing-footer">
         <div className="max-w-7xl mx-auto px-4 md:px-8">
           <div className="grid md:grid-cols-3 gap-10 mb-12">
             <div>
               <div className="flex items-center gap-2.5 mb-4">
-                <span className="w-9 h-9 grid place-items-center border-2 border-[#131313]" style={{ background: RED, color: PAPER }}>
+                <span className="w-9 h-9 grid place-items-center border-2 border-[#15211b]" style={{ background: RED, color: PAPER }}>
                   <span className="w-5 h-5"><Beaker className="w-full h-full" /></span>
                 </span>
                 <span className="f-lalezar text-2xl">فینونت</span>
               </div>
-              <p className="text-sm leading-7 text-[#131313]/60 max-w-xs">
+              <p className="text-sm leading-7 text-[#15211b]/60 max-w-xs">
                 سازمان فروش پلکانی فینونت — شبکه نمایندگان، پورسانت شفاف و پنل نقش‌محور.
               </p>
             </div>
             <div>
-              <p className="f-mono text-xs mb-4 text-[#131313]/50">/ فهرست سایت</p>
+              <p className="f-mono text-xs mb-4 text-[#15211b]/50">/ فهرست سایت</p>
               <ul className="grid grid-cols-2 gap-2 text-sm">
                 {NAV.map(([t, h]) => (
                   <li key={h}><a href={h} className="hover:underline underline-offset-4">{t}</a></li>
@@ -714,7 +717,7 @@ export function LabLanding() {
               </ul>
             </div>
             <div>
-              <p className="f-mono text-xs mb-4 text-[#131313]/50">/ ارتباط</p>
+              <p className="f-mono text-xs mb-4 text-[#15211b]/50">/ ارتباط</p>
               <ul className="space-y-2 text-sm">
                 <li className="f-mono" dir="ltr">https://finonet.ir</li>
                 <li>پشتیبانی سازمان فروش فینونت</li>
@@ -725,7 +728,7 @@ export function LabLanding() {
           <div className="f-lalezar text-[18vw] md:text-[11rem] leading-[0.9] text-center text-outline opacity-20 select-none" aria-hidden>
             فینونت
           </div>
-          <div className="flex flex-wrap justify-between gap-3 border-t border-[#131313]/15 pt-6 f-mono text-[11px] text-[#131313]/50">
+          <div className="flex flex-wrap justify-between gap-3 border-t border-[#15211b]/15 pt-6 f-mono text-[11px] text-[#15211b]/50">
             <span>© فینونت — سازمان فروش</span>
             <span>سازمان فروش پلکانی · finonet.ir</span>
           </div>

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Award, Copy, CreditCard, Download, ExternalLink, Lock, Network, Repeat, TrendingUp, Users, Wallet, X, ZoomIn } from 'lucide-react'
+import { Award, CreditCard, Download, Lock, Network, Repeat, TrendingUp, Users, Wallet, X, ZoomIn } from 'lucide-react'
+import { ShareLinkBar } from '../components/ShareLinkBar'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, Navigate, useSearchParams } from 'react-router-dom'
 import { dashboardPath } from '../lib/roles'
@@ -1573,24 +1574,11 @@ function SignupLinks({ codes }: { codes: Array<{ id: number; code: string; finop
         return (
           <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 border-b border-line last:border-0">
             <code className="font-bold text-prim shrink-0">{c.code}</code>
-            {link && <CopyLink value={link} href={link} />}
+            {link && <ShareLinkBar value={link} href={link} kind="sale" />}
           </div>
         )
       })}
       {codes.length === 0 && <Empty text={t('refEmpty')} />}
-    </div>
-  )
-}
-
-function CopyLink({ value, href }: { value: string; href?: string }) {
-  const { t } = useApp()
-  return (
-    <div className="flex flex-wrap items-center gap-2">
-      {href ? <a className="text-sm text-prim break-all" href={href} target="_blank" rel="noreferrer">{href}</a> : <code className="text-sm">{value}</code>}
-      <button type="button" className="btn btn-ghost text-xs px-2 py-1" onClick={async () => { await navigator.clipboard.writeText(href || value); toast.success(t('copied')) }}>
-        <Copy className="w-3.5 h-3.5" /> {t('copy')}
-      </button>
-      {href && <a className="btn btn-ghost text-xs px-2 py-1" href={href} target="_blank" rel="noreferrer"><ExternalLink className="w-3.5 h-3.5" /> {t('openLink')}</a>}
     </div>
   )
 }
@@ -1692,7 +1680,7 @@ export function ReferralsPage() {
               return (
                 <div key={c.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3 border-b border-line last:border-0">
                   <code data-testid="referral-code" className="font-bold text-prim">{c.code}</code>
-                  <CopyLink value={href} href={href} />
+                  <ShareLinkBar value={href} href={href} kind="register" />
                 </div>
               )
             })}
@@ -1766,7 +1754,7 @@ export function ReferralsPage() {
           return (
           <div key={l.id} className="py-3 border-b border-line last:border-0 flex justify-between gap-3">
             <div className="min-w-0 flex-1">
-              <CopyLink value={href} href={href} />
+              <ShareLinkBar value={href} href={href} kind="shared" />
               <div className="text-xs text-mute mt-1">{l.type === 'gateway_sale' ? t('shareTypeGateway') : t('shareTypeReferral')} · {label(l.status)}</div>
               <div className="text-sm text-faint">
                 {l.members?.map((m) => `${m.user?.name} ${percent(m.share_percent)} ${m.approved ? t('approved') : t('awaiting')}`).join(' · ')}

@@ -1,11 +1,11 @@
-/* Lab landing — utilities matching raw قالب آزمایشگاه */
+/* Lab landing — پالت هم‌راستا با پنل (index.css) */
 .landing-root {
-  --lab-ink: #131313;
-  --lab-paper: #faf9f4;
-  --lab-red: #e8442e;
-  --lab-gold: #f0c33a;
-  --lab-blue: #2743c7;
-  --lab-green: #1c7c46;
+  --lab-ink: #15211b;
+  --lab-paper: #f2f5f1;
+  --lab-red: #0e8467;
+  --lab-gold: #f2b84b;
+  --lab-blue: #2f7cb3;
+  --lab-green: #1b945f;
   font-family: "Vazirmatn", sans-serif;
   color: var(--lab-ink);
   background: var(--lab-paper);
@@ -18,8 +18,8 @@
 
 .landing-root .bg-grid-paper {
   background-image:
-    linear-gradient(to right, rgba(20, 20, 20, 0.055) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(20, 20, 20, 0.055) 1px, transparent 1px);
+    linear-gradient(to right, rgba(21, 33, 27, 0.055) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(21, 33, 27, 0.055) 1px, transparent 1px);
   background-size: 28px 28px;
 }
 
@@ -39,9 +39,9 @@
 .landing-root .anim-spin-slow { animation: landing-spin 14s linear infinite; }
 
 @keyframes landing-pulse {
-  0% { box-shadow: 0 0 0 0 rgba(232, 68, 46, 0.55); }
-  70% { box-shadow: 0 0 0 12px rgba(232, 68, 46, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(232, 68, 46, 0); }
+  0% { box-shadow: 0 0 0 0 rgba(14, 132, 103, 0.55); }
+  70% { box-shadow: 0 0 0 12px rgba(14, 132, 103, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(14, 132, 103, 0); }
 }
 .landing-root .anim-pulse-dot { animation: landing-pulse 1.8s ease-out infinite; }
 
@@ -73,7 +73,7 @@
   height: 6px;
   border-radius: 999px;
   /* inputs are dir=ltr — fill grows left→right with --pct */
-  background: linear-gradient(to right, var(--fill, #e8442e) var(--pct, 50%), rgba(20,20,20,0.14) var(--pct, 50%));
+  background: linear-gradient(to right, var(--fill, #0e8467) var(--pct, 50%), rgba(21,33,27,0.14) var(--pct, 50%));
   outline: none;
   width: 100%;
 }
@@ -83,13 +83,13 @@
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #141414;
-  border: 4px solid var(--fill, #e8442e);
+  background: #15211b;
+  border: 4px solid var(--fill, #0e8467);
   cursor: pointer;
 }
 .landing-root input[type="range"]::-moz-range-thumb {
   width: 22px; height: 22px; border-radius: 50%;
-  background: #141414; border: 4px solid var(--fill, #e8442e); cursor: pointer;
+  background: #15211b; border: 4px solid var(--fill, #0e8467); cursor: pointer;
 }
 
 @media (prefers-reduced-motion: reduce) {
