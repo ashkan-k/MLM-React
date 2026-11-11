@@ -646,7 +646,8 @@ function ShellChrome({
             <select
               data-testid="role-switcher"
               title={roleLabel(active.slug, locale)}
-              className="input !w-[6.75rem] !max-w-[6.75rem] !min-w-0 shrink-0 !py-1.5 !h-9 hidden sm:block"
+              aria-label={t('role')}
+              className="input !w-auto !min-w-[7.5rem] !max-w-[9rem] shrink-0 !py-1.5 !h-9 !px-2.5 text-[0.8rem] hidden sm:block"
               value={active.slug}
               onChange={async (e) => {
                 const slug = e.target.value
@@ -667,7 +668,7 @@ function ShellChrome({
           <button
             type="button"
             onClick={() => setPalette(true)}
-            className="hidden sm:flex items-center gap-2.5 h-9 px-3 rounded-[10px] border border-line bg-surface text-faint text-[0.8rem] font-medium hover:border-line2 hover:text-mute transition-colors w-48 lg:w-56"
+            className="hidden sm:flex items-center gap-2.5 h-9 px-3 rounded-[10px] border border-line bg-surface text-faint text-[0.8rem] font-medium hover:border-line2 hover:text-mute transition-colors w-36 md:w-40 lg:w-48"
           >
             <Search size={15} />
             <span className="flex-1 text-start truncate">{t('search') || 'جستجو…'}</span>

@@ -30,8 +30,8 @@ function NetworkArt() {
 }
 
 export function LoginPage() {
-  const [mobile, setMobile] = useState('09121111111')
-  const [password, setPassword] = useState('Password123!')
+  const [mobile, setMobile] = useState('')
+  const [password, setPassword] = useState('')
   const [show, setShow] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
